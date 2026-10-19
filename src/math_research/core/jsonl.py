@@ -1,0 +1,152 @@
+"""Append-only JSONL persistence helpers.
+
+JSONL keeps project memory inspectable and Git-friendly. Reads are tolerant:
+corrupt lines are warned about and skipped rather than crashing the session, so a
+single bad line never makes a whole ledger unreadable.
+"""
+
+from __future__ import annotations
+
+import logging
+import re
+from collections.abc import Callable, Iterable, Iterator, Sequence
+from pathlib import Path
+from typing import TypeVar
+
+from pydantic import BaseModel, ValidationError
+
+logger = logging.getLogger("math_research")
+
+ModelT = TypeVar("ModelT", bound=BaseModel)
+
+
+ResultT = TypeVar("ResultT")
+
+
+def update_jsonl(
+    path: Path,
+    model_cls: type[ModelT],
+    mutate: Callable[[list[ModelT]], ResultT],
+) -> ResultT:
+    """Read-modify-write a mutable ledger under a cross-process lock.
+
+    ``mutate`` receives every record and edits the list in place (appending,
+    removing, or changing entries); whatever it returns is returned to the caller.
+    The read, the mutation and the rewrite happen inside one
+    :func:`~math_research.core.atomicio.file_lock`, which is the whole point: doing them
+    unlocked lets a second process's rewrite drop this one's records, and lets both
+    derive the same next artifact id from the same read. Four processes creating ten
+    claims each once reported forty successes and left thirteen records behind.
+
+    The lock is **not** re-entrant: a ``mutate`` that calls another function which
+    locks the same path will block until the timeout. Keep the callback to record
+    manipulation.
+    """
+    from math_research.core.atomicio import file_lock
+
+    with file_lock(path):
+        records = read_jsonl(path, model_cls)
+        result = mutate(records)
+        rewrite_jsonl(path, records)
+        return result
+
+
+def append_jsonl(path: Path, model: BaseModel) -> None:
+    """Append a single model as one JSON line (datetimes serialized as ISO)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(model.model_dump_json())
+        fh.write("\n")
+
+
+def atomic_append_jsonl(path: Path, model: BaseModel) -> None:
+    """Publish a control-ledger row atomically; caller must hold its file lock.
+
+    Preserve the prior bytes rather than reparsing through the tolerant reader:
+    a failed replace cannot damage a previous review or discard a corrupt row.
+    """
+    from math_research.core.atomicio import atomic_write_text
+
+    previous = path.read_bytes().decode("utf-8") if path.exists() else ""
+    if previous and not previous.endswith("\n"):
+        previous += "\n"
+    atomic_write_text(path, previous + model.model_dump_json() + "\n")
+
+
+def read_jsonl(path: Path, model_cls: type[ModelT]) -> list[ModelT]:
+    """Read all valid records from ``path``, skipping (and warning on) bad lines."""
+    return list(iter_jsonl(path, model_cls))
+
+
+def rewrite_jsonl(path: Path, models: Sequence[BaseModel]) -> None:
+    """Overwrite ``path`` with the given models (used for in-place updates).
+
+    JSONL is append-only by default; rewriting the whole file is acceptable for
+    small, mutable ledgers such as claims where an entry's status can change. The
+    rewrite is atomic (temp file + rename) so a crash mid-write cannot truncate the
+    ledger and silently lose records.
+    """
+    from math_research.core.atomicio import atomic_write_text
+
+    payload = "".join(model.model_dump_json() + "\n" for model in models)
+    atomic_write_text(path, payload)
+
+
+def iter_jsonl(path: Path, model_cls: type[ModelT]) -> Iterator[ModelT]:
+    if not path.is_file():
+        return
+    with path.open("r", encoding="utf-8") as fh:
+        for lineno, raw in enumerate(fh, start=1):
+            line = raw.strip()
+            if not line:
+                continue
+            try:
+                yield model_cls.model_validate_json(line)
+            except ValidationError as exc:
+                logger.warning("Skipping corrupt JSONL line %d in %s: %s", lineno, path, exc)
+
+
+def next_sequential_id(prefix: str, existing_count: int) -> str:
+    """Build a deterministic, zero-padded artifact id, e.g. ``CLAIM-0001``."""
+    return f"{prefix}-{existing_count + 1:04d}"
+
+
+_ARTIFACT_ID = re.compile(r"^([A-Z][A-Z0-9_]*)-0*(\d+)$")
+
+
+def canonical_artifact_id(raw: str) -> str:
+    """Zero-pad a model-written artifact id to the form the ledgers actually use.
+
+    Every id is minted as ``PREFIX-%04d``, so ``PAPER-002`` can only ever mean
+    ``PAPER-0002`` — but a lookup on the raw string misses, and the resulting "no such
+    paper, call paper_fetch first" is true and useless: it sends the model off to
+    re-download a paper it already has. Observed on a Coq calibration run, where the
+    model wrote three-digit ids throughout. Anything that is not ``PREFIX-<digits>`` is
+    returned upper-cased and otherwise untouched, so a genuinely unknown id still
+    misses and still says so.
+    """
+    text = raw.strip().upper()
+    match = _ARTIFACT_ID.match(text)
+    if match is None:
+        return text
+    prefix, digits = match.groups()
+    return f"{prefix}-{int(digits):04d}"
+
+
+def next_id(prefix: str, existing_ids: Iterable[str]) -> str:
+    """Next id derived from the highest existing numeric suffix, e.g. ``CLAIM-0007``.
+
+    Unlike :func:`next_sequential_id`, this does not assume the record count
+    equals the highest id. ``read_jsonl`` silently skips corrupt lines, so a
+    count-based id can collide with a still-present record; deriving from the
+    max suffix keeps ids unique even when a line is unparseable. Use this for
+    ledgers whose records are later looked up or mutated by id.
+    """
+    highest = 0
+    for ident in existing_ids:
+        suffix = ident.rsplit("-", 1)[-1]
+        try:
+            highest = max(highest, int(suffix))
+        except ValueError:
+            continue
+    return f"{prefix}-{highest + 1:04d}"

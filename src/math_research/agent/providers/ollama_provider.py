@@ -1,0 +1,380 @@
+"""Ollama provider for local models, with tool calling.
+
+Talks to a local Ollama server over HTTP using only the standard library, so no
+extra dependency is required. Supports the ``/api/chat`` ``tools`` field and
+parses ``message.tool_calls`` back into a :class:`ProviderResponse`. Fails
+clearly if the server is unreachable.
+"""
+
+from __future__ import annotations
+
+import http.client
+import json
+import re
+import time
+import urllib.error
+import urllib.request
+import uuid
+
+from math_research.agent.providers._convert import to_function_tools, to_ollama_messages
+from math_research.agent.providers.base import (
+    BaseProvider,
+    OnText,
+    ProviderResponse,
+    TokenUsage,
+    ToolCallRequest,
+    apportion_thinking,
+)
+from math_research.agent.session import SessionMessage
+from math_research.core.config import Config
+from math_research.core.errors import ProviderError
+from math_research.memory.records.write_boundary import automated_research
+
+DEFAULT_HOST = "http://localhost:11434"
+
+
+def ollama_options(config: Config, *, tools_enabled: bool) -> dict:
+    """Build Ollama ``options`` for ``/api/chat``."""
+    opts: dict = {"temperature": config.model.temperature}
+    if config.model.num_ctx is not None:
+        opts["num_ctx"] = config.model.num_ctx
+    # Only sent when set: leaving them out keeps each model's own Modelfile shape, which
+    # is the historical behaviour. Sending them is how a sweep controls for sampling.
+    for key in ("top_p", "top_k", "seed"):
+        value = getattr(config.model, key, None)
+        if value is not None:
+            opts[key] = value
+    num_predict = config.model.num_predict
+    if num_predict is None and tools_enabled:
+        num_predict = -1
+    if num_predict is not None:
+        opts["num_predict"] = num_predict
+    return opts
+
+
+def build_ollama_chat_body(
+    config: Config,
+    messages: list[SessionMessage],
+    tools: list[dict] | None,
+    *,
+    stream: bool = False,
+    tool_choice: str | dict | None = None,
+) -> dict:
+    body: dict = {
+        "model": config.model.name,
+        "stream": stream,
+        "options": ollama_options(config, tools_enabled=bool(tools)),
+        "messages": to_ollama_messages(messages),
+    }
+    if config.model.keep_alive is not None:
+        body["keep_alive"] = config.model.keep_alive
+    if tools:
+        body["tools"] = to_function_tools(tools)
+    if tool_choice is not None and tools:
+        body["tool_choice"] = tool_choice
+    return body
+
+
+class OllamaProvider(BaseProvider):
+    name = "ollama"
+    supports_streaming = True
+
+    def __init__(self, config: Config) -> None:
+        self.config = config
+        self.host = (config.model.base_url or DEFAULT_HOST).rstrip("/")
+
+    @automated_research
+    def generate(
+        self, messages: list[SessionMessage], tools: list[dict] | None = None
+    ) -> ProviderResponse:
+        return self._chat(messages, tools, stream=False, on_text=None)
+
+    @automated_research
+    def respond(
+        self,
+        messages: list[SessionMessage],
+        tools: list[dict] | None = None,
+        on_text: OnText | None = None,
+        *,
+        stream: bool = False,
+        tool_choice: str | dict | None = None,
+        on_thinking: OnText | None = None,
+    ) -> ProviderResponse:
+        return self._chat(
+            messages,
+            tools,
+            stream=stream,
+            on_text=on_text,
+            tool_choice=tool_choice,
+            on_thinking=on_thinking,
+        )
+
+    def _chat(
+        self,
+        messages: list[SessionMessage],
+        tools: list[dict] | None,
+        *,
+        stream: bool,
+        on_text: OnText | None,
+        tool_choice: str | dict | None = None,
+        on_thinking: OnText | None = None,
+    ) -> ProviderResponse:
+        body = build_ollama_chat_body(
+            self.config, messages, tools, stream=stream, tool_choice=tool_choice
+        )
+
+        request = urllib.request.Request(
+            f"{self.host}/api/chat",
+            data=json.dumps(body).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        try:
+            timeout = self.config.model.timeout_seconds
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                if stream:
+                    return self._read_stream(response, on_text, on_thinking)
+                data = json.loads(response.read().decode("utf-8"))
+                msg = data.get("message", {})
+                result = parse_ollama_message(msg)
+                usage = _ollama_usage(data)
+                if usage is not None:
+                    thinking = msg.get("thinking") or msg.get("reasoning") or ""
+                    other = (msg.get("content") or "") + json.dumps(msg.get("tool_calls") or [])
+                    usage.thinking_tokens = apportion_thinking(
+                        usage.completion_tokens, thinking, other
+                    )
+                result.usage = usage
+                result.model = data.get("model") or None
+                return result
+        except TimeoutError as exc:
+            raise ProviderError(
+                f"Ollama timed out after {self.config.model.timeout_seconds}s waiting for "
+                f"model '{self.config.model.name}'. The context may be too large, or the "
+                f"model is slow — try a smaller model, reduce tools.web.max_chars, or raise "
+                f"model.timeout_seconds in config."
+            ) from exc
+        except (http.client.HTTPException, ConnectionError, json.JSONDecodeError) as exc:
+            # RemoteDisconnected/BadStatusLine/IncompleteRead are HTTPExceptions and
+            # escape both URLError and TimeoutError; a reset mid-stream surfaces as
+            # ConnectionError or as a JSONDecodeError on a truncated chunk. Observed:
+            # a transient server drop killed an hours-long prove run with a raw
+            # traceback (exit 1) instead of a clean, resumable provider error.
+            raise ProviderError(
+                f"Connection to Ollama at {self.host} dropped mid-request "
+                f"({type(exc).__name__}) — a transient server/network hiccup, not a model "
+                f"failure. The run state is preserved; re-run to resume. If this recurs, "
+                f"check the Ollama server's load and logs."
+            ) from exc
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")[:500]
+            hint = ""
+            if "error parsing tool call" in detail.lower() or "parse json" in detail.lower():
+                hint = (
+                    " The model emitted invalid or truncated tool-call JSON — use write_file "
+                    "for scripts and run_shell with a short one-liner; raise model.num_ctx "
+                    "or upgrade Ollama if this persists."
+                )
+            raise ProviderError(
+                f"Ollama returned HTTP {exc.code} for model "
+                f"'{self.config.model.name}': {detail or exc.reason}.{hint}"
+            ) from exc
+        except urllib.error.URLError as exc:
+            if isinstance(exc.reason, TimeoutError):
+                raise ProviderError(
+                    f"Ollama timed out after {self.config.model.timeout_seconds}s waiting for "
+                    f"model '{self.config.model.name}'. The context may be too large, or the "
+                    f"model is slow — try a smaller model, reduce tools.web.max_chars, or raise "
+                    f"model.timeout_seconds in config."
+                ) from exc
+            raise ProviderError(
+                f"Could not reach Ollama at {self.host}. Is `ollama serve` running? ({exc})"
+            ) from exc
+
+    def _read_stream(
+        self,
+        response: object,
+        on_text: OnText | None,
+        on_thinking: OnText | None = None,
+    ) -> ProviderResponse:
+        accumulated = ""
+        accumulated_thinking = ""
+        role = "assistant"
+        tool_calls: list | None = None
+        usage: TokenUsage | None = None
+        reported_model: str | None = None
+        # ``timeout_seconds`` reaches urlopen as a *socket* timeout, so it bounds the
+        # wait for the next chunk, not the response. A model that degenerates into an
+        # endless repetition keeps chunks arriving, so nothing ever fires — and with
+        # tools enabled ``num_predict`` is -1, i.e. no token cap either. Observed on a
+        # 33B model: one turn generating "Also maybe PAPER-1412 for …" for half an hour,
+        # holding a 50-minute run hostage. Bound the whole response by the same budget.
+        deadline = time.monotonic() + self.config.model.timeout_seconds
+        for raw_line in response:  # type: ignore[attr-defined]
+            if time.monotonic() > deadline:
+                # Report both channels. A thinking model streams its reasoning in
+                # ``thinking`` and may never emit a single content character, so counting
+                # only ``accumulated`` said "0 characters so far" about a run that had
+                # produced six thousand characters of reasoning — the opposite diagnosis.
+                produced = (
+                    f"{len(accumulated)} characters of reply and "
+                    f"{len(accumulated_thinking)} of reasoning so far"
+                )
+                raise ProviderError(
+                    f"Ollama kept streaming for {self.config.model.timeout_seconds}s "
+                    f"without finishing the response for model "
+                    f"'{self.config.model.name}' ({produced}) — the model is stuck "
+                    "repeating itself, or is too slow for this budget. The run state is "
+                    "preserved; re-run to resume. Set model.num_predict to cap the reply, "
+                    "or raise model.timeout_seconds if the model is merely slow."
+                )
+            if not raw_line:
+                continue
+            chunk = json.loads(raw_line.decode("utf-8"))
+            if chunk.get("model"):
+                reported_model = str(chunk["model"])
+            # The final ``done`` chunk carries the exact token counts.
+            chunk_usage = _ollama_usage(chunk)
+            if chunk_usage is not None:
+                usage = chunk_usage
+            message = chunk.get("message") or {}
+            if message.get("role"):
+                role = message["role"]
+            # Reasoning models (qwen3, deepseek-r1, …) stream their chain of thought
+            # in a separate ``thinking`` field before any ``content`` — surface it so
+            # the user sees live progress instead of a silent multi-second spinner.
+            thinking = message.get("thinking") or message.get("reasoning") or ""
+            if thinking:
+                accumulated_thinking += thinking
+                if on_thinking is not None:
+                    on_thinking(thinking)
+            content = message.get("content") or ""
+            if content:
+                accumulated += content
+                if on_text is not None:
+                    on_text(content)
+            # Tool calls arrive in their own delta(s); the final ``done`` chunk has an
+            # empty message. Accumulate across deltas instead of overwriting: a model
+            # may stream several calls in separate deltas, and a later delta carrying
+            # only harmony-framing garbage must not clobber a valid call captured
+            # earlier (it would be silently lost when the garbage is then dropped).
+            if message.get("tool_calls"):
+                tool_calls = (tool_calls or []) + list(message["tool_calls"])
+        last_message: dict = {"role": role, "content": accumulated}
+        if tool_calls:
+            last_message["tool_calls"] = tool_calls
+        result = parse_ollama_message(last_message)
+        if usage is not None and accumulated_thinking:
+            other = accumulated + json.dumps(tool_calls or [])
+            usage.thinking_tokens = apportion_thinking(
+                usage.completion_tokens, accumulated_thinking, other
+            )
+        result.usage = usage
+        result.model = reported_model
+        return result
+
+
+def _ollama_usage(data: dict) -> TokenUsage | None:
+    """Exact token counts from an Ollama response/chunk, or None if absent."""
+    prompt = data.get("prompt_eval_count")
+    completion = data.get("eval_count")
+    if prompt is None and completion is None:
+        return None
+    return TokenUsage(prompt_tokens=int(prompt or 0), completion_tokens=int(completion or 0))
+
+
+# OpenAI "harmony" response-format control tokens and channel names. gpt-oss models
+# emit tool calls as ``<|start|>assistant<|channel|>commentary to=functions.NAME
+# <|constrain|>json<|message|>{…}<|call|>``. When Ollama's harmony parser fails to
+# strip this framing it puts the leftover (e.g. ``assistant<|channel|>commentary``,
+# a bare preamble with no ``to=functions.X`` recipient) into ``function.name``. Such a
+# string is not a real tool name: persisting it corrupts the session and later breaks
+# strict providers (OpenAI rejects names not matching ^[a-zA-Z0-9_-]+$).
+_HARMONY_CHANNELS = frozenset({"analysis", "commentary", "final"})
+_HARMONY_ROLES = frozenset({"assistant", "system", "developer", "user", "tool"})
+# Tokens that are harmony framing, never a real tool name (compared case-insensitively).
+_NON_TOOL_TOKENS = _HARMONY_CHANNELS | _HARMONY_ROLES | frozenset({"functions"})
+_VALID_TOOL_NAME = re.compile(r"^[A-Za-z0-9_-]+$")
+# Recovery is anchored on the ``to=`` recipient so a function merely *mentioned* in a
+# commentary preamble is not turned into a dispatchable call. ``to=functions.NAME`` for
+# Mathematical Research tools (NAME kept verbatim, so namespaced ``mcp__server__tool`` survives);
+# ``to=namespace.tool`` for harmony builtins (last segment).
+_FUNCTIONS_RECIPIENT = re.compile(r"\bto=functions\.([A-Za-z0-9_-]+)")
+_BARE_RECIPIENT = re.compile(r"\bto=([A-Za-z0-9_.-]+)")
+
+
+def clean_harmony_tool_name(raw: object) -> str | None:
+    """Recover a real tool name from a possibly harmony-framed ``function.name``.
+
+    Returns the cleaned name, or ``None`` when the value is harmony framing rather than a
+    tool call (a bare channel/role marker, or a recipient that resolves to one), so the
+    caller drops it instead of persisting a bogus tool call. A name that does not look
+    like harmony framing is passed through unchanged — legitimate but unusual names such
+    as dotted/namespaced MCP tools (``mcp__server__get.forecast``) must never be dropped
+    or rewritten; the tool registry / agent loop validates them.
+    """
+    if not isinstance(raw, str):
+        return None
+    name = raw.strip()
+    if not name:
+        return None
+    # Harmony tool-call header leaked into the name → recover from the to= recipient.
+    m = _FUNCTIONS_RECIPIENT.search(name)
+    if m:
+        recovered = m.group(1)
+        return None if recovered.lower() in _NON_TOOL_TOKENS else recovered
+    m = _BARE_RECIPIENT.search(name)
+    if m:
+        recovered = m.group(1).split(".")[-1]  # to=browser.search → search
+        if not _VALID_TOOL_NAME.match(recovered) or recovered.lower() in _NON_TOOL_TOKENS:
+            return None
+        return recovered
+    # Control tokens but no recipient → a channel/role preamble, not a call.
+    if "<|" in name or "|>" in name:
+        return None
+    # A bare channel/role marker (any case) is not a tool call.
+    if name.lower() in _HARMONY_CHANNELS or name.lower() in _HARMONY_ROLES:
+        return None
+    # Not harmony framing → pass the name through unchanged (registry/loop validates).
+    return name
+
+
+def parse_ollama_message(message: dict) -> ProviderResponse:
+    tool_calls = message.get("tool_calls") or []
+    if tool_calls:
+        parsed: list[ToolCallRequest] = []
+        for tc in tool_calls:
+            function = tc.get("function", {})
+            name = clean_harmony_tool_name(function.get("name", ""))
+            if name is None:
+                # Harmony channel/role marker mis-parsed as a tool call — skip it so it
+                # is never persisted or sent on to a strict provider.
+                continue
+            args = function.get("arguments", {})
+            if isinstance(args, str):
+                try:
+                    args = json.loads(args)
+                except json.JSONDecodeError as exc:
+                    # Recoverable tool-parse error → the loop retries with a hint
+                    # rather than calling the tool with empty arguments.
+                    raise ProviderError(
+                        f"Failed to parse JSON tool-call arguments for '{name}': {exc}."
+                    ) from exc
+            parsed.append(
+                ToolCallRequest(
+                    tool_name=name,
+                    tool_args=args or {},
+                    tool_call_id=tc.get("id") or uuid.uuid4().hex,
+                )
+            )
+        if parsed:
+            first = parsed[0]
+            return ProviderResponse(
+                kind="tool_call",
+                tool_name=first.tool_name,
+                tool_args=first.tool_args,
+                tool_call_id=first.tool_call_id,
+                tool_calls=parsed,
+            )
+        # Every "tool call" was harmony framing → treat as a normal message so the
+        # commentary/analysis text is preserved instead of emitting a bogus call.
+    return ProviderResponse(kind="message", content=message.get("content", ""))

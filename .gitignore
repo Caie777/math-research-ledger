@@ -1,0 +1,57 @@
+# Personal research state and immutable migration backup; never publish.
+/.math-research/
+/.opentorus/
+.research-migration-*/
+/papers/
+/.architecture-audit/
+/.research-operator/
+/.idea/
+/.vscode/
+/.claude/
+/.codex/
+/.agents/
+
+# Credentials and environment-specific configuration.
+.env
+.env.*
+!.env.example
+/.local/
+.envrc
+.pypirc
+.streamlit/secrets.toml
+
+# Python environments, generated packages, caches and reports.
+.venv*/
+env/
+venv/
+__pycache__/
+*.py[codz]
+*.egg-info/
+*.egg
+/build/
+/dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+.coverage*
+coverage*
+*.xml
+coverage.xml
+htmlcov/
+.local-eval/
+*.log
+
+# Frontend installation, build outputs and local tooling caches.
+node_modules/
+web/dist/
+.vite/
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
+
+# Only the small synthetic Episode belongs in the public example surface.
+/examples/*
+!/examples/demo_research_episode.md
