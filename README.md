@@ -1,5 +1,7 @@
 # Structured Math Research
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 A local workspace for **Memory → Retrieval / Context → Long-Horizon Research Agent**.
 Keep mathematical investigations traceable and resume work from structured research state.
 
