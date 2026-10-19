@@ -31,6 +31,12 @@ from math_research.agent.transport import _codex_env
 from math_research.core.atomicio import atomic_write_text
 from math_research.core.errors import RecoverableToolError, ResearchError
 from math_research.core.process import hidden_process_kwargs, run_process
+from math_research.memory.assets import (
+    AssetNotFoundError,
+    AssetNotRetainedError,
+    find_research_assets,
+    read_research_asset,
+)
 from math_research.memory.decomposition import has_numbered_headings
 from math_research.memory.handoff import ensure_handoff
 from math_research.memory.records.write_boundary import automated_research, execution_env
@@ -193,6 +199,23 @@ class ResearchTools:
                 self.read,
             ),
             (
+                "read_research_asset",
+                "Read retained historical execution bytes by ASSET ID from manifests. "
+                "Hash match is byte identity, never mathematical verification or Human Accept. "
+                "Discover IDs with list_research_assets or read_object. No filesystem paths.",
+                {"asset_id": string, "offset": integer, "length": integer},
+                ["asset_id"],
+                self.research_asset,
+            ),
+            (
+                "list_research_assets",
+                "Discover retained execution ASSET IDs linked to a scoped Episode, "
+                "candidate, proof or evidence ID. Metadata only; never inject script bodies.",
+                {"object_id": string, "offset": integer, "limit": integer},
+                ["object_id"],
+                self.research_assets,
+            ),
+            (
                 "save_notes",
                 "保存本次 run 的公开研究笔记与阶段成果；保存后继续研究，不结束 Explore Session。",
                 {"text": string},
@@ -331,7 +354,30 @@ class ResearchTools:
             "offset": max(0, offset),
             "preview": text[max(0, offset) : max(0, offset) + min(max(1, length), PREVIEW_CHARS)],
             "chars": len(text),
+            "research_assets": self.research_assets(object_id),
         }
+
+    def research_assets(self, object_id: str, offset: int = 0, limit: int = 12) -> dict:
+        if len(object_id) > 256 or not re.fullmatch(
+            r"[A-Z][A-Z0-9_]*(?:-[A-Za-z0-9_]+)+", object_id
+        ):
+            raise ResearchError("Invalid memory object ID; paths are not accepted.")
+        refs = find_research_assets(self.ot_dir, self.request.target.problem_id, object_id)
+        offset, limit = max(0, offset), min(20, max(1, limit))
+        return {
+            "assets": [ref.model_dump(mode="json") for ref in refs[offset : offset + limit]],
+            "total": len(refs),
+            "offset": offset,
+            "truncated": offset + limit < len(refs),
+        }
+
+    def research_asset(self, asset_id: str, offset: int = 0, length: int = PREVIEW_CHARS) -> dict:
+        try:
+            return read_research_asset(
+                self.ot_dir, self.request.target.problem_id, asset_id, offset=offset, length=length
+            )
+        except (AssetNotFoundError, AssetNotRetainedError) as exc:
+            return {"status": "NOT_FOUND", "recoverable": True, "reason": str(exc)}
 
     def python(self, code: str, timeout_seconds: int = DEFAULT_PYTHON_TIMEOUT) -> dict:
         if type(timeout_seconds) is not int or not 1 <= timeout_seconds <= MAX_COMPUTE_TIMEOUT:

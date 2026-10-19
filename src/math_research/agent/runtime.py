@@ -55,6 +55,7 @@ from math_research.agent.tools import (
 from math_research.core.config import load_config
 from math_research.core.errors import ResearchError
 from math_research.core.jsonl import append_jsonl
+from math_research.memory.assets import publish_asset_manifest
 from math_research.memory.decomposition import has_numbered_headings
 from math_research.memory.episodes import archive_episode, extract_candidates
 from math_research.memory.handoff import ensure_handoff
@@ -852,6 +853,12 @@ def _execute_run_locked(
         )
         run.episode_id = archived.episode_id
         run.candidate_ids = [c.candidate_id for c in extract_candidates(ot_dir, archived)]
+        # Operational retention only: no Human Accept, canonical write or verifier.
+        # Polling/readers never build or publish manifests for historical runs.
+        try:
+            publish_asset_manifest(folder)
+        except (ResearchError, ValueError, OSError) as asset_error:
+            run.error = f"{run.error}; asset staging: {asset_error}"[:PREVIEW_CHARS]
         append_jsonl(
             folder / "events.jsonl",
             RootModel[dict]({"event": "run_initialization_failed", "error": run.error}),
@@ -961,8 +968,11 @@ def _execute_run_locked(
         )
         run.episode_id = archived.episode_id
         run.candidate_ids = [c.candidate_id for c in extract_candidates(ot_dir, archived)]
-    except (ResearchError, ValueError) as exc:
-        run.error = f"Episode staging: {exc}"[:PREVIEW_CHARS]
+        # Publish operational byte references after the new Episode is archived.
+        # This never accepts candidates or promotes a mathematical claim.
+        publish_asset_manifest(runtime.directory)
+    except (ResearchError, ValueError, OSError) as exc:
+        run.error = f"Episode/asset staging: {exc}"[:PREVIEW_CHARS]
         if run.stop_reason == "COMPLETED":
             run.stop_reason = "MODEL_FAILURE"
     run.status = "finished"

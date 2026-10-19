@@ -243,6 +243,9 @@ def create_app(ot_dir: Path) -> FastAPI:
     from math_research.app.api.runs import install_agent_routes
 
     agent_shutdown = install_agent_routes(app, ot_dir, _write_header)
+    from math_research.app.api.assets import install_asset_routes
+
+    install_asset_routes(app, ot_dir)
     from math_research.app.api.critiques import install_critique_routes
 
     critique_shutdown = install_critique_routes(app, ot_dir, _write_header)
