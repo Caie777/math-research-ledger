@@ -188,7 +188,7 @@ def record_current_process() -> None:
         "classification": os.environ.get("MATH_RESEARCH_PROCESS_CLASSIFICATION", "non-interactive"),
         "flags_source": "external_launcher_not_observable",
     }
-    if _WINDOWS:
+    if sys.platform == "win32":
         import ctypes
         from ctypes import wintypes
 
