@@ -1,4 +1,4 @@
-"""Persistent, bounded API decision → edit → compiler feedback loop."""
+"""Persistent, bounded executor decision → edit → compiler feedback loop."""
 
 from __future__ import annotations
 
@@ -8,13 +8,13 @@ from uuid import uuid4
 
 from pydantic import ValidationError
 
-from math_research.agent.providers.base import BaseProvider
 from math_research.agent.session import SessionMessage
 from math_research.agent.usage import UsageRecord, cost_known, estimate_cost
 from math_research.core.atomicio import atomic_write_text, file_lock
 from math_research.retrieval.context import estimate_tokens
 
 from .agent import SYSTEM_PROMPT, FormalBudget, FormalDecision, FormalRunState
+from .executors import CodexFormalExecutor, DecisionExecutor, ExecutorIsolationError
 from .freeze import hash_bytes
 from .tools import FormalTools
 from .workspace import WRITABLE, append_event
@@ -35,14 +35,16 @@ TOOL_CONTRACT = {
 class FormalizationLoop:
     def __init__(
         self,
-        provider: BaseProvider,
+        provider: DecisionExecutor,
         tools: FormalTools,
         informal_target: str,
         *,
         budget: FormalBudget | None = None,
     ):
-        if provider.name in {"codex", "mock"}:
-            raise ValueError("Formalization requires an API provider, never Codex or mock")
+        if provider.name == "mock" or (
+            provider.name == "codex" and not isinstance(provider, CodexFormalExecutor)
+        ):
+            raise ValueError("A native executor must be fresh and decision-only")
         self.provider, self.tools, self.informal = provider, tools, informal_target
         path = tools.run_dir / "run-state.json"
         self.state = (
@@ -51,6 +53,13 @@ class FormalizationLoop:
             else (FormalRunState(run_id=uuid4().hex, budget=budget or FormalBudget()))
         )
         self.tools.persist(self.state)
+        if isinstance(provider, CodexFormalExecutor):
+            provider.event_sink = lambda event: append_event(
+                tools.run_dir / "native-events.jsonl", event
+            )
+        evidence = tools.run_dir / "executor-state.json"
+        if evidence.exists() and isinstance(provider, CodexFormalExecutor):
+            provider.restore_audit(json.loads(evidence.read_text("utf-8")))
 
     def _context(self) -> dict:
         workspace = self.tools.workspace
@@ -65,6 +74,9 @@ class FormalizationLoop:
             remaining -= len(content)
         return {
             "target": self.tools.declaration,
+            "lean_toolchain": frozen.lean_toolchain,
+            "mathlib_ref": frozen.mathlib_ref,
+            "mathlib_commit": frozen.mathlib_commit,
             "module": self.tools.module,
             "frozen_statement": workspace.read_formal_file(frozen.statement.path, lines=200),
             "local_definitions": {
@@ -117,7 +129,7 @@ class FormalizationLoop:
             state.pending_operation = None
         if (
             state.model_calls >= state.budget.model_calls
-            or state.input_tokens + state.output_tokens >= state.budget.total_tokens
+            or (state.input_tokens or 0) + (state.output_tokens or 0) >= state.budget.total_tokens
         ):
             state.stop_reason = "BUDGET_EXHAUSTED"
             tools.persist(state)
@@ -130,7 +142,7 @@ class FormalizationLoop:
         estimate = estimate_tokens(SYSTEM_PROMPT + content)
         if (
             estimate > state.budget.max_context_tokens
-            or state.input_tokens + state.output_tokens + estimate + 8192
+            or (state.input_tokens or 0) + (state.output_tokens or 0) + estimate + 8192
             > state.budget.total_tokens
         ):
             state.stop_reason = "BUDGET_EXHAUSTED"
@@ -147,9 +159,13 @@ class FormalizationLoop:
         started = time.monotonic()
         try:
             response = self.provider.generate(messages, tools=None)
-        except Exception:
+        except Exception as exc:
             # SDK error prose may contain credentials; persist only a generic failure.
-            state.stop_reason = "MODEL_FAILURE"
+            state.stop_reason = (
+                exc.code if isinstance(exc, ExecutorIsolationError) else "MODEL_FAILURE"
+            )
+            if self.provider.name == "codex":
+                state.input_tokens = state.output_tokens = None
             state.usage_missing_calls += 1
             state.pending_operation = None
             append_event(
@@ -161,33 +177,61 @@ class FormalizationLoop:
                 },
             )
             tools.persist(state)
+            self._persist_executor()
             return
         state.pending_operation = None
         actual = response.model or self.provider.model_name or "unknown"
         state.actual_models.append(actual)
-        estimated = response.usage is None
-        prompt_tokens = response.usage.prompt_tokens if response.usage else estimate
+        native = self.provider.name == "codex"
+        estimated = response.usage is None and not native
+        prompt_tokens = (
+            response.usage.prompt_tokens if response.usage else None if native else estimate
+        )
         completion_tokens = (
             response.usage.completion_tokens
             if response.usage
+            else None
+            if native
             else estimate_tokens(response.content)
         )
-        state.input_tokens += prompt_tokens
-        state.output_tokens += completion_tokens
+        state.input_tokens = (
+            state.input_tokens + prompt_tokens
+            if state.input_tokens is not None and prompt_tokens is not None
+            else None
+        )
+        state.output_tokens = (
+            state.output_tokens + completion_tokens
+            if state.output_tokens is not None and completion_tokens is not None
+            else None
+        )
+        if response.usage is None:
+            state.usage_missing_calls += 1
         state.tokens_estimated |= estimated
         usage = UsageRecord(
             session_id=state.run_id,
             provider=self.provider.name,
             model=actual,
-            prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens,
+            prompt_tokens=prompt_tokens or 0,
+            completion_tokens=completion_tokens or 0,
             thinking_tokens=response.usage.thinking_tokens if response.usage else 0,
             latency_ms=int((time.monotonic() - started) * 1000),
-            cost_usd=estimate_cost(self.provider.name, actual, prompt_tokens, completion_tokens),
+            cost_usd=estimate_cost(
+                self.provider.name, actual, prompt_tokens or 0, completion_tokens or 0
+            ),
             cost_known=cost_known(self.provider.name, actual),
             tokens_estimated=estimated,
         )
-        append_event(tools.run_dir / "usage.jsonl", usage.model_dump(mode="json"))
+        usage_record = usage.model_dump(mode="json")
+        if native:
+            usage_record.update(
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                cost_usd=None,
+                cost_known=False,
+                cost_estimated=False,
+            )
+        append_event(tools.run_dir / "usage.jsonl", usage_record)
+        self._persist_executor()
         append_event(
             tools.run_dir / "agent-events.jsonl",
             {
@@ -199,6 +243,7 @@ class FormalizationLoop:
             },
         )
         tools.persist(state)
+
         if response.truncated or len(response.content.encode()) > 64000:
             state.stop_reason = "MODEL_FAILURE"
             tools.persist(state)
@@ -250,6 +295,19 @@ class FormalizationLoop:
             else:
                 state.reflection_used = state.reflection_pending = True
         tools.persist(state)
+
+    def _persist_executor(self) -> None:
+        snapshot = getattr(self.provider, "snapshot", None)
+        if snapshot:
+            data = snapshot()
+            native_usage = data.get("native_usage", [])
+            cached = [u.get("cached_tokens") for u in native_usage]
+            self.state.cached_tokens = (
+                sum(cached) if cached and all(isinstance(v, int) for v in cached) else None
+            )
+            atomic_write_text(
+                self.tools.run_dir / "executor-state.json", json.dumps(data, indent=2)
+            )
 
     def run(self) -> FormalRunState:
         with file_lock(self.tools.run_dir / "execution", stale_after=86400):

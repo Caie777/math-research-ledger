@@ -178,10 +178,17 @@ class CodexRPC:
 
     def close(self) -> None:
         self.dead.set()
-        _terminate(self.process)
+        # Closing input lets the app-server release SQLite handles before Windows cleanup.
+        if self.process.stdin:
+            self.process.stdin.close()
+        try:
+            self.process.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            _terminate(self.process)
         for pipe in (self.process.stdin, self.process.stdout):
             if pipe:
                 pipe.close()
+        self.reader.join(timeout=1)
 
 
 class CodexToolProvider(BaseProvider):
@@ -196,6 +203,7 @@ class CodexToolProvider(BaseProvider):
         should_stop: Callable[[], bool],
         tool_free: bool = False,
         allowed_mcp_tools: frozenset[tuple[str, str]] = frozenset(),
+        rpc_factory: Callable[..., CodexRPC] | None = None,
     ):
         _validate_codex_options(model, effort)
         self.model_name = model
@@ -203,6 +211,7 @@ class CodexToolProvider(BaseProvider):
         self.deadline = deadline
         self.should_stop = should_stop
         self.tool_free = tool_free
+        self.rpc_factory = rpc_factory or CodexRPC
         self.allowed_mcp_tools = allowed_mcp_tools if not tool_free else frozenset()
         self.mcp_items: dict[str, tuple[str, str]] = {}
         self.rejection_instruction: str | None = None
@@ -218,7 +227,9 @@ class CodexToolProvider(BaseProvider):
         self.on_mcp_outcome: Callable[[dict, bool], None] | None = None
         self.reported_usage: dict = {}
 
-    def _start(self, messages: list[SessionMessage], tools: list[dict]) -> None:
+    def _start(
+        self, messages: list[SessionMessage], tools: list[dict], *, start_turn: bool = True
+    ) -> None:
         self.version = CodexCLIExecutor().preflight(deadline=self.deadline)
         self.home = tempfile.TemporaryDirectory(prefix="mch-codex-agent-")
         folder = Path(self.home.name)
@@ -259,7 +270,7 @@ class CodexToolProvider(BaseProvider):
             encoding="utf-8",
         )
         env["CODEX_HOME"] = str(isolated_home)
-        self.rpc = CodexRPC(folder, env=env, deadline=self.deadline)
+        self.rpc = self.rpc_factory(folder, env=env, deadline=self.deadline)
         result = self.rpc.call(
             "thread/start",
             {
@@ -283,6 +294,8 @@ class CodexToolProvider(BaseProvider):
         )
         self.thread_id = result["thread"]["id"]
         self.model_name = result.get("model") or self.model_name
+        if not start_turn:
+            return
         self.rpc.call(
             "turn/start",
             {
@@ -562,5 +575,12 @@ class CodexToolProvider(BaseProvider):
             self.rpc.close()
             self.rpc = None
         if self.home:
-            self.home.cleanup()
+            for attempt in range(5):
+                try:
+                    self.home.cleanup()
+                    break
+                except PermissionError:
+                    if attempt == 4:
+                        raise
+                    time.sleep(0.1 * 2**attempt)
             self.home = None

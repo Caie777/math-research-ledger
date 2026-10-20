@@ -1,11 +1,21 @@
-# Internal Formalization Agent V1
+# Internal Formalization Agent V1 / V1.1
 
-The standalone agent uses the existing `BaseProvider.generate` abstraction and
-provider/credential settings. It never calls Codex CLI, native transport, another
-coding agent, the Research Agent loop or research memory. `select_api_provider`
-prefers the local research API role, then explicitly configured legacy API research
-defaults. Native-only or missing API settings return `BLOCKED_API_CONFIGURATION`.
-There is no fallback or automatic model choice. Credentials stay in the adapter.
+The standalone harness uses decision-only executors and existing research settings.
+`select_formal_executor` supports the configured Codex native transport as a first
+class path, as well as existing API providers. There is no automatic provider/model
+fallback. Credentials stay in the existing adapters. The harness owns files, Lean,
+budgets and verification; executors return structured actions only. It is independent
+of the Research Agent loop and research memory. The V1 API-specific resolver remains
+available for compatibility; it no longer defines the benchmark executor policy.
+
+The native adapter reuses `CodexToolProvider`/stdio app-server with tool-free mode.
+Every decision creates an independent temporary Codex home (auth/config only) and
+empty ephemeral thread; no thread resume, fork, developer-history injection or
+repository mount is allowed. Environment and dynamic-tool lists are empty, provider
+model fallback is disabled, and native shell/apps/plugins/memory tools are disabled.
+Thread receipts and native usage are persisted. An unconfirmed or contaminated
+context invalidates the experiment. A thread-only preflight performs no inference.
+Native usage is exact or null, never estimated; no dollar/quota conversion is invented.
 
 ## Capabilities
 
@@ -55,8 +65,8 @@ stops `NO_PROGRESS`. Other terminal reasons include `CHECKED`, `BUDGET_EXHAUSTED
 `MODEL_FAILURE`, `TOOL_FAILURE`. Malformed JSON gets one bounded repair opportunity.
 Truncated provider output is not executed as a complete proof.
 
-`--configuration-only` is an explicit no-generation mode. Even a configured API
-provider is blocked before any `generate` call; only a sealed configuration
+`--configuration-only` is an explicit no-generation mode. Even a configured native
+or API executor is blocked before any `generate` call; only a sealed configuration
 checkpoint is produced. It cannot be mistaken for a capability benchmark.
 
 An unfinished run can be reconstructed without resetting budgets or replaying an

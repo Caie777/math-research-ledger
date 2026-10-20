@@ -1,4 +1,4 @@
-"""Execute one prepared benchmark reservation; never select an external coding agent."""
+"""Execute one prepared benchmark using project-owned decision-only executors."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ def main() -> None:
     parser.add_argument(
         "--configuration-only",
         action="store_true",
-        help="Seal a blocked checkpoint; never allow API generation",
+        help="Seal a blocked checkpoint; never allow model generation",
     )
     args = parser.parse_args()
     metadata = json.loads((args.output / "setup.json").read_text("utf-8"))
@@ -30,7 +30,7 @@ def main() -> None:
                 args.output,
                 metadata,
                 args.lake,
-                allow_api=not args.configuration_only,
+                allow_execution=not args.configuration_only,
             ),
             indent=2,
         )

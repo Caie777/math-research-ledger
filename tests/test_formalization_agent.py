@@ -426,7 +426,7 @@ def test_blocked_benchmark_is_terminal_single_reservation(formal, tmp_path, monk
     (out / "informal-target.md").write_text("Synthetic", encoding="utf-8")
     monkeypatch.setattr(
         benchmark,
-        "select_api_provider",
+        "select_formal_executor",
         lambda *args: APISelection(None, {"status": "BLOCKED_API_CONFIGURATION"}),
     )
     result = execute_benchmark(
@@ -472,7 +472,7 @@ def test_official_infra_crash_is_invalidated_not_retried(formal, tmp_path, monke
     (out / "informal-target.md").write_text("Synthetic", encoding="utf-8")
     monkeypatch.setattr(
         benchmark,
-        "select_api_provider",
+        "select_formal_executor",
         lambda *args: APISelection(
             FakeProvider([]), {"status": "CONFIGURED", "provider": "fake-api"}
         ),
@@ -504,7 +504,7 @@ def test_configuration_only_never_generates_even_with_a_provider(formal, tmp_pat
     provider = FakeProvider([])
     monkeypatch.setattr(
         benchmark,
-        "select_api_provider",
+        "select_formal_executor",
         lambda *args: APISelection(provider, {"status": "CONFIGURED", "provider": "fake-api"}),
     )
     result = execute_benchmark(
@@ -513,7 +513,7 @@ def test_configuration_only_never_generates_even_with_a_provider(formal, tmp_pat
         out,
         {"declaration": "Bench.target"},
         tools.checker.lake,
-        allow_api=False,
+        allow_execution=False,
     )
     assert result["result"] == "BLOCKED" and result["configuration_only"]
     assert result["stop_reason"] == "BLOCKED_EXTERNAL_APPROVAL"

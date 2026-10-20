@@ -1,4 +1,4 @@
-"""API-only formalization decisions and persistent run state; no Codex executor."""
+"""Formalization decisions, executor configuration and persistent run state."""
 
 from __future__ import annotations
 
@@ -56,8 +56,8 @@ class FormalRunState(BaseModel):
     build_count: int = 0
     target_checks: int = 0
     tool_calls: int = 0
-    input_tokens: int = 0
-    output_tokens: int = 0
+    input_tokens: int | None = 0
+    output_tokens: int | None = 0
     tokens_estimated: bool = False
     usage_missing_calls: int = 0
     cached_tokens: int | None = None
@@ -83,9 +83,12 @@ class FormalRunState(BaseModel):
 
 
 @dataclass
-class APISelection:
+class ExecutorSelection:
     provider: BaseProvider | None
     metadata: dict
+
+
+APISelection = ExecutorSelection  # Compatibility for V1 API-specific callers.
 
 
 def select_api_provider(ot_dir: Path) -> APISelection:
@@ -181,7 +184,7 @@ def select_api_provider(ot_dir: Path) -> APISelection:
     return APISelection(provider, metadata)
 
 
-SYSTEM_PROMPT = """You are an API-driven Lean formalization agent in an isolated project.
+SYSTEM_PROMPT = """You are a Lean formalization agent using a decision-only executor.
 Prove the exact requested declaration using the supplied frozen statement and informal source.
 Return ONLY JSON matching the supplied decision schema: a concise public action summary and
 1-4 actions. Do not emit private reasoning. write_proof_file replaces a complete UTF-8 file.

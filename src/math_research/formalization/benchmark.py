@@ -6,6 +6,7 @@ import json
 import os
 import re
 import shutil
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -14,8 +15,9 @@ import yaml
 from math_research.core.atomicio import atomic_write_text
 from math_research.core.process import run_process
 
-from .agent import APISelection, FormalBudget, FormalRunState, select_api_provider
+from .agent import APISelection, FormalBudget, FormalRunState
 from .checker import LeanChecker, code_only, validate_name
+from .executors import select_formal_executor
 from .freeze import freeze, frozen_source, hash_bytes, source_path
 from .loop import FormalizationLoop
 from .tools import FormalTools
@@ -176,7 +178,7 @@ def execute_benchmark(
     metadata: dict,
     lake: Path,
     *,
-    allow_api: bool = True,
+    allow_execution: bool = True,
 ) -> dict:
     """One exclusive official-run reservation. No retries or alternate executor fallback."""
     from .freeze import load_freeze
@@ -187,18 +189,19 @@ def execute_benchmark(
     run_dir = output / "run"
     run_dir.mkdir(exist_ok=False)
     frozen = load_freeze(output / "frozen-inputs.json")
-    selection = select_api_provider(project / ".math-research")
-    if not allow_api and selection.provider is not None:
+    started = time.monotonic()
+    selection = select_formal_executor(project / ".math-research")
+    if not allow_execution and selection.provider is not None:
         selection = APISelection(
             None,
             {
                 **selection.metadata,
                 "status": "BLOCKED_EXTERNAL_APPROVAL",
-                "reason": "Configuration-only mode prohibits API generation",
+                "reason": "Configuration-only mode prohibits executor generation",
             },
         )
     if selection.provider is not None and not metadata.get("target_type"):
-        raise ValueError("An API benchmark requires a frozen target type contract")
+        raise ValueError("A benchmark requires a frozen target type contract")
     atomic_write_text(output / "provider.json", json.dumps(selection.metadata, indent=2))
     checker = LeanChecker(lake)
     workspace = FormalWorkspace(repo, frozen, run_dir / "access-audit.jsonl")
@@ -242,6 +245,12 @@ def execute_benchmark(
                 selection.provider, tools, informal, budget=FormalBudget()
             ).run()
             result = "CHECKED" if state.stop_reason == "CHECKED" else "FAILED"
+            if state.stop_reason == "INVALIDATED_CONTEXT_LEAKAGE":
+                result = "INVALIDATED_CONTEXT_LEAKAGE"
+            if selection.provider.name == "codex" and not getattr(
+                selection.provider, "fresh_context_confirmed", False
+            ):
+                result = "INVALIDATED_CONTEXT_LEAKAGE"
         except Exception:
             # Never repair and resume a crashed official experiment as if it were clean.
             result = "BENCHMARK_INVALIDATED_BY_INFRA_BUG"
@@ -280,9 +289,13 @@ def execute_benchmark(
     benchmark = {
         "result": result,
         "stop_reason": state.stop_reason,
-        "benchmark_valid": result not in {"BLOCKED", "BENCHMARK_INVALIDATED_BY_INFRA_BUG"},
+        "benchmark_valid": result
+        not in {"BLOCKED", "BENCHMARK_INVALIDATED_BY_INFRA_BUG", "INVALIDATED_CONTEXT_LEAKAGE"},
         "official_run_started": selection.provider is not None,
-        "configuration_only": not allow_api,
+        "configuration_only": not allow_execution,
+        "executor": selection.metadata.get("executor"),
+        "fresh_executor_context": getattr(selection.provider, "fresh_context_confirmed", None),
+        "wall_clock_seconds": round(time.monotonic() - started, 3),
         "provider": selection.metadata,
         "statement_identical": True,
         "statement_sha256": frozen.statement.sha256,
@@ -296,7 +309,9 @@ def execute_benchmark(
         "input_tokens": state.input_tokens,
         "output_tokens": state.output_tokens,
         "human_interventions_during_run": 0,
-        "codex_executor_calls": 0,
+        "codex_executor_calls": state.model_calls
+        if selection.metadata.get("provider") == "codex"
+        else 0,
         "run_seal_sha256": seal,
         "human_correspondence": "PENDING",
         "usable_as_premise": False,

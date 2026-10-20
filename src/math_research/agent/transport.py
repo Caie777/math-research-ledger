@@ -50,6 +50,7 @@ def _codex_env() -> dict[str, str]:
     # into an agent process. CODEX_HOME is a location, not a copied login token.
     allowed = (
         "PATH",
+        "ELAN_HOME",
         "HOME",
         "CODEX_HOME",
         "MATH_RESEARCH_PROCESS_LOG",
