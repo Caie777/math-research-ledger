@@ -1,10 +1,13 @@
 """Scoped full-body readers shared by retrieval and services."""
+
 import hashlib
 from pathlib import Path
+
 from math_research.core.errors import ResearchError
 from math_research.ledger.archive import source_path
 from math_research.ledger.episodes import list_episodes
 from math_research.ledger.records import store
+
 
 def episode_source(ot_dir: Path, problem_id: str, episode_id: str) -> str:
     episode = next(
@@ -36,5 +39,3 @@ def read_full_proof(ot_dir: Path, problem_id: str, proof_id: str) -> tuple[str, 
     if not path.is_relative_to(base) or not path.is_file():
         raise ResearchError(f"Full Proof body unavailable: {proof_id}.")
     return path.read_text(encoding="utf-8"), path
-
-

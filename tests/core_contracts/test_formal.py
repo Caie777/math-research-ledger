@@ -15,7 +15,12 @@ from math_research.verification.formal import (
     load_freeze,
     verify_frozen,
 )
-from math_research.verification.formal.checker import CommandResult, code_only, parse_probe, scan_sources
+from math_research.verification.formal.checker import (
+    CommandResult,
+    code_only,
+    parse_probe,
+    scan_sources,
+)
 from math_research.verification.formal.freeze import frozen_source, source_path
 
 DECLARATION = "Example.target"
@@ -332,3 +337,33 @@ def test_runner_bounds_capture_keeps_full_log_and_cleans_timeout(
     assert calls[0][1]["env"]["ELAN_HOME"] == str(checker.elan_home)
     if timeout and checker_module.os.name == "nt":
         assert calls[1][0][1:] == ["/PID", "12345", "/T", "/F"]
+
+
+def test_complex_type_contract_is_exact_and_not_a_command(project, tmp_path, monkeypatch):
+    root, frozen, checker = project
+    calls = fake_commands(
+        monkeypatch, checker, [CommandResult(0, "built"), CommandResult(0, CLEAN)]
+    )
+    contract = "∀ (z : ℂ), z = z"
+    checker.check(
+        root, "Example", DECLARATION, frozen, tmp_path / "complex-check.log", expected_type=contract
+    )
+    assert f"#check ({DECLARATION} : {contract})" in calls[1][3]
+
+
+@pytest.mark.parametrize(
+    "contract", ["True; #eval IO.println 1", "True\n#eval IO.println 1", 'True) #eval "bad"']
+)
+def test_type_contract_rejects_command_injection(project, tmp_path, monkeypatch, contract):
+    root, frozen, checker = project
+    calls = fake_commands(monkeypatch, checker, [])
+    with pytest.raises(ValueError):
+        checker.check(
+            root,
+            "Example",
+            DECLARATION,
+            frozen,
+            tmp_path / "never-created.log",
+            expected_type=contract,
+        )
+    assert not calls and not (tmp_path / "never-created.log").exists()

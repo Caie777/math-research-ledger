@@ -16,25 +16,16 @@ from typing import ParamSpec, TypeVar
 from math_research.core.errors import ResearchError
 
 _AUTOMATED: ContextVar[bool] = ContextVar("automated_research", default=False)
-AUTOMATED_ENV = "MCH_AUTOMATED_RESEARCH"
+AUTOMATED_ENV = "SMR_AUTOMATED_RESEARCH"
+LEGACY_AUTOMATED_ENV = "MCH_AUTOMATED_RESEARCH"
 P = ParamSpec("P")
 R = TypeVar("R")
 
 
 def is_automated() -> bool:
-    return _AUTOMATED.get() or os.environ.get(AUTOMATED_ENV) == "1"
-
-
-def subprocess_env(env: dict[str, str] | None = None) -> dict[str, str] | None:
-    """Carry execution provenance across supported CLI/experiment subprocesses."""
-    if is_automated():
-        return {**os.environ, **(env or {}), AUTOMATED_ENV: "1"}
-    return {**os.environ, **env} if env else None
-
-
-def execution_env(env: dict[str, str]) -> dict[str, str]:
-    """Container environment overrides; never transfer host credentials."""
-    return {**env, AUTOMATED_ENV: "1"} if is_automated() else env
+    return _AUTOMATED.get() or any(
+        os.environ.get(key) == "1" for key in (AUTOMATED_ENV, LEGACY_AUTOMATED_ENV)
+    )
 
 
 @contextmanager

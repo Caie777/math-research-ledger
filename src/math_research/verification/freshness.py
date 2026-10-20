@@ -26,7 +26,9 @@ class FreshnessResolver:
         self.max_nodes = max_nodes
 
     def resolve(self, ref: ObjectRef) -> FreshnessResult:
-        visited, visiting, reasons = set(), set(), []
+        visited: set[str] = set()
+        visiting: set[str] = set()
+        reasons: list[str] = []
         stale = False
 
         def walk(current):
@@ -54,14 +56,25 @@ class FreshnessResolver:
             visiting.add(key)
             for edge in entry.dependencies:
                 target = self.entries.get(edge.target.qualified_id)
-                if edge.expected_version and (target is None or target.version != edge.expected_version):
+                if edge.expected_version and (
+                    target is None or target.version != edge.expected_version
+                ):
                     stale = True
-                    reasons.append(f"Version changed: {edge.target.qualified_id} ({edge.role.value})")
+                    reasons.append(
+                        f"Version changed: {edge.target.qualified_id} ({edge.role.value})"
+                    )
                 walk(edge.target)
             visiting.remove(key)
 
         walk(ref)
-        return FreshnessResult(freshness=Freshness.STALE if stale else Freshness.UNKNOWN if reasons else Freshness.CURRENT, reasons=list(dict.fromkeys(reasons)))
+        return FreshnessResult(
+            freshness=Freshness.STALE
+            if stale
+            else Freshness.UNKNOWN
+            if reasons
+            else Freshness.CURRENT,
+            reasons=list(dict.fromkeys(reasons)),
+        )
 
     def pins(self, ref: ObjectRef) -> tuple[VersionPin, ...]:
         """Pin the entire current closure; reject incomplete or cyclic evidence."""
@@ -84,11 +97,36 @@ class FreshnessResolver:
     def check_pins(self, pins: tuple[VersionPin, ...]) -> FreshnessResult:
         reasons = []
         unknown = False
+        stale = False
         for pin in pins:
             entry = self.entries.get(pin.ref.qualified_id)
             if entry is None or entry.version != pin.version:
+                stale = True
                 reasons.append(f"Recorded version changed/missing: {pin.ref.qualified_id}")
             state = self.resolve(pin.ref)
             reasons.extend(state.reasons)
             unknown |= state.freshness == Freshness.UNKNOWN
-        return FreshnessResult(freshness=Freshness.STALE if reasons and not unknown else Freshness.UNKNOWN if unknown else Freshness.CURRENT, reasons=list(dict.fromkeys(reasons)))
+            stale |= state.freshness == Freshness.STALE
+        return FreshnessResult(
+            freshness=Freshness.STALE
+            if stale
+            else Freshness.UNKNOWN
+            if unknown
+            else Freshness.CURRENT,
+            reasons=list(dict.fromkeys(reasons)),
+        )
+
+
+def receipt_current(state, receipt, entries=None) -> bool:
+    from pathlib import Path
+
+    from math_research.core.hashing import sha256
+    from math_research.ledger.manifest import Ledger
+
+    resolver = FreshnessResolver(entries if entries is not None else Ledger(state).objects())
+    if resolver.check_pins((receipt.target, *receipt.dependencies)).freshness != Freshness.CURRENT:
+        return False
+    try:
+        return all(sha256(Path(a.path).read_bytes()) == a.sha256 for a in receipt.artifacts)
+    except OSError:
+        return False

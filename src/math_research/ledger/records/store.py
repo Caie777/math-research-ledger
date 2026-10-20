@@ -72,7 +72,15 @@ def problems_root(ot_dir: Path) -> Path:
 
 
 def dossier_dir(ot_dir: Path, problem_id: str) -> Path:
-    return problems_root(ot_dir) / problem_id
+    if not re.fullmatch(r"[A-Z][A-Z0-9_-]{0,127}", problem_id):
+        raise ResearchError("Invalid Problem scope.")
+    root = problems_root(ot_dir)
+    path = root / problem_id
+    if root.resolve() != ot_dir.resolve() / "problems" or not path.resolve().is_relative_to(
+        root.resolve()
+    ):
+        raise ResearchError("Problem storage must not escape the workspace.")
+    return path
 
 
 def _active_problem_path(ot_dir: Path) -> Path:

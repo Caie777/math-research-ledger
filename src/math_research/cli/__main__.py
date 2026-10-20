@@ -1,3 +1,3 @@
-from math_research.cli.main import app
+from math_research.cli.main import run
 
-app()
+run()

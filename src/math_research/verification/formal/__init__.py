@@ -1,4 +1,4 @@
-"""Standalone Lean verification; no research-agent or canonical-memory integration."""
+"""Reusable Lean freeze/check primitives; authority belongs to separate human receipts."""
 
 from .checker import LeanChecker
 from .freeze import freeze, load_freeze, verify_frozen

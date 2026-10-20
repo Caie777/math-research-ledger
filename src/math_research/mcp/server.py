@@ -3,7 +3,7 @@
 import argparse
 from pathlib import Path
 
-from math_research.mcp.adapter import LedgerAdapter, SCHEMAS
+from math_research.mcp.adapter import SCHEMAS, LedgerAdapter
 
 
 def create_server(state: Path):

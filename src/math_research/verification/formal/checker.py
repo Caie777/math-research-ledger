@@ -217,7 +217,9 @@ class LeanChecker:
         validate_name(declaration)
         if expected_type is not None and (
             len(expected_type) > 2000
-            or not re.fullmatch(r"[A-Za-z0-9_'.() :∀→ℕℤℚℝ,+-]+", expected_type)
+            or not re.fullmatch(
+                r"[A-Za-z0-9_'.()\[\]{} :∀∃→↔∧∨ℕℤℚℝℂ∞≤≥≠∈⊆×,+*=<>|-]+", expected_type
+            )
         ):
             raise ValueError("Expected a restricted type ascription, not Lean commands")
         log_path = log_path.resolve()

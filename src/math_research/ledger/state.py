@@ -79,6 +79,7 @@ class KnowledgeState(BaseModel):
 
 def research_version(ot_dir: Path, problem_id: str) -> str:
     """Content-based version, including bodies/reviews; no mtime or cached truth state."""
+    ot_dir = ot_dir.resolve()
     base = store.dossier_dir(ot_dir, problem_id)
     ignored = {"generated", "research_runs", "experiments", "campaigns", "__pycache__"}
     paths = [

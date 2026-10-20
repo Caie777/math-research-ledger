@@ -1,6 +1,7 @@
 """CLI adapters only; domain decisions and writes live in deterministic services."""
 
 import json
+import sys
 from pathlib import Path
 
 import typer
@@ -10,9 +11,16 @@ from math_research.core.errors import ResearchError
 from math_research.core.paths import WORKSPACE_DIRNAME, find_workspace_root
 from math_research.core.refs import ObjectRef
 from math_research.ledger.dependencies import DependencyRole
-from math_research.ledger.manifest import Ledger
 from math_research.ledger.records.models import Definition
-from math_research.services import acceptance, ingest, research, retrieval, review, stale, verification
+from math_research.services import (
+    acceptance,
+    ingest,
+    research,
+    retrieval,
+    review,
+    stale,
+    verification,
+)
 
 app = typer.Typer(help="Research Ledger → external research → verification → human authority.")
 ledger_app = typer.Typer(help="Typed objects and qualified references.")
@@ -23,20 +31,40 @@ formal_app = typer.Typer()
 acceptance_app = typer.Typer()
 stale_app = typer.Typer()
 review_app = typer.Typer()
-for name, child in [("ledger", ledger_app), ("context", context_app), ("ingest", ingest_app), ("verify", verify_app), ("formal", formal_app), ("acceptance", acceptance_app), ("stale", stale_app), ("review", review_app)]:
+for name, child in [
+    ("ledger", ledger_app),
+    ("context", context_app),
+    ("ingest", ingest_app),
+    ("verify", verify_app),
+    ("formal", formal_app),
+    ("acceptance", acceptance_app),
+    ("stale", stale_app),
+    ("review", review_app),
+]:
     app.add_typer(child, name=name)
 
 
 def emit(value):
+    from math_research.retrieval.packet import ContextPacket
+
+    if isinstance(value, ContextPacket):
+        typer.echo(value.model_dump_json())
+        return
     if isinstance(value, BaseModel):
         value = value.model_dump(mode="json")
-    typer.echo(json.dumps(value, ensure_ascii=False, indent=2, default=lambda v: v.model_dump(mode="json")))
+    typer.echo(
+        json.dumps(value, ensure_ascii=False, indent=2, default=lambda v: v.model_dump(mode="json"))
+    )
 
 
 @app.callback()
 def main(ctx: typer.Context, workspace: Path = typer.Option(Path("."), "--workspace", "-w")):
     root = workspace.resolve()
-    ctx.obj = root if root.name == WORKSPACE_DIRNAME else (find_workspace_root(root) or root) / WORKSPACE_DIRNAME
+    ctx.obj = (
+        root
+        if root.name == WORKSPACE_DIRNAME
+        else (find_workspace_root(root) or root) / WORKSPACE_DIRNAME
+    )
 
 
 def state(ctx):
@@ -75,6 +103,11 @@ def create_problem(ctx: typer.Context, title: str, statement: str):
     emit(research.create_problem(state(ctx), title, statement))
 
 
+@ledger_app.command("history")
+def object_history(ctx: typer.Context, reference: str):
+    emit(research.history(state(ctx), ref(reference)))
+
+
 @ledger_app.command("add-claim")
 def add_claim(ctx: typer.Context, problem: str, statement: str):
     emit(research.add_claim(state(ctx), problem, statement))
@@ -91,7 +124,9 @@ def revise_definition(ctx: typer.Context, reference: str, definition: str):
     old = research.get_object(state(ctx), target)
     if target.kind != "definition":
         raise typer.BadParameter("Expected definition reference.")
-    value = Definition.model_validate(old.object.record).model_copy(update={"definition": definition})
+    value = Definition.model_validate(old.object.record).model_copy(
+        update={"definition": definition}
+    )
     emit(research.update_definition(state(ctx), target.problem_id, value))
 
 
@@ -106,18 +141,41 @@ def search(ctx: typer.Context, query: str, problem: str | None = None, limit: in
 
 
 @context_app.command("export")
-def export_context(ctx: typer.Context, reference: str, budget: int = 8000, query: str = "", purpose: str = "CONTINUE_RESEARCH"):
-    emit(retrieval.export_context_packet(state(ctx), ref(reference), token_budget=budget, query=query, purpose=purpose))
+def export_context(
+    ctx: typer.Context,
+    reference: str,
+    budget: int = 8000,
+    query: str = "",
+    purpose: str = "CONTINUE_RESEARCH",
+):
+    emit(
+        retrieval.export_context_packet(
+            state(ctx), ref(reference), token_budget=budget, query=query, purpose=purpose
+        )
+    )
 
 
 @ingest_app.command("episode")
-def ingest_episode(ctx: typer.Context, problem: str, file: Path, provenance: str = typer.Option(...), preview: bool = False):
+def ingest_episode(
+    ctx: typer.Context,
+    problem: str,
+    file: Path,
+    provenance: str = typer.Option(...),
+    preview: bool = False,
+):
     emit(ingest.ingest_file(state(ctx), problem, file, provenance=provenance, preview=preview))
 
 
 @ingest_app.command("review")
-def review_candidate(ctx: typer.Context, problem: str, candidate_id: str, decision: str):
-    emit(ingest.review_proposal(state(ctx), problem, candidate_id, decision))
+def review_candidate(
+    ctx: typer.Context, problem: str, candidate_id: str, decision: str, edits: Path | None = None
+):
+    emit(ingest.review_from_file(state(ctx), problem, candidate_id, decision, edits))
+
+
+@ingest_app.command("source")
+def ingest_source(ctx: typer.Context, problem: str, file: Path):
+    emit(ingest.ingest_source_file(state(ctx), problem, file))
 
 
 @verify_app.command("show")
@@ -126,12 +184,43 @@ def show_verification(ctx: typer.Context, verification_id: str):
 
 
 @formal_app.command("freeze")
-def formal_freeze(ctx: typer.Context, reference: str, ident: str, repo: Path, statement: str, module: str, declaration: str, expected_type: str, local_definition: list[str] = typer.Option([]), version: int = 1, reason: str | None = None):
-    emit(verification.freeze_statement(state(ctx), ref(reference), ident=ident, repo=repo, statement=statement, module=module, declaration=declaration, expected_type=expected_type, local_definitions=tuple(local_definition), version=version, reason=reason))
+def formal_freeze(
+    ctx: typer.Context,
+    reference: str,
+    ident: str,
+    repo: Path,
+    statement: str,
+    module: str,
+    declaration: str,
+    expected_type: str,
+    local_definition: list[str] = typer.Option([]),
+    version: int = 1,
+    reason: str | None = None,
+):
+    emit(
+        verification.freeze_statement(
+            state(ctx),
+            ref(reference),
+            ident=ident,
+            repo=repo,
+            statement=statement,
+            module=module,
+            declaration=declaration,
+            expected_type=expected_type,
+            local_definitions=tuple(local_definition),
+            version=version,
+            reason=reason,
+        )
+    )
 
 
 @formal_app.command("check")
-def formal_check(ctx: typer.Context, reference: str, lake: Path = typer.Option(...), elan_home: Path = typer.Option(...)):
+def formal_check(
+    ctx: typer.Context,
+    reference: str,
+    lake: Path = typer.Option(...),
+    elan_home: Path = typer.Option(...),
+):
     emit(verification.run_formal_check(state(ctx), ref(reference), lake=lake, elan_home=elan_home))
 
 
@@ -146,9 +235,19 @@ def pending(ctx: typer.Context):
 
 
 @acceptance_app.command("accept")
-def human_accept(ctx: typer.Context, request_id: str, actor: str = typer.Option(...), rationale: str = typer.Option(...), correspondence: str | None = None):
+def human_accept(
+    ctx: typer.Context,
+    request_id: str,
+    actor: str = typer.Option(...),
+    rationale: str = typer.Option(...),
+    correspondence: str | None = None,
+):
     """Trusted human operator only; not exposed by MCP. Automated scope is refused."""
-    emit(acceptance.accept(state(ctx), request_id, actor=actor, rationale=rationale, correspondence=correspondence))
+    emit(
+        acceptance.accept(
+            state(ctx), request_id, actor=actor, rationale=rationale, correspondence=correspondence
+        )
+    )
 
 
 @stale_app.command("report")
@@ -167,6 +266,10 @@ def review_record(ctx: typer.Context, file: Path):
 
 
 def run():
+    for stream in (sys.stdout, sys.stderr):
+        configure = getattr(stream, "reconfigure", None)
+        if configure is not None:
+            configure(encoding="utf-8")
     try:
         app()
     except (ResearchError, ValueError, OSError) as exc:

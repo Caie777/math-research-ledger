@@ -17,3 +17,9 @@ class ObjectRef(BaseModel):
     def parse(cls, value: str) -> "ObjectRef":
         scope, kind, ident = value.split(":")
         return cls(problem_id=None if scope == "_global" else scope, kind=kind, object_id=ident)
+
+
+class VersionPin(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    ref: ObjectRef
+    version: str = Field(pattern=r"^[a-f0-9]{64}$")

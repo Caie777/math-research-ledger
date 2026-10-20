@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from math_research.core.refs import ObjectRef
+from math_research.core.refs import VersionPin as VersionPin
 from math_research.ledger.records.models import utcnow
 
 
@@ -18,11 +18,6 @@ class VerificationKind(StrEnum):
     FORMAL = "formal"
     EXACT = "exact"
     VALIDATED_COMPUTATION = "validated_computation"
-
-
-class VersionPin(Strict):
-    ref: ObjectRef
-    version: str = Field(pattern=r"^[a-f0-9]{64}$")
 
 
 class ArtifactRef(Strict):

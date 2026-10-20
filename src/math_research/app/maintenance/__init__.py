@@ -1,1 +1,0 @@
-"""Structured mathematical research."""

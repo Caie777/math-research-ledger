@@ -1,8 +1,0 @@
-{
-  "roles": {
-    "coordinator": {"provider": "openai", "model": "", "reasoning_effort": null, "enabled": false},
-    "research": {"provider": "openai", "model": "", "reasoning_effort": null, "enabled": false},
-    "cheap_semantic": {"provider": "ollama", "model": "", "reasoning_effort": null, "enabled": false}
-  },
-  "credentials": {}
-}

@@ -267,5 +267,3 @@ def retrieve_related_memory(
         ),
     )[:recall_limit]
     return result
-
-

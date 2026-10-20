@@ -5,34 +5,33 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "structured-math-research"
 dynamic = ["version"]
-description = "Structured memory and retrieval for long-horizon mathematical research."
+description = "Research ledger, bounded context, verification and human authority for mathematics."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{ name = "Galileo" }]
-dependencies = ["typer>=0.12", "pydantic>=2.0", "pyyaml>=6.0", "pypdf>=4.0", "fastapi>=0.115,<1", "uvicorn>=0.30,<1", "python-multipart>=0.0.9", "numpy>=1.26"]
+dependencies = ["typer>=0.12", "pydantic>=2.0", "pyyaml>=6.0", "pypdf>=4.0"]
 
 [project.urls]
 Repository = "https://github.com/Caie777/structured-math-research"
 Issues = "https://github.com/Caie777/structured-math-research/issues"
 
 [project.optional-dependencies]
-openai = ["openai>=1.0"]
-anthropic = ["anthropic>=0.30"]
-mistral = ["openai>=1.0"]
-embeddings = ["sentence-transformers>=2.2"]
-dev = ["pytest>=8.0", "ruff==0.15.17", "mypy~=2.1", "types-PyYAML", "httpx>=0.27,<1"]
+mcp = ["mcp>=1.0,<2"]
+dev = ["pytest>=8.0", "ruff==0.15.17", "mypy~=2.1", "types-PyYAML", "build>=1.0"]
 
 [project.scripts]
-math-research = "math_research.app.cli:app"
+smr = "math_research.cli.main:run"
+math-research = "math_research.cli.main:run"
+smr-mcp = "math_research.mcp.server:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+namespaces = false
 
 [tool.setuptools.package-data]
 "math_research.core" = ["default_config.yaml"]
-"math_research.agent" = ["research_episode.md"]
 
 [tool.setuptools.dynamic]
 version = { attr = "math_research.__version__" }
@@ -57,5 +56,5 @@ no_implicit_optional = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q -m 'not integration'"
+addopts = "-q"
 markers = ["integration: needs an explicitly enabled external service"]

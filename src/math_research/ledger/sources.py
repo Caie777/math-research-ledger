@@ -9,11 +9,12 @@ from pathlib import Path, PureWindowsPath
 
 from pypdf import PdfReader
 
-from math_research.core.limits import MAX_UPLOAD_BYTES
 from math_research.core.atomicio import file_lock
 from math_research.core.errors import ResearchError
 from math_research.core.jsonl import next_sequential_id
+from math_research.core.limits import MAX_UPLOAD_BYTES
 from math_research.ledger.records import store
+from math_research.ledger.records.write_boundary import human_write
 from math_research.ledger.source_records import Paper, _save_meta, list_papers
 
 SOURCE_CONNECTOR = "harness_source"
@@ -107,6 +108,7 @@ def read_source(ot_dir: Path, pid: str, ident: str) -> tuple[Paper, Path, bytes]
     return paper, path, raw
 
 
+@human_write
 def save_source(ot_dir: Path, pid: str, upload: SourceUpload) -> Paper:
     store.require_dossier(ot_dir, pid)
     # Existing Paper metadata + existing Problem related_papers; no second source index.

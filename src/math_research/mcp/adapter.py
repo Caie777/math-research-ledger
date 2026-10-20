@@ -48,7 +48,13 @@ class StaleArgs(Arguments):
     limit: int = Field(default=20, ge=1, le=50)
 
 
-SCHEMAS = {"search_research": SearchArgs, "get_research_object": ObjectArgs, "export_context_packet": ContextArgs, "request_acceptance": RequestArgs, "get_stale_report": StaleArgs}
+SCHEMAS: dict[str, type[BaseModel]] = {
+    "search_research": SearchArgs,
+    "get_research_object": ObjectArgs,
+    "export_context_packet": ContextArgs,
+    "request_acceptance": RequestArgs,
+    "get_stale_report": StaleArgs,
+}
 
 
 class LedgerAdapter:
@@ -62,19 +68,57 @@ class LedgerAdapter:
         args = schema.model_validate(arguments)
         with automated_scope():
             if isinstance(args, SearchArgs):
-                result = search_research(self.state, args.query, problem_id=args.problem_id, limit=args.limit)
+                result = search_research(
+                    self.state, args.query, problem_id=args.problem_id, limit=args.limit
+                )
             elif isinstance(args, ObjectArgs):
                 view = get_object(self.state, args.ref)
                 entry = view.object
                 text = entry.full_content
-                result = {"ref": entry.ref.model_dump(), "content_hash": entry.content_hash, "version": entry.version, "authority": view.authority, "verification": view.verification, "freshness": view.freshness, "research_state": entry.research_state, "provenance": entry.provenance[:20], "provenance_omitted": max(0, len(entry.provenance) - 20), "content": text[args.offset:args.offset + args.length], "offset": args.offset, "total_characters": len(text), "truncated": args.offset > 0 or args.offset + args.length < len(text)}
+                result = {
+                    "ref": entry.ref.model_dump(),
+                    "content_hash": entry.content_hash,
+                    "version": entry.version,
+                    "authority": view.authority,
+                    "verification": view.verification,
+                    "freshness": view.freshness,
+                    "research_state": entry.research_state,
+                    "provenance": entry.provenance[:20],
+                    "provenance_omitted": max(0, len(entry.provenance) - 20),
+                    "content": text[args.offset : args.offset + args.length],
+                    "offset": args.offset,
+                    "total_characters": len(text),
+                    "truncated": args.offset > 0 or args.offset + args.length < len(text),
+                }
             elif isinstance(args, ContextArgs):
-                result = export_context_packet(self.state, args.ref, query=args.query, purpose=args.purpose, token_budget=args.token_budget).model_dump(mode="json")
+                result = export_context_packet(
+                    self.state,
+                    args.ref,
+                    query=args.query,
+                    purpose=args.purpose,
+                    token_budget=args.token_budget,
+                ).model_dump(mode="json")
             elif isinstance(args, RequestArgs):
-                result = request_acceptance(self.state, args.ref, args.verification_id).model_dump(mode="json")
-            else:
+                result = request_acceptance(self.state, args.ref, args.verification_id).model_dump(
+                    mode="json"
+                )
+            elif isinstance(args, StaleArgs):
                 report = stale_report(self.state, args.problem_id)
-                result = {"source_version": report["source_version"], **{key: values[args.offset:args.offset + args.limit] for key, values in report.items() if isinstance(values, list)}, "totals": {key: len(values) for key, values in report.items() if isinstance(values, list)}}
+                result = {
+                    "source_version": report["source_version"],
+                    **{
+                        key: values[args.offset : args.offset + args.limit]
+                        for key, values in report.items()
+                        if isinstance(values, list)
+                    },
+                    "totals": {
+                        key: len(values)
+                        for key, values in report.items()
+                        if isinstance(values, list)
+                    },
+                }
+            else:
+                raise ResearchError("Unsupported validated tool arguments.")
         if len(json.dumps(result, ensure_ascii=False).encode()) > 65536:
             raise ResearchError("Bounded output exceeds 64 KiB; reduce limit/budget/window.")
         return result

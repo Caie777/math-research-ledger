@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field, ValidationError, model_validator
 from math_research.core.atomicio import file_lock
 from math_research.core.errors import ResearchError
 from math_research.core.jsonl import append_jsonl, atomic_append_jsonl, read_jsonl
+from math_research.core.refs import VersionPin
 from math_research.ledger.archive import source_path
 from math_research.ledger.decomposition import (
     has_numbered_headings,
@@ -107,6 +108,7 @@ class EpisodeOutputMetadata(BaseModel):
     failed_attempts: list[str] = Field(default_factory=list)
     explicit_dependencies: list[EpisodeDependency] = Field(default_factory=list)
     relation_hints: list[EpisodeRelationHint] = Field(default_factory=list)
+    input_versions: list[VersionPin] = Field(default_factory=list)
 
 
 class ResearchEpisode(EpisodeOutputMetadata):
@@ -1013,9 +1015,18 @@ def _commit(ot_dir: Path, candidate: Proposal) -> str | None:
                 "Proof needs a full body and existing target Claim; review its Claim first."
             )
         for used in candidate.uses:
-            if store.get_claim(ot_dir, pid, used) is None and not any(
-                p.id == used for p in store.list_proof_attempts(ot_dir, pid)
-            ):
+            available = {
+                item.id
+                for reader in (
+                    store.list_claims,
+                    store.list_proof_attempts,
+                    store.list_definitions,
+                    store.list_assumptions,
+                    store.list_known_results,
+                )
+                for item in reader(ot_dir, pid)
+            }
+            if used not in available:
                 raise ResearchError(f"Proof USES Claim {used} is absent in {pid}.")
         if candidate.revises_proof_id and not any(
             p.id == candidate.revises_proof_id for p in store.list_proof_attempts(ot_dir, pid)
