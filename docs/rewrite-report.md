@@ -1,5 +1,8 @@
 # Scope contraction delivery — 2026-10-20
 
+Historical snapshot at `f419a69`. Its MCP skeleton/untested-host statements are
+superseded by [the subsequent MCP/Codex integration](codex-mcp.md).
+
 ## 1. New product path
 
 ```text

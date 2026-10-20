@@ -7,8 +7,6 @@ from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path, PureWindowsPath
 
-from pypdf import PdfReader
-
 from math_research.core.atomicio import file_lock
 from math_research.core.errors import ResearchError
 from math_research.core.jsonl import next_sequential_id
@@ -56,6 +54,8 @@ def validate_source(filename: str, content: bytes) -> SourceUpload:
     if not content or len(content) > MAX_UPLOAD_BYTES:
         raise ResearchError("Source must be nonempty and at most 10 MiB.")
     if suffix == ".pdf":
+        from pypdf import PdfReader
+
         try:
             if not content.startswith(b"%PDF-"):
                 raise ValueError("Not PDF")

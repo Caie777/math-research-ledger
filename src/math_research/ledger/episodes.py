@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field, ValidationError, model_validator
 
 from math_research.core.atomicio import file_lock
 from math_research.core.errors import ResearchError
-from math_research.core.jsonl import append_jsonl, atomic_append_jsonl, read_jsonl
+from math_research.core.jsonl import atomic_append_jsonl, read_jsonl
 from math_research.core.refs import VersionPin
 from math_research.ledger.archive import source_path
 from math_research.ledger.decomposition import (
@@ -67,7 +67,7 @@ RelationKind = Literal[
 DecisionKind = Literal["accept", "reject", "defer"]
 
 _HEADING = re.compile(
-    r"^## (Claim|Proof|Gap|Failed Attempt|Counterexample|Branch)(?::\s*(.*))?$", re.I
+    r"^## (Claim|Proof|Gap|Failed Attempt|Counterexample|Evidence|Branch)(?::\s*(.*))?$", re.I
 )
 _FIELD = re.compile(r"^(Target|Uses|Revises|Relates|Summary|Strategy):\s*(.*)$", re.I)
 _DOSSIER_CLAIM = re.compile(r"\bCLAIM-(?:\d{4,}|P[0-9A-F]{16})\b")
@@ -81,6 +81,7 @@ _KINDS: dict[str, ProposalKind] = {
     "gap": "gap",
     "failed attempt": "failed_attempt",
     "counterexample": "counterexample",
+    "evidence": "evidence",
     "branch": "branch",
 }
 _RELATIONS = LOGICAL_RELATIONS | {"RELATED_TO", "NO_LINK"}
@@ -489,7 +490,7 @@ def stage_candidates(ot_dir: Path, problem_id: str, proposed: list[Proposal]) ->
                             "thread_ids": episodes[candidate.episode_id].thread_ids,
                         }
                     )
-                append_jsonl(index, candidate)
+                atomic_append_jsonl(index, candidate)
                 known.add(candidate.candidate_id)
 
 

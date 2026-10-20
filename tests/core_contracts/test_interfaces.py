@@ -33,10 +33,10 @@ def test_mcp_adapter_bounded_and_no_accept_or_filesystem(research):
     with pytest.raises(ResearchError):
         adapter.call("accept", {})
     with pytest.raises(ValueError):
-        adapter.call("get_research_object", {"ref": ref.model_dump(), "path": "../outside"})
-    result = adapter.call("get_research_object", {"ref": ref.model_dump(), "length": 10})
+        adapter.call("research_get_object", {"ref": ref.qualified_id, "path": "../outside"})
+    result = adapter.call("research_get_object", {"ref": ref.qualified_id, "length": 10})
     assert len(result["content"]) <= 10 and result["truncated"]
-    assert adapter.call("search_research", {"query": "synthetic"})["hits"]
+    assert adapter.call("research_search", {"query": "synthetic"})["hits"]
 
 
 def test_runtime_independent_import_boundaries():

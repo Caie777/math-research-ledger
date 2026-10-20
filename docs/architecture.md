@@ -10,7 +10,7 @@ verification/  general receipts, exact checker protocol, advisory review,
                human correspondence, authority/freshness, formal freeze/check
 services/      research, ingest, retrieval, review, verification, acceptance, stale
 cli/           trusted human/debug adapter
-mcp/           optional stdio skeleton + bounded model adapter
+mcp/           optional stdio server + bounded model adapter
 ```
 
 CLI/MCP call services. Core, ledger, retrieval and verification do not import services, old app, providers or autonomous runtime. Projection composes typed records and verification/authority rules. Existing dossier persistence remains authoritative; there is no universal domain-object replacement.
@@ -63,4 +63,4 @@ Existing .math-research requires no migration or writes to read. Both archive la
 
 Unresolved historical references remain explicit, not silently repaired or accepted. Old Python import paths memory/app/formalization are removed. Disk compatibility does not promise old scripts or Web/CLI compatibility.
 
-MCP exposes five adapter capabilities: search, object windows, packet export, acceptance request, stale report. Inputs are validated; output is capped at 64 KiB. Optional stdio registers a dispatcher and capability schemas. It exposes no compiler, filesystem, shell or human accept. Install and smoke-test the SDK transport in the intended host before wiring a real harness.
+MCP exposes nine top-level `research_*` tools: status, search, object windows, context/review packets, stale reports, provisional Episode/note ingestion and pending acceptance requests. `tools/list` provides descriptions and strict schemas; there is no generic dispatcher. External references are strings, resolved to internal ObjectRef values without guessing ambiguous IDs. Episode/note writes reuse the existing archive/Proposal Store, content deduplication, locks and atomic IO. Output, including both SDK representations, is bounded to 64 KiB; review inputs are never silently truncated. Errors include a code and recovery action. There is no compiler, filesystem, shell or human accept. See [Codex integration and validation](codex-mcp.md).

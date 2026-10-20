@@ -160,7 +160,7 @@ def test_mcp_can_request_but_cannot_elevate(research):
     state, ref = research
     receipt = checked(state, ref)
     result = LedgerAdapter(state).call(
-        "request_acceptance", {"ref": ref.model_dump(), "verification_id": receipt.id}
+        "research_request_acceptance", {"ref": ref.qualified_id, "verification_id": receipt.id}
     )
     assert result["id"].startswith("REQUEST-")
     assert get_object(state, ref).authority == "CANONICAL"

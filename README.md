@@ -8,18 +8,26 @@ RECORD → bounded context packet → external research → VERIFY → RECORD
 
 Codex, Claude Code or another harness owns generation, coding and search. This package owns typed research memory, deterministic ingestion/retrieval, verification receipts, human authority and derived freshness. It contains no autonomous model loop, provider routing or Web application.
 
-## Install and inspect
+## Use from Codex
 
 Python 3.11+:
 
-```sh
-python -m pip install -e ".[dev]"
-smr --help
-smr --workspace /path/to/project status
-smr --workspace /path/to/project ledger list
+One-time Windows setup from this checkout (use the existing `.venv-win`):
+
+```powershell
+$python = (Resolve-Path .venv-win/Scripts/python.exe).Path
+& $python -m pip install -e '.[mcp]'
+codex mcp add structured-math-research -- $python -B (Join-Path $PWD 'scripts/smr_mcp.py')
+codex mcp list
+codex mcp get structured-math-research --json
+codex -C .
 ```
 
-`math-research` aliases `smr`. Without reinstalling entry points, use `python -m math_research.cli`. Initialize a new workspace explicitly with `smr --workspace /path/to/project init`.
+In a fresh Codex chat in the research project, ask naturally: “Continue PROBLEM-0001; first tell me where we left off.” The project `AGENTS.md` guides status/context lookup and provisional output capture. Nine tools are directly discoverable through MCP `tools/list`; no dispatcher is needed. Codex owns the conversation. The CLI below is for debugging and trusted human authority, not the primary chat interface.
+
+CLI and IDE/desktop share Codex MCP configuration; start a fresh session after registration. CLI host calls and automatic cwd discovery have been exercised here; the already-open desktop session has not been reloaded or independently verified. See [MCP setup and smoke evidence](docs/codex-mcp.md).
+
+`math-research` aliases `smr`. Without reinstalling entry points, use `python -m math_research.cli`. Initialize a new workspace explicitly with `smr --workspace /path/to/project init`. Missing state never initializes itself through MCP.
 
 References are qualified: `PROBLEM-0001:claim:CLAIM-0001`. Existing disk IDs are unchanged. A Gap is a Claim with `OPEN_GAP`; verifier submissions and research proofs have separate namespaces.
 
@@ -58,12 +66,14 @@ The human CLI is a trusted operator channel. Automated scope / SMR_AUTOMATED_RES
 
 ## MCP
 
-An optional stdio skeleton and bounded adapter expose search, scoped object windows, context export, acceptance requests and stale reports. There is no model-callable accept, shell, arbitrary filesystem, freeze or compiler tool.
+The optional stdio server directly exposes nine `research_*` tools: status, search, object windows, context/review packets, stale reports, provisional Episode/note ingestion and pending acceptance requests. There is no model-callable accept, shell, arbitrary filesystem, freeze or compiler tool. Tool results, including duplicated SDK text/structured representations, are bounded to 64 KiB; oversized results return structured errors. Mandatory context omissions/truncation remain explicit.
 
 ```sh
 python -m pip install -e ".[mcp]"
-smr-mcp --workspace /path/to/project
+python -m math_research.mcp.server --workspace /path/to/project
 ```
+
+Workspace resolution: explicit `--workspace`, then `SMR_WORKSPACE`, then server cwd ancestors containing `.math-research`. The checkout wrapper preserves host cwd. A global registration works across research projects in the tested Codex CLI. Use a fixed absolute `--workspace` or `SMR_WORKSPACE` when another host does not pass its project cwd.
 
 Core/CLI work without the optional SDK. See [architecture and compatibility](docs/architecture.md), [Episode contract](docs/research-episode.md), [formal verification](docs/formalization-v0.md), and [中文说明](README.zh-CN.md).
 

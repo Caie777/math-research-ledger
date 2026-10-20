@@ -5,6 +5,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
+import yaml
+
 from math_research.core.errors import ResearchError
 from math_research.core.limits import MAX_UPLOAD_BYTES
 from math_research.core.refs import VersionPin
@@ -113,6 +115,36 @@ def ingest_episode(
         "duplicate": duplicate,
         "canonical_records_created": 0,
     }
+
+
+def save_note(
+    state: Path, problem_id: str, *, kind: str, title: str, body: str, provenance: str
+) -> dict:
+    """Stage one ordinary Episode proposal, with the same archive and deduplication.
+
+    No alternative note store or canonicalization path is introduced. Ambiguous
+    multi-section Markdown must use the complete Episode API instead.
+    """
+    headings = {
+        "claim": "Claim",
+        "gap": "Gap",
+        "failed_attempt": "Failed Attempt",
+        "evidence": "Evidence",
+        "counterexample": "Counterexample",
+    }
+    if kind not in headings or not title.strip() or "\n" in title or "\r" in title:
+        raise ResearchError("Use a supported note kind and a nonempty single-line title.")
+    if not body.strip():
+        raise ResearchError("A provisional note requires its complete body.")
+    metadata = yaml.safe_dump({"note_provenance": provenance}, allow_unicode=True)
+    raw = f"---\n{metadata}---\n\n## {headings[kind]}: {title}\n\n{body}\n".encode()
+    preview = preview_episode(state, problem_id, "note.md", raw)
+    candidates = preview["candidates"]
+    if len(candidates) != 1 or candidates[0].kind != kind:
+        raise ResearchError(
+            "Note must stage one candidate; use research_ingest_episode for sections."
+        )
+    return ingest_episode(state, problem_id, "note.md", raw, provenance=provenance)
 
 
 def review_proposal(

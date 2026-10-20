@@ -27,11 +27,34 @@ def initialize(state: Path) -> dict:
     return {"created": [str(p) for p in init_workspace(state.parent)]}
 
 
-def status(state: Path) -> dict:
+def status(state: Path, problem_id: str | None = None, *, offset: int = 0, limit: int = 20) -> dict:
+    """Paginated orientation for a human or external harness, without full bodies."""
+    problems = store.list_dossiers(state)
+    if problem_id:
+        store.require_dossier(state, problem_id)
+        problems = [p for p in problems if p.id == problem_id]
+    views = list_objects(state, problem_id)
     return {
         "state_dir": str(state),
-        "problems": len(store.list_dossiers(state)),
-        "objects": len(Ledger(state).objects()),
+        "problems": len(problems),
+        "objects": len(views),
+        "problem_summaries": [
+            {"id": p.id, "title": p.title[:400], "ref": f"{p.id}:problem:{p.id}"}
+            for p in problems[offset : offset + limit]
+        ],
+        "object_summaries": [
+            {
+                "ref": v.object.qualified_id,
+                "authority": v.authority,
+                "verification": v.verification,
+                "freshness": v.freshness,
+                "research_state": v.object.research_state,
+            }
+            for v in views[offset : offset + limit]
+        ],
+        "offset": offset,
+        "limit": limit,
+        "truncated": offset > 0 or max(len(problems), len(views)) > offset + limit,
     }
 
 
