@@ -209,10 +209,17 @@ class LeanChecker:
         declaration: str,
         frozen: FrozenManifest,
         log_path: Path,
+        *,
+        expected_type: str | None = None,
     ) -> FormalCheckResult:
         root = repo_root(repo)
         validate_name(module)
         validate_name(declaration)
+        if expected_type is not None and (
+            len(expected_type) > 2000
+            or not re.fullmatch(r"[A-Za-z0-9_'.() :∀→ℕℤℚℝ,+-]+", expected_type)
+        ):
+            raise ValueError("Expected a restricted type ascription, not Lean commands")
         log_path = log_path.resolve()
         # Logs cannot overwrite a source, lock file, or a file inside the checked repository.
         if log_path.is_relative_to(root):
@@ -246,6 +253,8 @@ class LeanChecker:
                         probe_text = (
                             f"import {module}\n#check {declaration}\n#print axioms {declaration}\n"
                         )
+                        if expected_type is not None:
+                            probe_text += f"#check ({declaration} : {expected_type})\n"
                         probe = self._run(
                             [str(self.lake), "env", "lean", "--stdin"], root, env, log, probe_text
                         )
