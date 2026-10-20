@@ -1,45 +1,60 @@
-"""Small core configuration. Old runtime keys remain readable, never executed."""
+"""Versioned research workspace metadata, independent of tool/runtime settings.
 
-from importlib.resources import files
+Legacy .math-research/config.yaml is preserved as historical data and is never
+used for Agent/provider configuration. Existing ledgers need no write to read.
+"""
+
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, ValidationError
 
-from math_research.core.atomicio import atomic_write_text
+from math_research.core.atomicio import atomic_write_text, file_lock
+from math_research.core.errors import ResearchError
 
-CONFIG_FILENAME = "config.yaml"
-
-
-class OpenConfig(BaseModel):
-    model_config = ConfigDict(extra="allow")
+CONFIG_FILENAME = "workspace.yaml"
 
 
-class ContextConfig(OpenConfig):
-    token_budget: int = Field(default=8000, ge=256, le=200000)
-    top_k: int = Field(default=20, ge=1, le=100)
+class Config(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    workspace_version: Literal[1]
+    name: str = Field(min_length=1, max_length=255)
+    created_at: AwareDatetime
 
 
-class Config(OpenConfig):
-    context: ContextConfig = Field(default_factory=ContextConfig)
-
-
-def default_config() -> Config:
-    return Config()
+def default_config(name: str = "research-workspace") -> Config:
+    return Config(workspace_version=1, name=name, created_at=datetime.now(UTC))
 
 
 def load_config(path: Path) -> Config:
-    return Config.model_validate(yaml.safe_load(path.read_text("utf-8")) or {})
+    try:
+        return Config.model_validate(yaml.safe_load(path.read_text("utf-8-sig")))
+    except (ValidationError, yaml.YAMLError, UnicodeError) as exc:
+        raise ResearchError(
+            "Invalid workspace.yaml: expected workspace_version: 1, name and "
+            "timezone-aware created_at. Preserve history and migrate metadata explicitly."
+        ) from exc
 
 
-def default_config_yaml() -> str:
-    return files("math_research.core").joinpath("default_config.yaml").read_text("utf-8")
+def default_config_yaml(name: str = "research-workspace") -> str:
+    return yaml.safe_dump(default_config(name).model_dump(mode="json"), sort_keys=False)
 
 
-def write_default_config(path: Path) -> None:
-    if not path.exists():
-        atomic_write_text(path, default_config_yaml())
+def write_default_config(path: Path, *, name: str = "research-workspace") -> None:
+    with file_lock(path):
+        if not path.exists():
+            atomic_write_text(path, default_config_yaml(name))
 
 
 def write_config(path: Path, config: Config) -> None:
-    atomic_write_text(path, yaml.safe_dump(config.model_dump(mode="json"), sort_keys=False))
+    with file_lock(path):
+        atomic_write_text(path, yaml.safe_dump(config.model_dump(mode="json"), sort_keys=False))
+
+
+def workspace_config(root: Path) -> Config | None:
+    """None means a legacy/unversioned workspace; reading never migrates it."""
+    path = root / CONFIG_FILENAME
+    return load_config(path) if path.is_file() else None

@@ -29,6 +29,9 @@ def initialize(state: Path) -> dict:
 
 def status(state: Path, problem_id: str | None = None, *, offset: int = 0, limit: int = 20) -> dict:
     """Paginated orientation for a human or external harness, without full bodies."""
+    from math_research.core.config import workspace_config
+
+    metadata = workspace_config(state.parent)
     problems = store.list_dossiers(state)
     if problem_id:
         store.require_dossier(state, problem_id)
@@ -36,6 +39,9 @@ def status(state: Path, problem_id: str | None = None, *, offset: int = 0, limit
     views = list_objects(state, problem_id)
     return {
         "state_dir": str(state),
+        "workspace_root": str(state.parent),
+        "workspace_metadata": metadata.model_dump(mode="json") if metadata else None,
+        "metadata_status": "VERSIONED" if metadata else "LEGACY_UNVERSIONED",
         "problems": len(problems),
         "objects": len(views),
         "problem_summaries": [

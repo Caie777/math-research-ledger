@@ -21,7 +21,8 @@ D:\Projects\structured-math-research\.venv-win\Scripts\python.exe -B D:\Projects
 
 The wrapper imports this checkout's `src`, preserves cwd and requires no activation or
 relative executable paths. To run a fixed workspace manually, append
-`--workspace D:\Projects\structured-math-research`.
+`--workspace D:\Research\math-research`. Open the tool checkout only for development;
+open the Research Workspace for mathematics. The tool checkout no longer hosts active data.
 
 Resolution priority: explicit `--workspace` > `SMR_WORKSPACE` > cwd and its ancestors
 containing `.math-research`. A selected missing workspace does not fall through to another
@@ -29,7 +30,7 @@ project. Missing state returns `NO_WORKSPACE` with recovery instructions; MCP ne
 
 ## Normal conversation
 
-Start a fresh Codex session in the research directory (`codex -C .` or open that folder in
+Start a fresh Codex session in the research directory (`codex -C D:\Research\math-research` or open that folder in
 the IDE/desktop). Ask: “继续 PROBLEM-0001 的研究，先了解目前做到哪里。” Replace the example ID
 with an existing Problem. Codex should read status and bounded context before substantive
 work, return a complete Episode at the end, or stage one useful provisional note.
@@ -95,6 +96,10 @@ was created before registration and has not been refreshed; actual desktop/IDE t
 and child cwd have **not** been independently observed. Start a new session/reload that surface
 and confirm tools before real work. If a host starts outside the project, use an explicit
 absolute `--workspace` or `SMR_WORKSPACE` for that registration instead of assuming its cwd.
+
+The later corpus cutover, additive root metadata and post-cutover validation are documented
+in [Research Workspaces](research-workspaces.md). The earlier synthetic fixture evidence
+above remains a historical test snapshot.
 
 On this Windows environment the restricted execution sandbox blocks asyncio's local socket
 pair before MCP startup. Transport tests and Codex smoke ran with local IPC permitted. This

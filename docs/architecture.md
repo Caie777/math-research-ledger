@@ -21,6 +21,11 @@ ObjectRef(problem_id, kind, object_id) formats as scope:kind:id; global identiti
 
 ManifestEntry preserves full typed record, available full proof/source body, provenance and artifact refs. content_hash is deterministic SHA-256 over semantic record/body/exact artifacts, excluding creation/update/import timestamps. version additionally fingerprints typed dependency declarations. It is not a primary ID. Raw artifact SHA-256 remains separate.
 
+Workspace-local artifact paths enter version/source-version hashes as `.math-research/...`,
+so copying a corpus to another root preserves derived identity. Returned operational paths
+resolve in the current workspace. Historical absolute strings inside records/provenance
+are unchanged; external formal repository identities remain explicit.
+
 New formal bundles, verification receipts, review reports, dependencies, requests and acceptances use additive JSONL under .math-research/ledger/. Bundle revisions append; latest projects current content. Verification preserves full per-object version snapshots and referenced artifact bytes; Definition revisions through the service retain full old/new snapshots under ledger/versions/<problem>/definition/<id>/ before updating the typed YAML list. There is no universal blob store.
 
 ## Dependencies and freshness
@@ -58,6 +63,13 @@ TRUSTED is current human-accepted hard evidence in its stated scope. PROVISIONAL
 External harnesses consume packets and return standard Research Episodes. Ingestion preserves exact UTF-8 bytes, source spans, full bodies, failed routes and provisional identities. Preview is read-only; duplicate import is content-idempotent; parse/validation precedes archive writes. Human canonicalization, checking and acceptance are independent. Episode input_versions pin only explicitly declared Uses/proof targets, including after canonicalization.
 
 ## Compatibility and limits
+
+Tool and Research Workspace are separate roots. The workspace contains the full corpus,
+including optional human papers/notes/experiments outside `.math-research`. Active root
+`workspace.yaml` has strict version/name/created_at metadata. Legacy `.math-research/config.yaml`
+is an opaque historical file, with no runtime/Agent/provider consumers. Reading never migrates;
+explicit `smr init` adds root metadata and packaged research instructions, preserving old files.
+See [workspace configuration and backup](research-workspaces.md).
 
 Existing .math-research requires no migration or writes to read. Both archive layouts, canonical records, source-digest evidence, relation decisions, rejected work, full proofs and run assets remain readable. Source-digest acceptance validation is a pure compatibility guard; generation/scout runtimes are gone. Retained assets keep identity/integrity/retention APIs without an executor.
 

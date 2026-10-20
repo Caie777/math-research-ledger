@@ -1,4 +1,0 @@
-# External harnesses own generation/runtime settings.
-context:
-  token_budget: 8000
-  top_k: 20

@@ -1,8 +1,7 @@
-# Personal research state and immutable migration backup; never publish.
+# Guard against accidentally creating research state in the tool checkout.
 /.math-research/
-/.opentorus/
+/workspace.yaml
 .research-migration-*/
-/papers/
 /.architecture-audit/
 /.research-operator/
 /.idea/

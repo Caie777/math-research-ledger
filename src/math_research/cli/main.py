@@ -7,6 +7,7 @@ from pathlib import Path
 import typer
 from pydantic import BaseModel
 
+from math_research.core.config import workspace_config
 from math_research.core.errors import ResearchError
 from math_research.core.paths import WORKSPACE_DIRNAME, find_workspace_root
 from math_research.core.refs import ObjectRef
@@ -63,8 +64,10 @@ def main(ctx: typer.Context, workspace: Path = typer.Option(Path("."), "--worksp
     ctx.obj = (
         root
         if root.name == WORKSPACE_DIRNAME
-        else (find_workspace_root(root) or root) / WORKSPACE_DIRNAME
+        else (root if ctx.invoked_subcommand == "init" else find_workspace_root(root) or root)
+        / WORKSPACE_DIRNAME
     )
+    workspace_config(ctx.obj.parent)
 
 
 def state(ctx):

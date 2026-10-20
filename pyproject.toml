@@ -31,7 +31,7 @@ where = ["src"]
 namespaces = false
 
 [tool.setuptools.package-data]
-"math_research.core" = ["default_config.yaml"]
+"math_research.core" = ["research_agents.md"]
 
 [tool.setuptools.dynamic]
 version = { attr = "math_research.__version__" }

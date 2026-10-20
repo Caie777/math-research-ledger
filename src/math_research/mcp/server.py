@@ -10,6 +10,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from math_research.core.config import workspace_config
 from math_research.core.errors import ResearchError
 from math_research.mcp.adapter import DESCRIPTIONS, MAX_OUTPUT_BYTES, SCHEMAS, LedgerAdapter
 
@@ -37,11 +38,13 @@ def resolve_workspace(
         root = root.resolve()
         state = root if root.name == ".math-research" else root / ".math-research"
         if state.is_dir():
+            workspace_config(state.parent)  # Read-only version/schema validation when present.
             return state
         raise WorkspaceError("Selected workspace has no .math-research directory.")
     for root in (here.resolve(), *here.resolve().parents):
         state = root if root.name == ".math-research" else root / ".math-research"
         if state.is_dir():
+            workspace_config(state.parent)
             return state
     raise WorkspaceError("No research workspace found in server cwd or its ancestors.")
 

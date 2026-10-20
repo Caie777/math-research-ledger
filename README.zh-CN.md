@@ -9,7 +9,14 @@
 
 不再运行自主 Agent、provider routing、compaction、自定义 sandbox、长期 orchestration 或 React/FastAPI 产品。
 
-正常聊天入口是 Codex，经 MCP 查询和记录研究状态。当前机器已注册 `structured-math-research`；在项目中打开新的 Codex 会话，直接说“继续 PROBLEM-0001 的研究，先了解目前做到哪里”即可。工具参数由 Codex 选择，无需手工拼接。
+开发工具时打开 `D:\Projects\structured-math-research`；做数学时打开
+`D:\Research\math-research`。工具仓库不再包含 active research ledger。Research Workspace
+是完整 corpus：根目录可放 `papers/`、`notes/`、按需的 `experiments/`，并包含 `.math-research/`；
+无需把所有人类资料塞入 ledger，也不按 Problem 拆散现有 corpus。
+
+正常聊天入口是 Codex，经 MCP 查询和记录研究状态。当前机器已注册 `structured-math-research`；
+用 `codex -C D:\Research\math-research` 或在 IDE/desktop 打开该 Research Workspace，
+再直接说“先看当前研究 workspace 的状态”。工具参数由 Codex 选择，无需手工拼接。
 
 一次性安装/注册见 [README](README.md#use-from-codex)；用 `codex mcp list` 和 `codex mcp get structured-math-research --json` 检查配置。CLI 与 IDE/desktop 共用配置，但旧会话需要重新启动；本次真实 host 调用仅在 Codex CLI 完成，desktop 尚未独立验证。详细证据见 [MCP 接入](docs/codex-mcp.md)。
 
@@ -37,3 +44,9 @@ smr --workspace <项目目录> stale report
 - context 预算覆盖 compact JSON；MUST/SHOULD/MAY、缺失及截断显式报告。连必需身份/authority 都放不下时明确报错。
 
 MCP 使用九个顶层 `research_*` tools，各自附有 description 和 JSON schema，无 generic dispatcher。Episode 和单条 note 仅 stage provisional candidates，复用原 Proposal Store。输出（含 SDK text/structured 双份表示）限制在 64 KiB 内，错误结构化返回。没有 model-callable accept、shell、任意 filesystem 或 compiler。workspace 按 `--workspace` → `SMR_WORKSPACE` → cwd 向上发现的顺序解析，不自动 init。详情见 [架构和兼容性](docs/architecture.md)、[Episode 格式](docs/research-episode.md)、[Lean checker](docs/formalization-v0.md)。
+
+新目录中执行 `smr init` 会生成根级 `workspace.yaml`（version/name/created_at）、研究用
+`AGENTS.md` 和空 ledger，不造假研究对象；已有文件不覆盖。旧 workspace 的 runtime config
+保留原字节作为历史数据，不再消费其中的 Agent/provider 字段。备份/version 应独立于工具仓库；
+文本 ledger 可用私有 Git，大 PDF/artifacts 可排除或用 LFS，不要求远端。
+详见 [workspace 布局、迁移与备份](docs/research-workspaces.md)。

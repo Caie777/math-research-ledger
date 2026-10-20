@@ -59,6 +59,29 @@ class Ledger:
     def __init__(self, state: Path):
         self.state = state.resolve()
 
+    def _artifact_identity(self, artifact: dict) -> dict:
+        """Bind workspace artifacts by portable location; external repo identity stays exact.
+
+        Returned artifact_refs still hold resolved operational paths for readers.
+        Historical strings inside domain records/provenance are never rewritten.
+        """
+        path = Path(artifact["path"])
+        if path.is_relative_to(self.state):
+            return {**artifact, "path": ".math-research/" + path.relative_to(self.state).as_posix()}
+        return artifact
+
+    def _version_record(self, entry: ManifestEntry) -> dict:
+        value = entry.model_dump(mode="json")
+        value["artifact_refs"] = [self._artifact_identity(a) for a in entry.artifact_refs]
+        missing = {
+            f"Missing artifact: {a['path']}": "Missing artifact: "
+            + self._artifact_identity(a)["path"]
+            for a in entry.artifact_refs
+            if a["sha256"] is None
+        }
+        value["warnings"] = [missing.get(warning, warning) for warning in entry.warnings]
+        return value
+
     def objects(self, problem_id: str | None = None) -> list[ManifestEntry]:
         result: dict[str, ManifestEntry] = {}
         pending: list[tuple[ObjectRef, str, DependencyRole]] = []
@@ -94,7 +117,11 @@ class Ledger:
             entry = ManifestEntry(
                 ref=ref,
                 content_hash=content_hash(
-                    {"record": semantic, "body": body, "artifacts": artifacts}
+                    {
+                        "record": semantic,
+                        "body": body,
+                        "artifacts": [self._artifact_identity(a) for a in artifacts],
+                    }
                 ),
                 research_state=state.research_state if state else "CURRENT",
                 authority=state.authority if state else "CANONICAL",
@@ -451,7 +478,7 @@ class Ledger:
                 if key in entries and key not in selected:
                     selected.add(key)
                     pending.append(key)
-        objects = [entries[key].model_dump(mode="json") for key in sorted(selected)]
+        objects = [self._version_record(entries[key]) for key in sorted(selected)]
         # Human history and pinned edges are part of an exported view, not object IDs.
         history = {}
         for name in ("dependencies", "verifications", "acceptance_requests", "acceptances"):

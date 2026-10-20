@@ -8,6 +8,12 @@ RECORD → bounded context packet → external research → VERIFY → RECORD
 
 Codex, Claude Code or another harness owns generation, coding and search. This package owns typed research memory, deterministic ingestion/retrieval, verification receipts, human authority and derived freshness. It contains no autonomous model loop, provider routing or Web application.
 
+This repository is the **tool**, opened when developing the software. Mathematics happens
+in a separate **Research Workspace**: one complete corpus with papers, notes, optional
+experiments and its `.math-research` ledger under the same root. Human documents may live
+outside the ledger. The existing multi-Problem corpus is at `D:\Research\math-research`;
+the tool checkout has no active ledger. See [workspaces and backups](docs/research-workspaces.md).
+
 ## Use from Codex
 
 Python 3.11+:
@@ -20,14 +26,27 @@ $python = (Resolve-Path .venv-win/Scripts/python.exe).Path
 codex mcp add structured-math-research -- $python -B (Join-Path $PWD 'scripts/smr_mcp.py')
 codex mcp list
 codex mcp get structured-math-research --json
-codex -C .
+codex -C D:\Research\math-research
 ```
 
 In a fresh Codex chat in the research project, ask naturally: “Continue PROBLEM-0001; first tell me where we left off.” The project `AGENTS.md` guides status/context lookup and provisional output capture. Nine tools are directly discoverable through MCP `tools/list`; no dispatcher is needed. Codex owns the conversation. The CLI below is for debugging and trusted human authority, not the primary chat interface.
 
 CLI and IDE/desktop share Codex MCP configuration; start a fresh session after registration. CLI host calls and automatic cwd discovery have been exercised here; the already-open desktop session has not been reloaded or independently verified. See [MCP setup and smoke evidence](docs/codex-mcp.md).
 
-`math-research` aliases `smr`. Without reinstalling entry points, use `python -m math_research.cli`. Initialize a new workspace explicitly with `smr --workspace /path/to/project init`. Missing state never initializes itself through MCP.
+`math-research` aliases `smr`. Without reinstalling entry points, use `python -m math_research.cli`.
+With the tool environment on PATH, initialize a new research directory explicitly:
+
+```powershell
+mkdir D:\Research\riemann-surfaces
+cd D:\Research\riemann-surfaces
+smr init
+```
+
+This creates root `workspace.yaml`, research `AGENTS.md`, `papers/`, `notes/` and empty ledger
+directories. It creates no Claim/Definition/Experiment and preserves existing files. Root
+metadata contains only `workspace_version: 1`, `name`, and `created_at`. Legacy ledgers remain
+readable; explicit init adds metadata without rewriting their old configuration or provenance.
+Missing state never initializes itself through MCP.
 
 References are qualified: `PROBLEM-0001:claim:CLAIM-0001`. Existing disk IDs are unchanged. A Gap is a Claim with `OPEN_GAP`; verifier submissions and research proofs have separate namespaces.
 
@@ -88,3 +107,7 @@ python -m build
 ```
 
 Tests use synthetic temporary stores and fake compiler results. No real-paper formalization is part of the suite. Apache-2.0.
+
+Back up/version the research workspace independently from the tool repository. Text ledger
+data is suitable for private Git; large PDFs/artifacts can be excluded or use Git LFS. A remote
+is optional. Tool upgrades must preserve research history; no backup remote is configured here.

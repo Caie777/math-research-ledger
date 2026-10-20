@@ -54,7 +54,6 @@ def main():
             scope="Integration fixture only, not mathematical verification",
         ),
     )
-    (root / "AGENTS.md").write_bytes((ROOT / "AGENTS.md").read_bytes())
     info = {
         "workspace": str(root),
         "problem_id": problem.id,
