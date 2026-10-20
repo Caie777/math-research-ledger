@@ -15,11 +15,24 @@ def main() -> None:
     parser.add_argument("--repo", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--lake", type=Path, required=True)
+    parser.add_argument(
+        "--configuration-only",
+        action="store_true",
+        help="Seal a blocked checkpoint; never allow API generation",
+    )
     args = parser.parse_args()
     metadata = json.loads((args.output / "setup.json").read_text("utf-8"))
     print(
         json.dumps(
-            execute_benchmark(args.project, args.repo, args.output, metadata, args.lake), indent=2
+            execute_benchmark(
+                args.project,
+                args.repo,
+                args.output,
+                metadata,
+                args.lake,
+                allow_api=not args.configuration_only,
+            ),
+            indent=2,
         )
     )
 

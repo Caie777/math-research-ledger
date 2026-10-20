@@ -14,7 +14,7 @@ import yaml
 from math_research.core.atomicio import atomic_write_text
 from math_research.core.process import run_process
 
-from .agent import FormalBudget, FormalRunState, select_api_provider
+from .agent import APISelection, FormalBudget, FormalRunState, select_api_provider
 from .checker import LeanChecker, code_only, validate_name
 from .freeze import freeze, frozen_source, hash_bytes, source_path
 from .loop import FormalizationLoop
@@ -169,7 +169,15 @@ def seal_run(run_dir: Path) -> str:
     return hash_bytes(data)
 
 
-def execute_benchmark(project: Path, repo: Path, output: Path, metadata: dict, lake: Path) -> dict:
+def execute_benchmark(
+    project: Path,
+    repo: Path,
+    output: Path,
+    metadata: dict,
+    lake: Path,
+    *,
+    allow_api: bool = True,
+) -> dict:
     """One exclusive official-run reservation. No retries or alternate executor fallback."""
     from .freeze import load_freeze
 
@@ -180,6 +188,15 @@ def execute_benchmark(project: Path, repo: Path, output: Path, metadata: dict, l
     run_dir.mkdir(exist_ok=False)
     frozen = load_freeze(output / "frozen-inputs.json")
     selection = select_api_provider(project / ".math-research")
+    if not allow_api and selection.provider is not None:
+        selection = APISelection(
+            None,
+            {
+                **selection.metadata,
+                "status": "BLOCKED_EXTERNAL_APPROVAL",
+                "reason": "Configuration-only mode prohibits API generation",
+            },
+        )
     if selection.provider is not None and not metadata.get("target_type"):
         raise ValueError("An API benchmark requires a frozen target type contract")
     atomic_write_text(output / "provider.json", json.dumps(selection.metadata, indent=2))
@@ -201,7 +218,7 @@ def execute_benchmark(project: Path, repo: Path, output: Path, metadata: dict, l
     if selection.provider is None:
         state = FormalRunState(
             run_id="BLOCKED-API-CONFIGURATION",
-            stop_reason="BLOCKED_API_CONFIGURATION",
+            stop_reason=selection.metadata.get("status", "BLOCKED_API_CONFIGURATION"),
             proof_hashes=workspace.proof_hashes(),
         )
         tools.persist(state)
@@ -265,6 +282,7 @@ def execute_benchmark(project: Path, repo: Path, output: Path, metadata: dict, l
         "stop_reason": state.stop_reason,
         "benchmark_valid": result not in {"BLOCKED", "BENCHMARK_INVALIDATED_BY_INFRA_BUG"},
         "official_run_started": selection.provider is not None,
+        "configuration_only": not allow_api,
         "provider": selection.metadata,
         "statement_identical": True,
         "statement_sha256": frozen.statement.sha256,

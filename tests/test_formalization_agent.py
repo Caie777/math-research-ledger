@@ -489,3 +489,32 @@ def test_official_infra_crash_is_invalidated_not_retried(formal, tmp_path, monke
     assert (out / "run/run-freeze.json").exists()
     with pytest.raises(FileExistsError):
         execute_benchmark(tmp_path, tools.workspace.root, out, metadata, tools.checker.lake)
+
+
+def test_configuration_only_never_generates_even_with_a_provider(formal, tmp_path, monkeypatch):
+    from math_research.formalization import benchmark
+
+    tools, _, _ = formal
+    out = tmp_path / "no-egress"
+    out.mkdir()
+    (out / "frozen-inputs.json").write_text(
+        tools.workspace.frozen.model_dump_json(), encoding="utf-8"
+    )
+    (out / "informal-target.md").write_text("Synthetic", encoding="utf-8")
+    provider = FakeProvider([])
+    monkeypatch.setattr(
+        benchmark,
+        "select_api_provider",
+        lambda *args: APISelection(provider, {"status": "CONFIGURED", "provider": "fake-api"}),
+    )
+    result = execute_benchmark(
+        tmp_path,
+        tools.workspace.root,
+        out,
+        {"declaration": "Bench.target"},
+        tools.checker.lake,
+        allow_api=False,
+    )
+    assert result["result"] == "BLOCKED" and result["configuration_only"]
+    assert result["stop_reason"] == "BLOCKED_EXTERNAL_APPROVAL"
+    assert not provider.messages and result["model_calls"] == 0

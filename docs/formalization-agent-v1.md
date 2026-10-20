@@ -55,6 +55,10 @@ stops `NO_PROGRESS`. Other terminal reasons include `CHECKED`, `BUDGET_EXHAUSTED
 `MODEL_FAILURE`, `TOOL_FAILURE`. Malformed JSON gets one bounded repair opportunity.
 Truncated provider output is not executed as a complete proof.
 
+`--configuration-only` is an explicit no-generation mode. Even a configured API
+provider is blocked before any `generate` call; only a sealed configuration
+checkpoint is produced. It cannot be mistaken for a capability benchmark.
+
 An unfinished run can be reconstructed without resetting budgets or replaying an
 uncertain operation. Official recovery is stricter: an infrastructure crash
 invalidates the experiment. An exclusive reservation prevents an automatic second
