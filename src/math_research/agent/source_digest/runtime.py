@@ -26,9 +26,9 @@ from math_research.agent.source_digest.models import (
 )
 from math_research.agent.source_digest.prompt import DIGEST_PROMPT, STRUCTURE_PROMPT
 from math_research.core.errors import ResearchError
-from math_research.memory.records.write_boundary import automated_research
-from math_research.memory.relations.policy import LOGICAL_RELATIONS
-from math_research.memory.state import KnowledgeStateResolver
+from math_research.ledger.records.write_boundary import automated_research
+from math_research.ledger.relations.policy import LOGICAL_RELATIONS
+from math_research.ledger.state import KnowledgeStateResolver
 from math_research.retrieval.recall import ResearchRecall
 
 

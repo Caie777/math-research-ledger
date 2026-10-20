@@ -12,8 +12,8 @@ from pathlib import Path, PureWindowsPath
 from tempfile import TemporaryDirectory
 
 from math_research.core.errors import ResearchError
-from math_research.memory.archive import source_path
-from math_research.memory.episodes import (
+from math_research.ledger.archive import source_path
+from math_research.ledger.episodes import (
     DecisionKind,
     Proposal,
     ResearchEpisode,
@@ -26,7 +26,7 @@ from math_research.memory.episodes import (
     list_reviews,
     review_candidate,
 )
-from math_research.memory.records import store
+from math_research.ledger.records import store
 from math_research.retrieval.index import IndexDoc, search
 from math_research.retrieval.selection import build_claim_detail
 
@@ -215,7 +215,7 @@ def object_detail(ot_dir: Path, problem_id: str, object_id: str) -> str:
     claim = store.get_claim(ot_dir, problem_id, object_id)
     if claim:
         return build_claim_detail(ot_dir, problem_id, object_id).model_dump_json(indent=2)
-    from math_research.memory.records.counterexamples import get_counterexample, read_counterexample
+    from math_research.ledger.records.counterexamples import get_counterexample, read_counterexample
 
     counterexample = get_counterexample(ot_dir, problem_id, object_id)
     if counterexample:

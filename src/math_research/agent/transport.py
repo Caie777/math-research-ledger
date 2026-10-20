@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 from math_research.core.atomicio import atomic_write_text
 from math_research.core.errors import ResearchError
 from math_research.core.process import hidden_process_kwargs, run_process, spawn_process
-from math_research.memory.records.write_boundary import automated_research
+from math_research.ledger.records.write_boundary import automated_research
 
 _MAX_LOG_CHARS = 200_000
 _MODEL_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}\Z")
@@ -71,7 +71,7 @@ def _codex_env() -> dict[str, str]:
         "APPDATA",
     )
     child = {key: os.environ[key] for key in allowed if key in os.environ}
-    from math_research.memory.records.write_boundary import execution_env
+    from math_research.ledger.records.write_boundary import execution_env
 
     child = execution_env(child)
     # An explicit location also works under restricted Windows tokens for which

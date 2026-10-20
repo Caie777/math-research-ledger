@@ -7,7 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from math_research.memory.target import ResearchTarget
+from math_research.ledger.target import ResearchTarget
 
 StopReason = Literal[
     "COMPLETED", "BUDGET_EXHAUSTED", "USER_STOP", "TOOL_FAILURE", "MODEL_FAILURE", "NO_PROGRESS"

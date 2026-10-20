@@ -6,7 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from math_research.agent.critique.models import CritiqueSettings
-from math_research.memory.episodes import RelationKind
+from math_research.ledger.episodes import RelationKind
 
 
 class Strict(BaseModel):

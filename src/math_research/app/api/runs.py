@@ -26,8 +26,8 @@ from math_research.agent.runtime import (
 )
 from math_research.agent.state import AgentRequest, AgentRun
 from math_research.agent.tools import run_path
-from math_research.memory.handoff import current_research_state
-from math_research.memory.target import ResearchTarget
+from math_research.ledger.handoff import current_research_state
+from math_research.ledger.target import ResearchTarget
 
 
 class RunMetadata(BaseModel):
@@ -187,7 +187,7 @@ def install_agent_routes(app: FastAPI, ot_dir: Path, write_header: Callable) -> 
     @app.get("/api/problems/{problem_id}/research-runs")
     def runs(problem_id: str, metadata_only: bool = False) -> list[AgentRun | RunMetadata]:
         # Persisted runs rebuild UI continuity; polling applies the existing recovery view.
-        from math_research.memory.records import store
+        from math_research.ledger.records import store
 
         store.require_dossier(ot_dir, problem_id)
         result: list[AgentRun | RunMetadata] = []

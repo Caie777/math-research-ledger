@@ -22,9 +22,9 @@ from math_research.agent.state import AgentRequest
 from math_research.app.workflows.episodes import MAX_UPLOAD_BYTES, preview_uploaded_episode
 from math_research.core.atomicio import atomic_write_text, file_lock
 from math_research.core.errors import ResearchError
-from math_research.memory.episodes import ResearchEpisode, parse_candidate_proposals
-from math_research.memory.records import store
-from math_research.memory.target import ResearchTarget
+from math_research.ledger.episodes import ResearchEpisode, parse_candidate_proposals
+from math_research.ledger.records import store
+from math_research.ledger.target import ResearchTarget
 
 IntentName = Literal[
     "CREATE_PROBLEM",

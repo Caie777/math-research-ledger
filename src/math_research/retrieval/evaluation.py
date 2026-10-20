@@ -23,16 +23,16 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from math_research.app.maintenance.migration import LEGACY_ROOT
 from math_research.core.workspace import init_workspace, workspace_dir
-from math_research.memory.episodes import (
+from math_research.ledger.episodes import (
     Proposal,
     archive_episode,
     review_candidate,
     stage_candidates,
 )
-from math_research.memory.records import store
-from math_research.memory.relations.ledger import active_relations
-from math_research.memory.state import KnowledgeStateResolver
-from math_research.memory.target import ResearchTarget
+from math_research.ledger.records import store
+from math_research.ledger.relations.ledger import active_relations
+from math_research.ledger.state import KnowledgeStateResolver
+from math_research.ledger.target import ResearchTarget
 from math_research.retrieval.context import QueryPurpose, ResearchContextBuilder, estimate_tokens
 from math_research.retrieval.index import IndexDoc, scoped_memory_documents, search_documents
 from math_research.retrieval.recall import ResearchRecall

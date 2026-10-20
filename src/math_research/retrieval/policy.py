@@ -13,9 +13,9 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from math_research.memory.records import store
-from math_research.memory.relations.ledger import active_relations
-from math_research.memory.state import KnowledgeState
+from math_research.ledger.records import store
+from math_research.ledger.relations.ledger import active_relations
+from math_research.ledger.state import KnowledgeState
 from math_research.retrieval.index import IndexDoc, search_documents
 
 

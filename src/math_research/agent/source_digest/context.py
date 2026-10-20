@@ -10,9 +10,9 @@ from pypdf import PdfReader
 
 from math_research.agent.source_digest.models import Locator, SourceChunk, SourceDigestContext
 from math_research.core.errors import ResearchError
-from math_research.memory.records import store
-from math_research.memory.sources import SOURCE_CONNECTOR, read_source
-from math_research.memory.state import KnowledgeStateResolver
+from math_research.ledger.records import store
+from math_research.ledger.sources import SOURCE_CONNECTOR, read_source
+from math_research.ledger.state import KnowledgeStateResolver
 
 MAX_CANDIDATE_CHUNKS = 12
 MAX_CHUNK_CHARS = 10000

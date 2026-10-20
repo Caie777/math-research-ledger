@@ -22,7 +22,7 @@ from math_research.agent.providers.base import (
 from math_research.agent.session import SessionMessage
 from math_research.core.config import Config
 from math_research.core.errors import ProviderError
-from math_research.memory.records.write_boundary import automated_research
+from math_research.ledger.records.write_boundary import automated_research
 
 # Fallback output-token cap when the model config does not set one. 1024 was too
 # low for long proofs/tool arguments; this is configurable via model.max_tokens.

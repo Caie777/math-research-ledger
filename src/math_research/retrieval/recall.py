@@ -14,21 +14,21 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from math_research.core.errors import ResearchError
-from math_research.memory.archive import source_path
-from math_research.memory.episodes import list_candidates, list_episodes
-from math_research.memory.records import store
-from math_research.memory.records.counterexamples import read_counterexample
-from math_research.memory.records.models import (
+from math_research.ledger.archive import source_path
+from math_research.ledger.episodes import list_candidates, list_episodes
+from math_research.ledger.records import store
+from math_research.ledger.records.counterexamples import read_counterexample
+from math_research.ledger.records.models import (
     Approach,
     ClaimRecord,
     EvidenceRecord,
     FailedAttempt,
     ProofAttempt,
 )
-from math_research.memory.relations.ledger import active_relations
-from math_research.memory.relations.policy import LOGICAL_RELATIONS
-from math_research.memory.state import KnowledgeState, KnowledgeStateResolver
-from math_research.memory.target import ResearchTarget
+from math_research.ledger.relations.ledger import active_relations
+from math_research.ledger.relations.policy import LOGICAL_RELATIONS
+from math_research.ledger.state import KnowledgeState, KnowledgeStateResolver
+from math_research.ledger.target import ResearchTarget
 from math_research.retrieval.context import (
     QueryPurpose,
     ResearchContextBuilder,
@@ -200,7 +200,7 @@ class ResearchRecall:
             candidate = next(
                 c for c in list_candidates(self.ot_dir, pid) if c.object_id == artifact_id
             )
-            from math_research.memory.episodes import list_reviews
+            from math_research.ledger.episodes import list_reviews
 
             review = next(
                 (
@@ -220,11 +220,11 @@ class ResearchRecall:
                 raise MemoryObjectNotFound("No original file reader for this artifact kind.")
             raise ResearchError("No original file for this artifact.")
         if kind == "dossier:episode":
-            from math_research.app.workflows.episodes import episode_source
+            from math_research.ledger.readers import episode_source
 
             episode_source(self.ot_dir, pid, artifact_id)  # source SHA gate
         if kind == "dossier:source":
-            from math_research.memory.sources import read_source
+            from math_research.ledger.sources import read_source
 
             _, _, raw = read_source(self.ot_dir, pid, artifact_id)
             return file, raw
@@ -290,7 +290,7 @@ class ResearchRecall:
             )
             provenance.extend([ep.episode_id, f"SHA-256:{ep.content_sha256}", ep.provenance or ""])
         elif doc.artifact_type == "dossier:source":
-            from math_research.memory.sources import read_source
+            from math_research.ledger.sources import read_source
 
             assert pid is not None
             try:
@@ -304,7 +304,7 @@ class ResearchRecall:
             assert pid is not None
             proof = next(p for p in store.list_proof_attempts(self.ot_dir, pid) if p.id == ident)
             role = proof.conclusion_relation
-            from math_research.app.workflows.episodes import read_full_proof
+            from math_research.ledger.readers import read_full_proof
 
             try:
                 _, path = read_full_proof(self.ot_dir, pid, ident)
@@ -587,7 +587,7 @@ class ResearchRecall:
                     and proof.conclusion_relation == "PROVES"
                     and target.research_state in {"CURRENT", "RESOLVED"}
                 ):
-                    from math_research.app.workflows.episodes import read_full_proof
+                    from math_research.ledger.readers import read_full_proof
 
                     try:
                         body, proof_path = read_full_proof(self.ot_dir, pid, proof.id)

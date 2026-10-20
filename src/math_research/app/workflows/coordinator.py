@@ -24,9 +24,9 @@ from math_research.agent.state import AgentRequest, AgentRun
 from math_research.app.workflows.actions import load_research_defaults
 from math_research.app.workflows.portfolio import research_portfolio, saved_progress
 from math_research.core.errors import ResearchError
-from math_research.memory.handoff import current_research_state
-from math_research.memory.records import store
-from math_research.memory.target import ResearchTarget
+from math_research.ledger.handoff import current_research_state
+from math_research.ledger.records import store
+from math_research.ledger.target import ResearchTarget
 from math_research.retrieval.recall import ResearchRecall
 
 ToolName = Literal[
@@ -281,7 +281,7 @@ class Coordinator:
         """Queries can inspect closed targets too; mutation eligibility is separate."""
         ref = action.target_ref
         if ref:
-            from math_research.memory.episodes import list_candidates
+            from math_research.ledger.episodes import list_candidates
 
             owners = [
                 p.id

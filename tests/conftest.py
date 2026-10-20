@@ -8,8 +8,8 @@ from fastapi.testclient import TestClient
 from math_research.agent.state import AgentRequest
 from math_research.app.api.server import create_app
 from math_research.core.workspace import init_workspace, workspace_dir
-from math_research.memory.records import claims, store
-from math_research.memory.target import ResearchTarget
+from math_research.ledger.records import claims, store
+from math_research.ledger.target import ResearchTarget
 
 
 @pytest.fixture

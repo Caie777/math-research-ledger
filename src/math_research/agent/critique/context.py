@@ -11,10 +11,10 @@ from pydantic import BaseModel
 
 from math_research.agent.critique.models import ContextItem, CritiqueBundle
 from math_research.core.errors import ResearchError
-from math_research.memory.records import store
-from math_research.memory.relations.ledger import active_relations
-from math_research.memory.source_records import get_paper
-from math_research.memory.state import KnowledgeStateResolver
+from math_research.ledger.records import store
+from math_research.ledger.relations.ledger import active_relations
+from math_research.ledger.source_records import get_paper
+from math_research.ledger.state import KnowledgeStateResolver
 from math_research.retrieval.research_map import unique_canonical_target
 
 MAX_CHARS = 100_000

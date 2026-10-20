@@ -78,8 +78,8 @@ from math_research.agent.tooling.base import Tool
 from math_research.agent.tooling.registry import ToolRegistry
 from math_research.core.config import Config, OperatingStyle
 from math_research.core.errors import ProviderError, ResearchError, is_recoverable_tool_parse_error
-from math_research.memory.records.write_boundary import automated_research
-from math_research.memory.scope import threaded_research
+from math_research.ledger.records.write_boundary import automated_research
+from math_research.ledger.scope import threaded_research
 
 # A confirmation callback receives the decision, a human-readable description
 # of the pending action, and an optional session scope (e.g. "external" for all

@@ -31,15 +31,15 @@ from math_research.agent.transport import _codex_env
 from math_research.core.atomicio import atomic_write_text
 from math_research.core.errors import RecoverableToolError, ResearchError
 from math_research.core.process import hidden_process_kwargs, run_process
-from math_research.memory.assets import (
+from math_research.ledger.assets import (
     AssetNotFoundError,
     AssetNotRetainedError,
     find_research_assets,
     read_research_asset,
 )
-from math_research.memory.decomposition import has_numbered_headings
-from math_research.memory.handoff import ensure_handoff
-from math_research.memory.records.write_boundary import automated_research, execution_env
+from math_research.ledger.decomposition import has_numbered_headings
+from math_research.ledger.handoff import ensure_handoff
+from math_research.ledger.records.write_boundary import automated_research, execution_env
 from math_research.retrieval.context import ResearchContextBuilder
 from math_research.retrieval.recall import MemoryObjectNotFound, ResearchRecall
 
@@ -587,7 +587,7 @@ class ResearchTools:
         if not 1 <= page <= len(reader.pages):
             raise ResearchError("Page outside PDF.")
         # Reuse existing parser through a one-page document, never context-fill the full PDF.
-        from math_research.memory.source_reader import parse_structure
+        from math_research.ledger.source_reader import parse_structure
 
         text = reader.pages[page - 1].extract_text() or ""
         structure = parse_structure([text])

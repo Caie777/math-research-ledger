@@ -10,10 +10,10 @@ from pydantic import BaseModel, Field
 
 from math_research.agent.progress import ResearchRunProgress, read_progress
 from math_research.agent.runtime import read_run
-from math_research.memory.episodes import list_candidates, list_episodes, list_reviews
-from math_research.memory.handoff import resolved_work_ids
-from math_research.memory.records import store
-from math_research.memory.state import KnowledgeState, KnowledgeStateResolver
+from math_research.ledger.episodes import list_candidates, list_episodes, list_reviews
+from math_research.ledger.handoff import resolved_work_ids
+from math_research.ledger.records import store
+from math_research.ledger.state import KnowledgeState, KnowledgeStateResolver
 
 
 class TargetSummary(BaseModel):

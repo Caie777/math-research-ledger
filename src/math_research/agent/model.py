@@ -13,7 +13,7 @@ from math_research.agent.session import SessionMessage
 from math_research.agent.transport import CodexCLIExecutor, ResearchBudget
 from math_research.core.config import load_config
 from math_research.core.errors import ResearchError
-from math_research.memory.records.write_boundary import automated_research
+from math_research.ledger.records.write_boundary import automated_research
 
 
 class ModelConfigurationRequired(ResearchError):

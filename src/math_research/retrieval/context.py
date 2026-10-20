@@ -10,11 +10,11 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from math_research.core.errors import ResearchError
-from math_research.memory.episodes import list_candidates, list_episodes, list_reviews
-from math_research.memory.records import store
-from math_research.memory.relations.ledger import active_relations
-from math_research.memory.state import KnowledgeState, KnowledgeStateResolver, research_version
-from math_research.memory.target import ResearchTarget, validate_research_target
+from math_research.ledger.episodes import list_candidates, list_episodes, list_reviews
+from math_research.ledger.records import store
+from math_research.ledger.relations.ledger import active_relations
+from math_research.ledger.state import KnowledgeState, KnowledgeStateResolver, research_version
+from math_research.ledger.target import ResearchTarget, validate_research_target
 from math_research.retrieval.index import IndexDoc, search_documents
 from math_research.retrieval.policy import STALE_STATES, detect_intent
 from math_research.retrieval.related_research import RelatedResearch
@@ -187,7 +187,7 @@ class ResearchContextBuilder:
             raise ResearchError("Provisional target requires include_provisional=true.")
         manifest = build_research_manifest(self.ot_dir, target, related_memory=related_memory)
         candidates = list_candidates(self.ot_dir, pid)
-        from math_research.memory.provisional import episode_local_mapping
+        from math_research.ledger.provisional import episode_local_mapping
 
         local_mappings = {
             eid: episode_local_mapping(self.ot_dir, pid, eid)
@@ -263,7 +263,7 @@ class ResearchContextBuilder:
                 priority += 10
             content, source_path, full_text = material.content, material.source_path, True
             if state.kind == "counterexample" and state.authority == "CANONICAL":
-                from math_research.memory.records.counterexamples import (
+                from math_research.ledger.records.counterexamples import (
                     get_counterexample,
                     read_counterexample,
                 )
@@ -291,7 +291,7 @@ class ResearchContextBuilder:
                 and material.kind != "dossier:provisional"
                 and (material.basis == "textual" or not material.source_path)
             ):
-                from math_research.app.workflows.episodes import read_full_proof
+                from math_research.ledger.readers import read_full_proof
 
                 try:
                     content, path = read_full_proof(self.ot_dir, pid, material.artifact_id)
@@ -502,7 +502,7 @@ class ResearchContextBuilder:
                         reason="Explicit dependency of selected research output",
                     )
                 if dependency_material is None and dep in proof_by_id:
-                    from math_research.app.workflows.episodes import read_full_proof
+                    from math_research.ledger.readers import read_full_proof
 
                     body, path = read_full_proof(self.ot_dir, pid, dep)
                     dependency_material = ResearchMaterial(
@@ -539,7 +539,7 @@ class ResearchContextBuilder:
                 selected.pop(candidate.candidate_id, None)
 
         if explore:
-            from math_research.memory.handoff import current_research_state, resolved_work_ids
+            from math_research.ledger.handoff import current_research_state, resolved_work_ids
 
             projection = current_research_state(
                 self.ot_dir, target, include_provisional=include_provisional, states=states

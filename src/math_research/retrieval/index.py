@@ -21,9 +21,9 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel, Field
 
 from math_research.core.errors import ResearchError
-from math_research.memory.archive import source_path
-from math_research.memory.records.evidence_content import render_evidence
-from math_research.memory.relations.ledger import active_relations
+from math_research.ledger.archive import source_path
+from math_research.ledger.records.evidence_content import render_evidence
+from math_research.ledger.relations.ledger import active_relations
 
 if TYPE_CHECKING:
     from math_research.retrieval.embeddings import Embedder
@@ -93,9 +93,9 @@ def _read_text(path: Path, limit: int = 4000) -> str:
 
 def gather_documents(ot_dir: Path, *, problem_id: str | None = None) -> list[IndexDoc]:
     """Collect indexable documents from all artifact stores (live, not cached)."""
-    from math_research.memory.episodes import list_candidates, list_episodes, list_reviews
-    from math_research.memory.records import store as dossier_store
-    from math_research.memory.source_records import list_papers
+    from math_research.ledger.episodes import list_candidates, list_episodes, list_reviews
+    from math_research.ledger.records import store as dossier_store
+    from math_research.ledger.source_records import list_papers
 
     docs: list[IndexDoc] = []
 
@@ -120,7 +120,7 @@ def gather_documents(ot_dir: Path, *, problem_id: str | None = None) -> list[Ind
         if problem_id is not None and pid != problem_id:
             continue
         dossier_start = len(docs)
-        from math_research.memory.sources import read_source, source_papers
+        from math_research.ledger.sources import read_source, source_papers
 
         for source in source_papers(ot_dir, pid):
             caveats = ["Raw source; no mathematical authority."]
@@ -173,7 +173,7 @@ def gather_documents(ot_dir: Path, *, problem_id: str | None = None) -> list[Ind
                     record_status=proof.status,
                 )
             )
-        from math_research.memory.records.counterexamples import read_counterexample
+        from math_research.ledger.records.counterexamples import read_counterexample
 
         for counterexample in dossier_store.list_counterexamples(ot_dir, pid):
             body, _ = read_counterexample(ot_dir, counterexample)
@@ -312,7 +312,7 @@ def scoped_memory_documents(
     ot_dir: Path, problem_id: str, *, documents: list[IndexDoc] | None = None
 ) -> dict[str, IndexDoc]:
     """Canonical keyed memory view; consumers may reuse a live retrieval snapshot."""
-    from math_research.memory.records import store
+    from math_research.ledger.records import store
 
     store.require_dossier(ot_dir, problem_id)
     docs = documents if documents is not None else gather_documents(ot_dir, problem_id=problem_id)

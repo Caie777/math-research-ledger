@@ -11,7 +11,7 @@ import re
 
 from math_research.agent.providers.base import BaseProvider, OnText, ProviderResponse
 from math_research.agent.session import SessionMessage
-from math_research.memory.records.write_boundary import automated_research
+from math_research.ledger.records.write_boundary import automated_research
 
 
 class MockProvider(BaseProvider):

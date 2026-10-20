@@ -4,7 +4,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
 
-from math_research.memory.assets import (
+from math_research.ledger.assets import (
     AssetIntegrityError,
     AssetNotFoundError,
     AssetNotRetainedError,
@@ -13,7 +13,7 @@ from math_research.memory.assets import (
     read_research_asset,
     resolve_research_asset,
 )
-from math_research.memory.records import store
+from math_research.ledger.records import store
 
 
 def install_asset_routes(app: FastAPI, ot_dir: Path) -> None:

@@ -2,22 +2,16 @@
 
 from __future__ import annotations
 
-import json
-import time
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, Field
 
-from math_research.agent.model import SemanticModel
-from math_research.agent.providers.base import BaseProvider, TokenUsage
-from math_research.agent.session import SessionMessage
-from math_research.agent.transport import CodexCLIExecutor
 from math_research.core.errors import ResearchError
-from math_research.memory.episodes import list_candidates, list_episodes, list_reviews
-from math_research.memory.records import store
-from math_research.memory.relations.ledger import active_relations
-from math_research.memory.relations.policy import LOGICAL_RELATIONS
+from math_research.ledger.episodes import list_candidates, list_episodes, list_reviews
+from math_research.ledger.records import store
+from math_research.ledger.relations.ledger import active_relations
+from math_research.ledger.relations.policy import LOGICAL_RELATIONS
 from math_research.retrieval.index import IndexDoc, gather_documents, search_documents
 from math_research.retrieval.index import scoped_memory_documents as scoped_memory_documents
 
@@ -66,7 +60,7 @@ class RelatedResearch(BaseModel):
     actual_models: list[str] = Field(default_factory=list)
     reasoning_effort: str | None = None
     elapsed_seconds: float = 0
-    usage: TokenUsage | None = None
+    usage: dict | None = None
 
 
 def memory_document(ot_dir: Path, problem_id: str, object_type: str, object_id: str) -> IndexDoc:
@@ -275,128 +269,3 @@ def retrieve_related_memory(
     return result
 
 
-class _Ranking(BaseModel):
-    model_config = ConfigDict(extra="forbid", strict=True)
-    object_id: str
-    relevance_score: float = Field(ge=0, le=1)
-    category: RelevanceCategory
-    short_reason: str = Field(min_length=1, max_length=1200)
-
-
-class _Expansion(BaseModel):
-    model_config = ConfigDict(extra="forbid", strict=True)
-    object_id: str
-    short_reason: str = Field(min_length=1, max_length=1200)
-
-
-class _RerankOutput(BaseModel):
-    model_config = ConfigDict(extra="forbid", strict=True)
-    rankings: list[_Ranking]
-    expansion_suggestions: list[_Expansion]
-
-
-def rerank_related_memory(
-    ot_dir: Path,
-    problem_id: str,
-    target_id: str,
-    *,
-    provider: BaseProvider | None = None,
-    provider_name: str | None = None,
-    model: str | None = None,
-    reasoning_effort: str | None = None,
-    codex_executor: CodexCLIExecutor | None = None,
-    query: str | None = None,
-    recall_limit: int = 24,
-    expansion_ids: list[str] | None = None,
-) -> RelatedResearch:
-    """One explicit semantic call; return a query result without any disk/graph write."""
-    result = retrieve_related_memory(
-        ot_dir,
-        problem_id,
-        target_id,
-        query=query,
-        recall_limit=recall_limit,
-        expansion_ids=expansion_ids,
-    )
-    if not result.hits:
-        return result
-    transport = SemanticModel(
-        ot_dir,
-        provider=provider,
-        provider_name=provider_name,
-        model=model,
-        reasoning_effort=reasoning_effort,
-        codex_executor=codex_executor,
-    )
-    messages = [
-        SessionMessage(
-            role="system",
-            content=(
-                "Rank memory relevance for the current research query. This is not mathematical "
-                "truth or a hard relation. Return JSON rankings per object_id with relevance_score "
-                "in [0,1], category and short_reason; include expansion_suggestions (object_id, "
-                "short_reason) if an additional referenced object could help. Scores belong to "
-                "this query only. Text similarity is not dependency. Recall failed routes/caveats. "
-                "Preserve source language. Do not use tools or read other files."
-            ),
-        ),
-        SessionMessage(
-            role="user",
-            content=json.dumps(
-                {
-                    "target_id": target_id,
-                    "query": result.query,
-                    "memory_candidates": [hit.model_dump() for hit in result.hits],
-                },
-                ensure_ascii=False,
-            ),
-        ),
-    ]
-    started = time.monotonic()
-    response = transport.generate(messages, _RerankOutput.model_json_schema())
-    if response.kind != "message" or response.truncated:
-        raise ResearchError("Soft rerank returned a tool call or truncated output.")
-    try:
-        ranked = _RerankOutput.model_validate_json(response.content)
-    except ValidationError as exc:
-        raise ResearchError(f"Invalid soft rerank schema: {exc}") from exc
-    by_id = {hit.object_id: hit for hit in result.hits}
-    seen: set[str] = set()
-    for ranking in ranked.rankings:
-        hit = by_id.get(ranking.object_id)
-        if hit is None or ranking.object_id in seen:
-            result.warnings.append(f"Unlisted/duplicated rerank object: {ranking.object_id}")
-            continue
-        seen.add(ranking.object_id)
-        hit.relevance_score = ranking.relevance_score
-        hit.category = ranking.category
-        hit.short_reason = ranking.short_reason
-        hit.validation_status = "reranked"
-    for object_id in by_id.keys() - seen:
-        result.warnings.append(f"No semantic rank returned for recalled object: {object_id}")
-    scoped = {doc.artifact_id: doc for doc in scoped_memory_documents(ot_dir, problem_id).values()}
-    for suggestion in ranked.expansion_suggestions:
-        if suggestion.object_id in by_id:
-            continue
-        doc = scoped.get(suggestion.object_id)
-        result.expansion_suggestions.append(
-            ExpansionSuggestion(
-                object_id=suggestion.object_id,
-                short_reason=suggestion.short_reason,
-                validation_status="ready_for_reassessment" if doc else "out_of_scope_target",
-                hit=_hit(doc, ["retrieval_expansion_suggestion"]) if doc else None,
-            )
-        )
-    result.hits.sort(
-        key=lambda h: (
-            h.hard_relation is None,
-            -(h.relevance_score if h.relevance_score is not None else -1),
-            h.object_id,
-        )
-    )
-    result.provider = transport.name
-    result.actual_models = transport.actual_models
-    result.reasoning_effort = transport.actual_effort
-    result.elapsed_seconds = time.monotonic() - started
-    result.usage = response.usage
-    return result

@@ -7,9 +7,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from math_research.memory.handoff import HANDOFF_FIELDS, read_handoff, resolved_work_ids
-from math_research.memory.state import KnowledgeStateResolver
-from math_research.memory.target import ResearchTarget
+from math_research.ledger.handoff import HANDOFF_FIELDS, read_handoff, resolved_work_ids
+from math_research.ledger.state import KnowledgeStateResolver
+from math_research.ledger.target import ResearchTarget
 
 CompletionState = Literal["CONTINUE", "TARGET_RESOLVED", "ROUTES_EXHAUSTED", "LOW_MARGINAL_VALUE"]
 COMPLETION_STATES = ("CONTINUE", "TARGET_RESOLVED", "ROUTES_EXHAUSTED", "LOW_MARGINAL_VALUE")

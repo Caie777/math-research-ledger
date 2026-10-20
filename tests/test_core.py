@@ -11,9 +11,9 @@ from math_research.agent.progress import read_progress
 from math_research.agent.providers.base import BaseProvider, ProviderResponse
 from math_research.agent.runtime import execute_run, prepare_run, run_directory
 from math_research.app import model_settings
-from math_research.memory.episodes import list_candidates, list_episodes, review_candidate
-from math_research.memory.records import store
-from math_research.memory.state import KnowledgeStateResolver
+from math_research.ledger.episodes import list_candidates, list_episodes, review_candidate
+from math_research.ledger.records import store
+from math_research.ledger.state import KnowledgeStateResolver
 from math_research.retrieval.context import ResearchContextBuilder
 from math_research.retrieval.recall import ResearchRecall
 

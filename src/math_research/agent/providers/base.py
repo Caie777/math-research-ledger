@@ -14,7 +14,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from math_research.agent.session import SessionMessage
-from math_research.memory.records.write_boundary import automated_research
+from math_research.ledger.records.write_boundary import automated_research
 
 # Called with each incremental text chunk of a streamed message response.
 OnText = Callable[[str], None]

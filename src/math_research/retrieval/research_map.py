@@ -11,11 +11,11 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from math_research.memory.episodes import list_candidates
-from math_research.memory.records import store
-from math_research.memory.relations.edges import list_edges
-from math_research.memory.relations.ledger import active_relations
-from math_research.memory.state import Authority, KnowledgeState, KnowledgeStateResolver
+from math_research.ledger.episodes import list_candidates
+from math_research.ledger.records import store
+from math_research.ledger.relations.edges import list_edges
+from math_research.ledger.relations.ledger import active_relations
+from math_research.ledger.state import Authority, KnowledgeState, KnowledgeStateResolver
 
 NodeType = Literal[
     "problem", "claim", "gap", "proof", "counterexample", "evidence", "failed_attempt"

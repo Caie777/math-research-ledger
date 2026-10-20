@@ -13,7 +13,7 @@ from math_research.agent.runtime import execute_run, prepare_run, run_directory
 from math_research.agent.state import AgentRequest
 from math_research.agent.tools import ResearchTools
 from math_research.core.errors import ResearchError
-from math_research.memory.assets import (
+from math_research.ledger.assets import (
     AssetIntegrityError,
     AssetNotFoundError,
     AssetNotRetainedError,
@@ -31,15 +31,15 @@ from math_research.memory.assets import (
     read_research_asset,
     resolve_research_asset,
 )
-from math_research.memory.episodes import (
+from math_research.ledger.episodes import (
     archive_episode,
     extract_candidates,
     list_reviews,
     review_candidate,
 )
-from math_research.memory.records import claims, store
-from math_research.memory.state import KnowledgeStateResolver
-from math_research.memory.target import ResearchTarget
+from math_research.ledger.records import claims, store
+from math_research.ledger.state import KnowledgeStateResolver
+from math_research.ledger.target import ResearchTarget
 
 OLD = "AGENT-" + "A" * 16
 NEW = "AGENT-" + "B" * 16

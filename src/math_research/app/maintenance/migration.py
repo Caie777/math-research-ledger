@@ -64,13 +64,13 @@ def semantic_snapshot(base: Path) -> dict:
     """Exercise Records, Resolver, raw Archive, Recall and recovery without a model."""
     from math_research.agent.runtime import recovery_status
     from math_research.agent.state import AgentRun
-    from math_research.memory.archive import _verified_bytes
-    from math_research.memory.episodes import list_candidates, list_episodes, list_reviews
-    from math_research.memory.handoff import current_research_state
-    from math_research.memory.records import store
-    from math_research.memory.relations.ledger import active_relations
-    from math_research.memory.state import KnowledgeStateResolver
-    from math_research.memory.target import ResearchTarget
+    from math_research.ledger.archive import _verified_bytes
+    from math_research.ledger.episodes import list_candidates, list_episodes, list_reviews
+    from math_research.ledger.handoff import current_research_state
+    from math_research.ledger.records import store
+    from math_research.ledger.relations.ledger import active_relations
+    from math_research.ledger.state import KnowledgeStateResolver
+    from math_research.ledger.target import ResearchTarget
     from math_research.retrieval.recall import ResearchRecall
 
     def dump(value):

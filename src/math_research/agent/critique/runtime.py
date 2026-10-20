@@ -15,7 +15,7 @@ from math_research.agent.model import SemanticModel
 from math_research.agent.providers.base import ProviderResponse
 from math_research.agent.session import SessionMessage
 from math_research.core.errors import ResearchError
-from math_research.memory.records.write_boundary import automated_research
+from math_research.ledger.records.write_boundary import automated_research
 
 
 class Transport(Protocol):

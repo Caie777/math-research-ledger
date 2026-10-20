@@ -11,13 +11,13 @@ from math_research.agent.critique import store as critique_store
 from math_research.agent.source_digest import store as digest_store
 from math_research.agent.state import AgentRun
 from math_research.core.errors import ResearchError
-from math_research.memory.episodes import Proposal, ReviewDecision, list_episodes
-from math_research.memory.records import models, store
-from math_research.memory.relations.ledger import decision_history, list_proposals
-from math_research.memory.relations.models import RelationDecision, RelationProposal
-from math_research.memory.source_records import list_papers
-from math_research.memory.sources import read_source, source_papers
-from math_research.memory.target import validate_research_target
+from math_research.ledger.episodes import Proposal, ReviewDecision, list_episodes
+from math_research.ledger.records import models, store
+from math_research.ledger.relations.ledger import decision_history, list_proposals
+from math_research.ledger.relations.models import RelationDecision, RelationProposal
+from math_research.ledger.source_records import list_papers
+from math_research.ledger.sources import read_source, source_papers
+from math_research.ledger.target import validate_research_target
 
 RecordT = TypeVar("RecordT", bound=BaseModel)
 CanonicalRecord: TypeAlias = (

@@ -55,11 +55,11 @@ from math_research.agent.tools import (
 from math_research.core.config import load_config
 from math_research.core.errors import ResearchError
 from math_research.core.jsonl import append_jsonl
-from math_research.memory.assets import publish_asset_manifest
-from math_research.memory.decomposition import has_numbered_headings
-from math_research.memory.episodes import archive_episode, extract_candidates
-from math_research.memory.handoff import ensure_handoff
-from math_research.memory.records.write_boundary import automated_research
+from math_research.ledger.assets import publish_asset_manifest
+from math_research.ledger.decomposition import has_numbered_headings
+from math_research.ledger.episodes import archive_episode, extract_candidates
+from math_research.ledger.handoff import ensure_handoff
+from math_research.ledger.records.write_boundary import automated_research
 from math_research.retrieval.context import ResearchContextBuilder, estimate_tokens
 
 

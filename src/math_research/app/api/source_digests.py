@@ -19,7 +19,7 @@ from math_research.agent.source_digest.models import (
     Strict,
 )
 from math_research.agent.source_digest.runtime import execute
-from math_research.memory.sources import source_papers
+from math_research.ledger.sources import source_papers
 
 
 class Preflight(Strict):

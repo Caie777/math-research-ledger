@@ -41,7 +41,7 @@ def serve(
 @app.command()
 def status(path: Path = typer.Argument(Path("."))) -> None:
     """Read Problem and Research run counts; never starts a model."""
-    from math_research.memory.records import store
+    from math_research.ledger.records import store
 
     state = state_dir(path)
     typer.echo(f"Problems: {len(store.list_dossiers(state))}")

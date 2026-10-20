@@ -19,15 +19,15 @@ from math_research.agent.source_digest.models import (
 from math_research.core.atomicio import atomic_write_text, file_lock
 from math_research.core.errors import ResearchError
 from math_research.core.jsonl import append_jsonl, read_jsonl
-from math_research.memory.episodes import (
+from math_research.ledger.episodes import (
     Proposal,
     archive_episode,
     list_candidates,
     list_reviews,
     stage_candidates,
 )
-from math_research.memory.records.write_boundary import human_write
-from math_research.memory.sources import read_source
+from math_research.ledger.records.write_boundary import human_write
+from math_research.ledger.sources import read_source
 
 ORIGIN = "source_digest"
 EPISODE_PROVENANCE = "SOURCE_DIGEST:"
@@ -81,7 +81,7 @@ def proposals(ot_dir: Path, run: DigestRun) -> list[SourceProposal]:
         store.directory(ot_dir, run.digest_id) / "locations.jsonl", LocationConfirmation
     )
     reviews = {r.candidate_id: r for r in list_reviews(ot_dir, run.problem_id)}
-    from math_research.memory.relations.ledger import list_pool
+    from math_research.ledger.relations.ledger import list_pool
 
     relation_reviews = {
         p.explicit_candidate_id: p

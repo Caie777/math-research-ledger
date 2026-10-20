@@ -26,12 +26,12 @@ from math_research.app.workflows.actions import preflight_episode
 from math_research.core.config import load_config
 from math_research.core.errors import ResearchError
 from math_research.core.process import hidden_process_kwargs, run_process
-from math_research.memory.archive import _verified_bytes
-from math_research.memory.episodes import Proposal, list_candidates, list_episodes
-from math_research.memory.handoff import current_research_state
-from math_research.memory.records import store
-from math_research.memory.state import KnowledgeStateResolver
-from math_research.memory.target import ResearchTarget
+from math_research.ledger.archive import _verified_bytes
+from math_research.ledger.episodes import Proposal, list_candidates, list_episodes
+from math_research.ledger.handoff import current_research_state
+from math_research.ledger.records import store
+from math_research.ledger.state import KnowledgeStateResolver
+from math_research.ledger.target import ResearchTarget
 from math_research.retrieval.recall import ResearchRecall
 
 RESEARCH_PROTOCOL = "freeze-v1"
@@ -352,7 +352,7 @@ def handoff_pack(ot_dir: Path, pid: str, tid: str) -> bytes:
                 f"{item.research_state}; {item.verification}] {candidate.title}"
             )
     # The original pinned raw papers are scoped source context, never new math objects.
-    from math_research.memory.sources import read_source, source_papers
+    from math_research.ledger.sources import read_source, source_papers
 
     for paper in source_papers(ot_dir, pid):
         try:

@@ -10,16 +10,16 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from math_research.core.errors import ResearchError
-from math_research.memory.archive import source_path
-from math_research.memory.episodes import (
+from math_research.ledger.archive import source_path
+from math_research.ledger.episodes import (
     ResearchEpisode,
     ReviewDecision,
     list_episodes,
     list_reviews,
 )
-from math_research.memory.records import store
-from math_research.memory.records.evidence_content import render_evidence
-from math_research.memory.records.models import (
+from math_research.ledger.records import store
+from math_research.ledger.records.evidence_content import render_evidence
+from math_research.ledger.records.models import (
     Approach,
     ClaimRecord,
     CounterexampleRecord,
@@ -27,11 +27,11 @@ from math_research.memory.records.models import (
     FailedAttempt,
     ProofAttempt,
 )
-from math_research.memory.relations.ledger import active_relations
-from math_research.memory.relations.models import ConfirmedRelation
-from math_research.memory.relations.policy import LOGICAL_RELATIONS
-from math_research.memory.source_records import get_paper
-from math_research.memory.target import ResearchTarget, validate_research_target
+from math_research.ledger.relations.ledger import active_relations
+from math_research.ledger.relations.models import ConfirmedRelation
+from math_research.ledger.relations.policy import LOGICAL_RELATIONS
+from math_research.ledger.source_records import get_paper
+from math_research.ledger.target import ResearchTarget, validate_research_target
 from math_research.retrieval.index import (
     gather_documents,
     scoped_memory_documents,
@@ -404,7 +404,7 @@ def build_research_manifest(
             )
         )
 
-    from math_research.memory.records.counterexamples import read_counterexample
+    from math_research.ledger.records.counterexamples import read_counterexample
 
     direct_approach_ids = {
         a.id
@@ -667,7 +667,7 @@ def build_research_manifest(
         if paper is None:
             continue
         if paper.source_connector == "harness_source":
-            from math_research.memory.sources import read_source
+            from math_research.ledger.sources import read_source
 
             # Explicitly required/cited Sources still fail closed on a SHA mismatch.
             # Optional stale Source navigation must not bypass this content boundary.

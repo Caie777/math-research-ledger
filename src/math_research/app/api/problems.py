@@ -23,8 +23,8 @@ from math_research.app.workflows.episodes import MAX_UPLOAD_BYTES
 from math_research.core.atomicio import file_lock
 from math_research.core.errors import ResearchError
 from math_research.core.jsonl import next_sequential_id
-from math_research.memory.records import claims, store
-from math_research.memory.sources import SourceUpload, save_source, source_papers, validate_source
+from math_research.ledger.records import claims, store
+from math_research.ledger.sources import SourceUpload, save_source, source_papers, validate_source
 from math_research.retrieval.index import IndexDoc
 from math_research.retrieval.recall import ResearchRecall
 from math_research.retrieval.related_research import MemoryHit

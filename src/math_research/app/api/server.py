@@ -31,7 +31,7 @@ from math_research.app.workflows.episodes import (
     review_episode_candidate,
 )
 from math_research.core.errors import ResearchError
-from math_research.memory.episodes import (
+from math_research.ledger.episodes import (
     DecisionKind,
     Proposal,
     ResearchEpisode,
@@ -39,9 +39,9 @@ from math_research.memory.episodes import (
     list_episodes,
     list_reviews,
 )
-from math_research.memory.records import store
-from math_research.memory.records.evidence_content import render_evidence
-from math_research.memory.relations.ledger import (
+from math_research.ledger.records import store
+from math_research.ledger.records.evidence_content import render_evidence
+from math_research.ledger.relations.ledger import (
     active_relations,
     decision_history,
     enroll_explicit,
@@ -52,7 +52,7 @@ from math_research.memory.relations.ledger import (
     list_scout_runs,
     set_policy,
 )
-from math_research.memory.relations.models import (
+from math_research.ledger.relations.models import (
     AdjudicationOutput,
     AdjudicationPolicy,
     AdjudicationRun,
@@ -61,10 +61,10 @@ from math_research.memory.relations.models import (
     RelationProposal,
     ScoutRun,
 )
-from math_research.memory.relations.review import adjudicate_selected, select_adjudication_proposals
-from math_research.memory.relations.scout import scout_episode, select_scout_candidates
-from math_research.memory.state import KnowledgeState, KnowledgeStateResolver
-from math_research.memory.target import ResearchTarget
+from math_research.ledger.relations.review import adjudicate_selected, select_adjudication_proposals
+from math_research.ledger.relations.scout import scout_episode, select_scout_candidates
+from math_research.ledger.state import KnowledgeState, KnowledgeStateResolver
+from math_research.ledger.target import ResearchTarget
 from math_research.retrieval.context import QueryPurpose, ResearchContextBundle
 from math_research.retrieval.index import IndexDoc
 from math_research.retrieval.recall import FileSearchResult, HistoryCheckResult, ResearchRecall
@@ -664,7 +664,7 @@ def create_app(ot_dir: Path) -> FastAPI:
                 **source_fields,
             )
         if kind == "counterexample":
-            from math_research.memory.records.counterexamples import (
+            from math_research.ledger.records.counterexamples import (
                 get_counterexample,
                 read_counterexample,
             )
