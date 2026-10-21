@@ -21,12 +21,13 @@ ObjectRef(problem_id, kind, object_id) formats as scope:kind:id; global identiti
 
 ManifestEntry preserves full typed record, available full proof/source body, provenance and artifact refs. content_hash is deterministic SHA-256 over semantic record/body/exact artifacts, excluding creation/update/import timestamps. version additionally fingerprints typed dependency declarations. It is not a primary ID. Raw artifact SHA-256 remains separate.
 
-Workspace-local artifact paths enter version/source-version hashes as `.math-research/...`,
+Workspace-local artifact paths enter version/source-version hashes using the frozen v1
+identity token `.math-research/...` (not an operational directory selector),
 so copying a corpus to another root preserves derived identity. Returned operational paths
 resolve in the current workspace. Historical absolute strings inside records/provenance
 are unchanged; external formal repository identities remain explicit.
 
-New formal bundles, verification receipts, review reports, dependencies, requests and acceptances use additive JSONL under .math-research/ledger/. Bundle revisions append; latest projects current content. Verification preserves full per-object version snapshots and referenced artifact bytes; Definition revisions through the service retain full old/new snapshots under ledger/versions/<problem>/definition/<id>/ before updating the typed YAML list. There is no universal blob store.
+New formal bundles, verification receipts, review reports, dependencies, requests and acceptances use additive JSONL under .math-research-ledger/ledger/. Bundle revisions append; latest projects current content. Verification preserves full per-object version snapshots and referenced artifact bytes; Definition revisions through the service retain full old/new snapshots under ledger/versions/<problem>/definition/<id>/ before updating the typed YAML list. There is no universal blob store.
 
 ## Dependencies and freshness
 
@@ -65,14 +66,28 @@ External harnesses consume packets and return standard Research Episodes. Ingest
 ## Compatibility and limits
 
 Tool and Research Workspace are separate roots. The workspace contains the full corpus,
-including optional human papers/notes/experiments outside `.math-research`. Active root
+including optional human papers/notes/experiments outside `.math-research-ledger`. Active root
 `workspace.yaml` has strict version/name/created_at metadata. Legacy `.math-research/config.yaml`
 is an opaque historical file, with no runtime/Agent/provider consumers. Reading never migrates;
-explicit `smr init` adds root metadata and packaged research instructions, preserving old files.
+new init uses v2; legacy state needs explicit `math-research-ledger migrate` before init.
+Both operations preserve ordinary files and historical provenance.
 See [workspace configuration and backup](research-workspaces.md).
 
 Existing .math-research requires no migration or writes to read. Both archive layouts, canonical records, source-digest evidence, relation decisions, rejected work, full proofs and run assets remain readable. Source-digest acceptance validation is a pure compatibility guard; generation/scout runtimes are gone. Retained assets keep identity/integrity/retention APIs without an executor.
 
 Unresolved historical references remain explicit, not silently repaired or accepted. Old Python import paths memory/app/formalization are removed. Disk compatibility does not promise old scripts or Web/CLI compatibility.
+
+Workspace v2 changes the private directory to `.math-research-ledger/`; v1 stays readable.
+An offline rename and atomic metadata publication have a rollback journal; interrupted
+migrations fail closed. The harness/user own the workspace/ordinary files; Ledger owns
+only private state and never stages, commits, pushes, or selects research publication.
+
+Checkpoint delta assertions are typed as Added/Revised/Invalidated/Refuted/Still Open,
+with exact source digest and line spans. Next Research Directions are excluded from
+candidate/dependency generation and stay advisory. A delta never grants authority or
+mutates a canonical target by itself. Raw Episode bytes remain complete. Checkpoint
+publication serializes both indexes behind the MCP read lock and a durable rollback
+journal; failed publication retains raw bytes. Interrupted metadata needs trusted-human
+`ingest recover`. No per-turn capture hook or full-ledger rewrite is installed.
 
 MCP exposes nine top-level `research_*` tools: status, search, object windows, context/review packets, stale reports, provisional Episode/note ingestion and pending acceptance requests. `tools/list` provides descriptions and strict schemas; there is no generic dispatcher. External references are strings, resolved to internal ObjectRef values without guessing ambiguous IDs. Episode/note writes reuse the existing archive/Proposal Store, content deduplication, locks and atomic IO. Output, including both SDK representations, is bounded to 64 KiB; review inputs are never silently truncated. Errors include a code and recovery action. There is no compiler, filesystem, shell or human accept. See [Codex integration and validation](codex-mcp.md).

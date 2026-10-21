@@ -1,52 +1,49 @@
-# Structured Math Research
+# MathResearch Ledger
 
-本项目现在是 **Research Ledger + Retrieval/Context + Research Workflow + Verification/Authority system**。
+为长期数学研究 Agent 提供持久研究状态、上下文、依赖追踪与验证层。
 
-```text
-记录 → 有预算的上下文包 → Codex / Claude Code 等外部 Harness 研究
-     → provisional Episode ingest → 审阅 / 检查 → 记录
+MathResearch Ledger 不是另一个研究 Agent runtime。Codex、DeepSeek Harness 或其他
+Harness 负责推理、文献阅读和实验；Ledger 负责研究状态、Research Episode/checkpoint
+历史、精筛召回、版本/来源/依赖、下游失效、验证证据和人工权威边界。
+
+默认关闭，需要时通过 Harness 原生 plugin UI/config 开启。关闭后不参与普通工具选择；
+开启后根据任务调用九个稳定 research_* 工具，不需要每轮点名插件。
+Python import 保留 `math_research`，避免破坏既有集成。
+
+```powershell
+python -m pip install -e '.[mcp]'
+math-research-ledger --workspace 'D:\Math Research' init
 ```
 
-不再运行自主 Agent、provider routing、compaction、自定义 sandbox、长期 orchestration 或 React/FastAPI 产品。
+正式 CLI 为 `math-research-ledger`；`smr`、`math-research` 是 legacy compatibility alias。
+详见 [Codex 接入](docs/codex-mcp.md)、[DeepSeek 一次性 patch](integrations/deepseek-harness/README.md)。
 
-开发工具时打开 `D:\Projects\structured-math-research`；做数学时打开
-`D:\Research\math-research`。工具仓库不再包含 active research ledger。Research Workspace
-是完整 corpus：根目录可放 `papers/`、`notes/`、按需的 `experiments/`，并包含 `.math-research/`；
-无需把所有人类资料塞入 ledger，也不按 Problem 拆散现有 corpus。
+Harness 拥有 workspace，用户拥有普通文件，Ledger 只管理 `.math-research-ledger/`。
+init 幂等创建空状态、workspace.yaml 和 AGENTS.md，不创建假研究对象、不覆盖用户指令、
+不移动或整理普通文件。papers/notes 仅是可选习惯。MCP 不自动初始化缺失 workspace。
 
-正常聊天入口是 Codex，经 MCP 查询和记录研究状态。当前机器已注册 `structured-math-research`；
-用 `codex -C D:\Research\math-research` 或在 IDE/desktop 打开该 Research Workspace，
-再直接说“先看当前研究 workspace 的状态”。工具参数由 Codex 选择，无需手工拼接。
+私有状态、workspace.yaml 和研究 AGENTS.md 默认 local-only。Ledger 不自动 git add、
+commit、push，也不决定公开哪些成果。用户独立 notes repo 只发布用户主动选定的成熟研究。
+[Workspace 与显式迁移](docs/research-workspaces.md)。
 
-一次性安装/注册见 [README](README.md#use-from-codex)；用 `codex mcp list` 和 `codex mcp get structured-math-research --json` 检查配置。CLI 与 IDE/desktop 共用配置，但旧会话需要重新启动；本次真实 host 调用仅在 Codex CLI 完成，desktop 尚未独立验证。详细证据见 [MCP 接入](docs/codex-mcp.md)。
+继续研究先调用 research_status，再为实质工作获取 research_context_packet。
+搜索相关性不等于证据或可信前提；使用前检查对象、版本、来源、freshness、authority 和 verification。
 
-以下 CLI 仅用于 debug 和可信 human authority fallback。入口 `smr`，`math-research` 为别名；未重装时用 `python -m math_research.cli`。
+研究 hot path 保持轻量，在有意义的 checkpoint 一次 ingest 完整 Research Episode：
+Confirmed Research Increment 记录 source-reported typed state_delta；Next Research Directions
+永远 advisory。research_save_note 仅用于少量值得立即保留的单个结果/缺口/失败/证据，
+不要每轮自动记忆。[Episode 合同](docs/research-episode.md)。
 
-```sh
-smr --workspace <项目目录> ledger list
-smr --workspace <项目目录> ledger show PROBLEM-0001:claim:CLAIM-0001
-smr --workspace <项目目录> search "研究问题" --problem PROBLEM-0001
-smr --workspace <项目目录> context export PROBLEM-0001:claim:CLAIM-0001 --budget 8000
-smr --workspace <项目目录> ingest episode PROBLEM-0001 output.md --provenance "外部 Harness/session"
-smr --workspace <项目目录> review packet PROBLEM-0001:claim:CLAIM-0001
-smr --workspace <项目目录> acceptance pending
-smr --workspace <项目目录> stale report
-```
+尽量保留、召回时精筛：原始 Episode、完整证明、失败尝试、反例、拒绝/延后路线、来源、
+修订历史都保留。优先优化 retrieval、context budget 和 derived views，不激进删除历史。
 
-示例 ID 必须替换为实际记录。所有入口调用共享 deterministic services。
+- checked != accepted；canonical != verified。
+- 模型不能给自己 authority；人工 acceptance 由服务端 gate 强制。
+- soft review 是 advisory；stale 是当前派生状态，历史 receipt 保留。
+- Episode 是状态增量；报告 Revised/Refuted/Invalidated 不自动修改 canonical 对象。
+- 同一个 workspace ledger 可跨 Harness 和会话使用，不维护第二套状态。
 
-- 保留领域 typed models；manifest 统一暴露 scoped ref、content hash、version、依赖、provenance、artifacts 和独立状态。
-- 不迁移历史 ID。旧 YAML/JSONL/Markdown 直接读取；新 collections 位于 additive ledger/。
-- canonical 不等于 verified；checked 不等于 accepted；working premise 不等于 trusted formal premise。
-- Soft Review 永远 advisory；NO_GAP_FOUND 不会授予 authority。
-- 真正接受走可信 human CLI；formal acceptance 要求 correspondence。MCP 只提供 `research_request_acceptance`。
-- freshness 根据版本/依赖派生，历史 receipt 保留。
-- context 预算覆盖 compact JSON；MUST/SHOULD/MAY、缺失及截断显式报告。连必需身份/authority 都放不下时明确报错。
-
-MCP 使用九个顶层 `research_*` tools，各自附有 description 和 JSON schema，无 generic dispatcher。Episode 和单条 note 仅 stage provisional candidates，复用原 Proposal Store。输出（含 SDK text/structured 双份表示）限制在 64 KiB 内，错误结构化返回。没有 model-callable accept、shell、任意 filesystem 或 compiler。workspace 按 `--workspace` → `SMR_WORKSPACE` → cwd 向上发现的顺序解析，不自动 init。详情见 [架构和兼容性](docs/architecture.md)、[Episode 格式](docs/research-episode.md)、[Lean checker](docs/formalization-v0.md)。
-
-新目录中执行 `smr init` 会生成根级 `workspace.yaml`（version/name/created_at）、研究用
-`AGENTS.md` 和空 ledger，不造假研究对象；已有文件不覆盖。旧 workspace 的 runtime config
-保留原字节作为历史数据，不再消费其中的 Agent/provider 字段。备份/version 应独立于工具仓库；
-文本 ledger 可用私有 Git，大 PDF/artifacts 可排除或用 LFS，不要求远端。
-详见 [workspace 布局、迁移与备份](docs/research-workspaces.md)。
+开发与构建步骤见 [English README](README.md)，[本轮验收报告](docs/finalization-report.md)
+区分自动测试、真实 host smoke 和未完成事项。项目由 standalone research-agent runtime
+演进为 agent-agnostic ledger/tool layer。
+仓库：[Caie777/math-research-ledger](https://github.com/Caie777/math-research-ledger)。

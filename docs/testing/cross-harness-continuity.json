@@ -1,0 +1,103 @@
+{
+  "synthetic_only": true,
+  "real_research_sent": false,
+  "raw_conversations_included": false,
+  "codex_cli": "0.160.0",
+  "deepseek_harness": "0.2.1-rc.2",
+  "deepseek_auth": "existing Desktop account via deepseek-account; one-shot overlay",
+  "session_a": "fresh Codex app-server, controlled MCP status/context/ingest; no model call",
+  "session_b": "fresh real DeepSeek model; no prior Codex chat history",
+  "session_c": "fresh real Codex model; natural-language orientation only; no prior history",
+  "plugin_on_tools": [
+    "research_context_packet",
+    "research_get_object",
+    "research_ingest_episode",
+    "research_request_acceptance",
+    "research_review_packet",
+    "research_save_note",
+    "research_search",
+    "research_stale_report",
+    "research_status"
+  ],
+  "plugin_off_tools": 0,
+  "deepseek_model_ledger_tools": [
+    "mcp__math-research-ledger__research_context_packet",
+    "mcp__math-research-ledger__research_get_object",
+    "mcp__math-research-ledger__research_ingest_episode",
+    "mcp__math-research-ledger__research_search",
+    "mcp__math-research-ledger__research_status"
+  ],
+  "session_c_ledger_tools": [
+    "research_status",
+    "research_context_packet"
+  ],
+  "version_authority_freshness_provenance_match": true,
+  "object_contracts": [
+    {
+      "ref": "PROBLEM-0001:claim:CLAIM-P93571AD088FE95A7",
+      "version": "e6820ffca25b1d406cfa7f6e03503d08f6e2323c9d89d88891fdc4fd4daeb95c",
+      "authority": "PROVISIONAL",
+      "verification": "NOT_CHECKED",
+      "freshness": "CURRENT",
+      "provenance_sha256": "d9c11dbe61863536186250f72c9c95f698f65c341ae49d5e9d91cc9f84d69b45"
+    },
+    {
+      "ref": "PROBLEM-0001:claim:CLAIM-0001",
+      "version": "edea59d6043d3dcc965fe015efb0342454a77af44f487703acab77910b065cd4",
+      "authority": "CANONICAL",
+      "verification": "PASSED",
+      "freshness": "CURRENT",
+      "provenance_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "ref": "PROBLEM-0001:episode:EPISODE-6E3541285D2A87D5",
+      "version": "bcb04f93394fe6a76e00533199a0fa073ba847462d515f26367c0a2cc6bb8683",
+      "authority": "CANONICAL",
+      "verification": "NOT_CHECKED",
+      "freshness": "CURRENT",
+      "provenance_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "ref": "PROBLEM-0001:episode:EPISODE-22F6DDE4322B6FB7",
+      "version": "7831f83193bcdc0a79abfd7579489bed3de3072eb3651cdc8f71d1dc0ec806a7",
+      "authority": "CANONICAL",
+      "verification": "NOT_CHECKED",
+      "freshness": "CURRENT",
+      "provenance_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "ref": "PROBLEM-0001:gap:CLAIM-PC0597D3183D7E34B",
+      "version": "f9fb233d953d3d1edcf31cf96f7e5570109ba49f74ac21839b29ed0f089f46b5",
+      "authority": "PROVISIONAL",
+      "verification": "NOT_CHECKED",
+      "freshness": "CURRENT",
+      "provenance_sha256": "1f9ac5175916c5d6da1c3db7fed5da30918d1aa54eaea139139c45a64e0e6122"
+    }
+  ],
+  "dependencies": [
+    {
+      "dependent": {
+        "problem_id": "PROBLEM-0001",
+        "kind": "gap",
+        "object_id": "CLAIM-PC0597D3183D7E34B"
+      },
+      "target": {
+        "problem_id": "PROBLEM-0001",
+        "kind": "claim",
+        "object_id": "CLAIM-P93571AD088FE95A7"
+      },
+      "role": "logical_premise",
+      "expected_version": null,
+      "provenance": "existing_record"
+    }
+  ],
+  "source_version": "f72fc269570b215c1cff990f32bef6f0ffdd786f1110a865d132a3088487d3e0",
+  "context_complete": true,
+  "model_b_structured_errors": [
+    "RESEARCH_ERROR"
+  ],
+  "error_note": "A claim-kind ref for a Gap failed explicitly; the model recovered the correctly typed Gap via search. No kind was guessed.",
+  "writes": "A and B only; C read-only; no hard verification, human acceptance or Git operation by models",
+  "codex_off_ordinary_turn": "PASS",
+  "deepseek_off_tool_count": 0
+}

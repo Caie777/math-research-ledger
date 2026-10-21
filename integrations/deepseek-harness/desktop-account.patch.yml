@@ -1,0 +1,15 @@
+# Optional: reuse the existing DSH_HOME Desktop sign-in for a one-shot headless run.
+# No token, API key, sign-out or global settings change belongs in this overlay.
+- id: credentials
+  disabled: false
+- id: authorization
+  disabled: false
+- id: deepseek-account
+  disabled: false
+  config:
+    desktopPlatform: !!js >-
+      process.platform === 'win32' || process.platform === 'darwin' ? process.platform : null
+- id: agent-default-model
+  config:
+    provider: deepseek-account
+    model: deepseek-flash

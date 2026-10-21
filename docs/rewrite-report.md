@@ -1,3 +1,6 @@
+> Historical audit of the earlier runtime-to-ledger cutover. Retained as history;
+> use README.md and codex-mcp.md for current product identity and installation.
+
 # Scope contraction delivery — 2026-10-20
 
 Historical snapshot at `f419a69`. Its MCP skeleton/untested-host statements are

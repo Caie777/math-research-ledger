@@ -1,0 +1,12 @@
+# Opt in per invocation with dsh --profile headless --patch <this file> <task>.
+# Install MathResearch Ledger .[mcp] in the selected Python first.
+- insert:
+    - id: mcp-math-research-ledger
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: math-research-ledger
+        transport: stdio
+        command: !!js process.env.MRL_PYTHON || 'python'
+        args: ['-B', '-m', 'math_research.mcp.server']
+        cwd: !!js process.cwd()
+        failOnStartupError: true
