@@ -125,16 +125,35 @@ def local_ids(text: str) -> list[str]:
     )
 
 
+def checkpoint_heading(line: str) -> str | None:
+    match = re.match(r"^#{1,6}\s+(.+?)\s*#*\s*$", line)
+    if match:
+        title = match.group(1).casefold()
+        if title in {
+            "confirmed research increment",
+            "next research directions",
+            "current research handoff",
+        }:
+            return title
+    return None
+
+
 def mathematical_lines(content: str) -> list[str]:
     """Mask reserved planning blocks while preserving original source line numbers."""
     result = []
     planning = False
+    legacy_handoff = False
     for line in content.splitlines():
-        if line.strip().upper() == "## CURRENT RESEARCH HANDOFF":
+        boundary = checkpoint_heading(line)
+        if boundary in {"next research directions", "current research handoff"}:
             planning = True
-        elif line.startswith("# "):
+        elif boundary == "confirmed research increment":
             planning = False
-        result.append("" if planning else line)
+        elif line.startswith("# ") and planning and legacy_handoff:
+            planning = False
+        if boundary:
+            legacy_handoff = boundary == "current research handoff"
+        result.append("" if planning or boundary else line)
     return result
 
 
@@ -150,8 +169,7 @@ def parse_numbered_episode(content: str) -> tuple[list[NumberedSection], list[Lo
             (
                 i
                 for i in range(start + 1, later_h2)
-                if lines[i].startswith("# ")
-                or lines[i].strip().upper() == "## CURRENT RESEARCH HANDOFF"
+                if lines[i].startswith("# ") or checkpoint_heading(lines[i])
             ),
             later_h2,
         )

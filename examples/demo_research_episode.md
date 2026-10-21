@@ -2,6 +2,8 @@
 
 This tiny example is synthetic and contains no private research data.
 
+# Confirmed Research Increment
+
 ## RESULT-1
 
 **Statement**
@@ -23,3 +25,7 @@ What changes if multiplication is not commutative?
 ## Relations
 
 - PROOF-1 proves RESULT-1
+
+# Next Research Directions
+
+Advisory only: inspect the noncommutative case before making any further claim.

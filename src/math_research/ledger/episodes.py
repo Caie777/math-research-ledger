@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Literal
 
 import yaml
-from pydantic import BaseModel, Field, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from math_research.core.atomicio import file_lock
 from math_research.core.errors import ResearchError
@@ -26,6 +26,7 @@ from math_research.core.jsonl import atomic_append_jsonl, read_jsonl
 from math_research.core.refs import VersionPin
 from math_research.ledger.archive import source_path
 from math_research.ledger.decomposition import (
+    checkpoint_heading,
     has_numbered_headings,
     local_ids,
     mathematical_lines,
@@ -65,6 +66,7 @@ RelationKind = Literal[
     "WEAKENS",
 ]
 DecisionKind = Literal["accept", "reject", "defer"]
+DeltaAction = Literal["Added", "Revised", "Invalidated", "Refuted", "Still Open"]
 
 _HEADING = re.compile(
     r"^## (Claim|Proof|Gap|Failed Attempt|Counterexample|Evidence|Branch)(?::\s*(.*))?$", re.I
@@ -98,6 +100,18 @@ class EpisodeRelationHint(EpisodeDependency):
     relation: RelationKind | Literal["TARGETS"]
 
 
+class EpisodeStateDelta(BaseModel):
+    """Source-reported checkpoint change; never grants authority or mutates a target."""
+
+    model_config = ConfigDict(extra="forbid")
+    action: DeltaAction
+    reference: str = Field(min_length=1, max_length=400)
+    statement: str = Field(min_length=1)
+    source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    start_line: int = Field(ge=1)
+    end_line: int = Field(ge=1)
+
+
 class EpisodeOutputMetadata(BaseModel):
     """Local IDs point to existing full Markdown objects without duplicating text."""
 
@@ -110,6 +124,8 @@ class EpisodeOutputMetadata(BaseModel):
     explicit_dependencies: list[EpisodeDependency] = Field(default_factory=list)
     relation_hints: list[EpisodeRelationHint] = Field(default_factory=list)
     input_versions: list[VersionPin] = Field(default_factory=list)
+    state_delta: list[EpisodeStateDelta] = Field(default_factory=list)
+    next_research_directions: str = ""
 
 
 class ResearchEpisode(EpisodeOutputMetadata):
@@ -291,7 +307,13 @@ def structured_episode_metadata(content: str) -> EpisodeOutputMetadata:
         "counterexamples": {"COUNTEREXAMPLE"},
         "failed_attempts": {"FAILED-ATTEMPT"},
     }
-    declared = {key: metadata[key] for key in EpisodeOutputMetadata.model_fields if key in metadata}
+    declared = {
+        key: metadata[key]
+        for key in EpisodeOutputMetadata.model_fields
+        if key in metadata and key not in {"state_delta", "next_research_directions"}
+    }
+    if "next_research_directions" in metadata:
+        raise ResearchError("Use the Next Research Directions Markdown section, not front matter.")
     try:
         output = EpisodeOutputMetadata.model_validate(declared)
     except ValidationError as exc:
@@ -368,6 +390,85 @@ def _parse_section(lines: list[str]) -> tuple[dict[str, str], str]:
     return fields, "\n".join(lines[offset:]).strip()
 
 
+def checkpoint_metadata(
+    content: str, digest: str, proposals: list[Proposal]
+) -> tuple[list[EpisodeStateDelta], str]:
+    """Recover source assertions deterministically; planning never becomes a delta."""
+    from math_research.ledger.provisional import provisional_object_id
+
+    metadata, offset = _front_matter(content)
+    lines = content.splitlines()
+    planning = False
+    advisory = []
+    for line in lines[offset:]:
+        heading = checkpoint_heading(line)
+        if heading in {"next research directions", "current research handoff"}:
+            planning = True
+        elif heading == "confirmed research increment":
+            planning = False
+        elif planning:
+            advisory.append(line)
+    if "state_delta" in metadata:
+        declared = metadata["state_delta"]
+        if not isinstance(declared, list):
+            raise ResearchError("state_delta must be a list of source-reported changes.")
+        deltas = []
+        for item in declared:
+            if not isinstance(item, dict) or set(item) != {"action", "reference", "statement"}:
+                raise ResearchError("Each state_delta needs only action, reference and statement.")
+            reference = item["reference"]
+            if (
+                isinstance(reference, str)
+                and re.fullmatch(
+                    r"(?:RESULT|PROOF|GAP|EVIDENCE|COUNTEREXAMPLE|REFUTATION|REVISION|FAILED-ATTEMPT|BRANCH)-\d+",
+                    reference,
+                    re.I,
+                )
+                and reference not in {p.local_id for p in proposals}
+            ):
+                raise ResearchError(
+                    "state_delta cannot reference an advisory or absent local object."
+                )
+            deltas.append(
+                EpisodeStateDelta(
+                    **item, source_sha256=digest, start_line=1, end_line=max(1, offset)
+                )
+            )
+    else:
+        deltas = []
+        for candidate in proposals:
+            if candidate.kind == "relation" and candidate.relation not in {
+                "REVISES",
+                "INVALIDATES",
+                "REFUTES",
+            }:
+                continue
+            action: DeltaAction = (
+                "Invalidated"
+                if candidate.relation == "INVALIDATES"
+                else "Refuted"
+                if candidate.kind == "refutation" or candidate.relation == "REFUTES"
+                else "Revised"
+                if candidate.kind == "revision" or candidate.relation == "REVISES"
+                else "Still Open"
+                if candidate.kind == "gap"
+                else "Added"
+            )
+            deltas.append(
+                EpisodeStateDelta(
+                    action=action,
+                    reference=candidate.local_id
+                    or provisional_object_id(candidate)
+                    or candidate.candidate_id,
+                    statement=candidate.body or candidate.title,
+                    source_sha256=digest,
+                    start_line=candidate.start_line,
+                    end_line=candidate.end_line,
+                )
+            )
+    return deltas, "\n".join(advisory).strip()
+
+
 def extract_candidates(ot_dir: Path, episode: ResearchEpisode) -> list[Proposal]:
     """Deterministic, conservative parser; unknown prose remains in the archive."""
     if not episode.problem_id:
@@ -414,7 +515,7 @@ def parse_candidate_proposals(
             (
                 i
                 for i in range(start + 1, end)
-                if lines[i].strip().upper() == "## CURRENT RESEARCH HANDOFF"
+                if checkpoint_heading(lines[i]) or lines[i].startswith("# ")
             ),
             end,
         )

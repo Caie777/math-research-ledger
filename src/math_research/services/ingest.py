@@ -15,6 +15,7 @@ from math_research.ledger.episodes import (
     DecisionKind,
     ResearchEpisode,
     _front_matter,
+    checkpoint_metadata,
     extract_candidates,
     list_episodes,
     parse_candidate_proposals,
@@ -60,8 +61,11 @@ def preview_episode(state: Path, problem_id: str, filename: str, raw: bytes) -> 
         content_sha256=digest,
     )
     proposals = parse_candidate_proposals(content, episode, store.list_claims(state, problem_id))
-    if not proposals:
-        raise ResearchError("No recognized Research Episode objects; source was not imported.")
+    delta, directions = checkpoint_metadata(content, digest, proposals)
+    if not proposals and not delta and not directions:
+        raise ResearchError(
+            "No recognized Research Episode objects or checkpoint; source was not imported."
+        )
     metadata, _ = _front_matter(content)
     input_versions = metadata.get("input_versions", [])
     if not isinstance(input_versions, list):
@@ -71,12 +75,33 @@ def preview_episode(state: Path, problem_id: str, filename: str, raw: bytes) -> 
         "sha256": digest,
         "candidates": proposals,
         "metadata": structured_episode_metadata(content).model_copy(
-            update={"input_versions": pins}
+            update={
+                "input_versions": pins,
+                "state_delta": delta,
+                "next_research_directions": directions,
+            }
         ),
     }
 
 
 def ingest_episode(
+    state: Path,
+    problem_id: str,
+    filename: str,
+    raw: bytes,
+    *,
+    provenance: str,
+    expected_sha256: str | None = None,
+) -> dict:
+    from math_research.ledger.checkpoint import checkpoint_transaction
+
+    with checkpoint_transaction(state, problem_id):
+        return _publish_episode(
+            state, problem_id, filename, raw, provenance=provenance, expected_sha256=expected_sha256
+        )
+
+
+def _publish_episode(
     state: Path,
     problem_id: str,
     filename: str,
