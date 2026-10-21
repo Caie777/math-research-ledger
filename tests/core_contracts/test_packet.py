@@ -70,5 +70,5 @@ def test_relative_workspace_packet_is_read_only(research, monkeypatch):
     state, ref = research
     monkeypatch.chdir(state.parent)
     before = snapshot(state)
-    assert export_context_packet(Path(".math-research"), ref).target == ref
+    assert export_context_packet(Path(".math-research-ledger"), ref).target == ref
     assert snapshot(state) == before

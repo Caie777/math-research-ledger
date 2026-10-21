@@ -7,14 +7,37 @@ import logging
 import os
 from collections.abc import Mapping
 from pathlib import Path
+from urllib.parse import unquote, urlparse
 
 from pydantic import ValidationError
 
-from math_research.core.config import workspace_config
+from math_research import __version__
 from math_research.core.errors import ResearchError
+from math_research.core.paths import state_at
 from math_research.mcp.adapter import DESCRIPTIONS, MAX_OUTPUT_BYTES, SCHEMAS, LedgerAdapter
 
 logger = logging.getLogger(__name__)
+
+SERVER_INSTRUCTIONS = """MathResearch Ledger persists research state across harness sessions.
+Include workspace=<current harness absolute workspace root> in tool calls when known.
+Some plugin hosts start stdio in PLUGIN_ROOT and do not supply MCP roots. This explicit
+request scope then binds the same existing ledger without hardcoded per-user paths.
+When continuing long-horizon research, inspect research_status first. Before substantial
+work on an existing Problem, obtain research_context_packet and respect missing context.
+Search hits are relevance candidates, not evidence or trusted premises: inspect exact
+object/version/freshness/authority/verification before relying on them.
+Research hot paths stay light: consolidate a meaningful checkpoint with
+research_ingest_episode. Separate Confirmed Research Increment (typed state_delta) from
+Next Research Directions, which are always advisory. Use research_save_note sparingly
+for one important isolated claim, gap, failure or evidence; never persist every chat turn.
+Store broadly, retrieve selectively: retain raw Episodes, proof bodies, failures and history.
+The harness owns the workspace, the user owns ordinary files, and Ledger owns only
+.math-research-ledger/. Do not directly edit private state or reorganize ordinary files.
+Never stage, commit, push or select research publication on the user's behalf.
+Soft review is advisory. Checked != accepted; canonical != verified. Models cannot grant
+themselves authority. Acceptance is human-only. Stale is derived current state; preserve
+historical receipts. Missing workspace requires explicit human initialization, never auto-init.
+"""
 
 
 class WorkspaceError(ResearchError):
@@ -27,24 +50,26 @@ def resolve_workspace(
     cwd: Path | None = None,
     environ: Mapping[str, str] | None = None,
 ) -> Path:
-    """Explicit flag > SMR_WORKSPACE > cwd ancestors; never initialize state."""
+    """Explicit flag > MRL_WORKSPACE > legacy SMR_WORKSPACE > cwd; never initialize."""
     env = os.environ if environ is None else environ
     here = Path.cwd() if cwd is None else cwd
-    selected = workspace if workspace is not None else env.get("SMR_WORKSPACE")
+    selected = (
+        workspace if workspace is not None else env.get("MRL_WORKSPACE", env.get("SMR_WORKSPACE"))
+    )
     if selected is not None:
         root = Path(selected).expanduser()
         if not root.is_absolute():
             root = here / root
         root = root.resolve()
-        state = root if root.name == ".math-research" else root / ".math-research"
-        if state.is_dir():
-            workspace_config(state.parent)  # Read-only version/schema validation when present.
+        state = state_at(root)
+        if state is not None:
             return state
-        raise WorkspaceError("Selected workspace has no .math-research directory.")
+        raise WorkspaceError(
+            "Selected workspace has no .math-research-ledger directory (or legacy state)."
+        )
     for root in (here.resolve(), *here.resolve().parents):
-        state = root if root.name == ".math-research" else root / ".math-research"
-        if state.is_dir():
-            workspace_config(state.parent)
+        state = state_at(root)
+        if state is not None:
             return state
     raise WorkspaceError("No research workspace found in server cwd or its ancestors.")
 
@@ -56,7 +81,48 @@ def create_server(workspace: Path | None = None):
     except ImportError as exc:
         raise RuntimeError('Install the optional transport with pip install -e ".[mcp]".') from exc
 
-    server = Server("structured-math-research")
+    server = Server("math-research-ledger", version=__version__, instructions=SERVER_INSTRUCTIONS)
+
+    async def client_workspace(requested: str | None) -> Path:
+        # Portable plugin hosts can launch stdio in PLUGIN_ROOT. MCP roots are
+        # supplied by the harness and bind this request to its actual workspace.
+        if (
+            workspace is not None
+            or os.environ.get("MRL_WORKSPACE")
+            or os.environ.get("SMR_WORKSPACE")
+        ):
+            return resolve_workspace(workspace)
+        session = server.request_context.session
+        params = session.client_params
+        roots = (
+            (await session.list_roots()).roots
+            if params and params.capabilities.roots is not None
+            else []
+        )
+        if roots:
+            paths = []
+            for root in roots:
+                uri = urlparse(str(root.uri))
+                if uri.scheme != "file" or uri.netloc not in {"", "localhost"}:
+                    continue
+                value = unquote(uri.path)
+                if os.name == "nt" and len(value) > 2 and value[0] == "/" and value[2] == ":":
+                    value = value[1:]
+                paths.append(Path(value))
+            if len(paths) == 1:
+                return resolve_workspace(paths[0])
+            if len(paths) > 1:
+                raise WorkspaceError(
+                    "Multiple harness roots; select one with MRL_WORKSPACE explicitly."
+                )
+        if requested is not None:
+            path = Path(requested).expanduser()
+            if not path.is_absolute():
+                raise WorkspaceError(
+                    "workspace must be the current harness absolute workspace root."
+                )
+            return resolve_workspace(path)
+        return resolve_workspace()
 
     def result(payload: dict, *, error: bool = False):
         import json
@@ -100,8 +166,8 @@ def create_server(workspace: Path | None = None):
                 "UNKNOWN_TOOL", "Tool is not exposed; MCP cannot accept.", "Use tools/list."
             )
         try:
-            SCHEMAS[name].model_validate(arguments)
-            state = resolve_workspace(workspace)
+            args = SCHEMAS[name].model_validate(arguments)
+            state = await client_workspace(args.workspace)
             value = LedgerAdapter(state).call(name, arguments)
             output = result(value)
             # Include BOTH protocol representations, escaping and SDK fields.
@@ -117,8 +183,9 @@ def create_server(workspace: Path | None = None):
             return failure(
                 "NO_WORKSPACE",
                 str(exc),
-                "Pass --workspace ABSOLUTE_ROOT, set SMR_WORKSPACE, or start inside an existing "
-                "research project. Initialize explicitly with smr init only if intended.",
+                "Pass --workspace ABSOLUTE_ROOT, set MRL_WORKSPACE, or start inside an existing "
+                "research project. Initialize explicitly with math-research-ledger init "
+                "if intended.",
             )
         except ValidationError as exc:
             return failure(

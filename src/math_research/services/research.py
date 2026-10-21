@@ -42,6 +42,12 @@ def status(state: Path, problem_id: str | None = None, *, offset: int = 0, limit
         "workspace_root": str(state.parent),
         "workspace_metadata": metadata.model_dump(mode="json") if metadata else None,
         "metadata_status": "VERSIONED" if metadata else "LEGACY_UNVERSIONED",
+        "state_format": "LEGACY_V1" if state.name == ".math-research" else "LEDGER_V2",
+        "migration_action": (
+            "Run math-research-ledger migrate explicitly before init; reads remain compatible."
+            if state.name == ".math-research"
+            else None
+        ),
         "problems": len(problems),
         "objects": len(views),
         "problem_summaries": [

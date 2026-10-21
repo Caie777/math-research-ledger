@@ -9,7 +9,12 @@ from pydantic import BaseModel
 
 from math_research.core.config import workspace_config
 from math_research.core.errors import ResearchError
-from math_research.core.paths import WORKSPACE_DIRNAME, find_workspace_root
+from math_research.core.paths import (
+    STATE_DIRNAMES,
+    WORKSPACE_DIRNAME,
+    find_workspace_root,
+    state_at,
+)
 from math_research.core.refs import ObjectRef
 from math_research.ledger.dependencies import DependencyRole
 from math_research.ledger.records.models import Definition
@@ -23,7 +28,10 @@ from math_research.services import (
     verification,
 )
 
-app = typer.Typer(help="Research Ledger → external research → verification → human authority.")
+app = typer.Typer(
+    help="MathResearch Ledger: persistent research state, context and verification. "
+    "Legacy compatibility aliases: smr, math-research."
+)
 ledger_app = typer.Typer(help="Typed objects and qualified references.")
 context_app = typer.Typer()
 ingest_app = typer.Typer()
@@ -61,11 +69,14 @@ def emit(value):
 @app.callback()
 def main(ctx: typer.Context, workspace: Path = typer.Option(Path("."), "--workspace", "-w")):
     root = workspace.resolve()
+    if root.name in STATE_DIRNAMES:
+        root = root.parent
+    if ctx.invoked_subcommand not in {"init", "migrate"}:
+        root = find_workspace_root(root) or root
     ctx.obj = (
-        root
-        if root.name == WORKSPACE_DIRNAME
-        else (root if ctx.invoked_subcommand == "init" else find_workspace_root(root) or root)
-        / WORKSPACE_DIRNAME
+        root / WORKSPACE_DIRNAME
+        if ctx.invoked_subcommand == "migrate"
+        else state_at(root) or root / WORKSPACE_DIRNAME
     )
     workspace_config(ctx.obj.parent)
 
@@ -87,8 +98,25 @@ def init(ctx: typer.Context):
 
 
 @app.command()
+def migrate(ctx: typer.Context, from_workspace: Path | None = None, rollback: bool = False):
+    """Explicit offline state-directory migration; preserves corpus bytes and provenance."""
+    from math_research.core.migration import migrate_workspace, rollback_migration
+
+    root = state(ctx).parent
+    emit(rollback_migration(root) if rollback else migrate_workspace(from_workspace or root, root))
+
+
+@app.command()
 def status(ctx: typer.Context):
     emit(research.status(state(ctx)))
+
+
+@ingest_app.command("recover")
+def recover_ingest(ctx: typer.Context):
+    """Roll back interrupted checkpoint metadata; retain original raw source bytes."""
+    from math_research.ledger.checkpoint import recover_checkpoint
+
+    emit(recover_checkpoint(state(ctx)))
 
 
 @ledger_app.command("list")

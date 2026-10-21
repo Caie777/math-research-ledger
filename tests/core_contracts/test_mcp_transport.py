@@ -40,9 +40,44 @@ ROOT = Path(__file__).resolve().parents[2]
 LAUNCHER = ROOT / "scripts/smr_mcp.py"
 
 
+@pytest.mark.parametrize("use_roots", [False, True])
+def test_plugin_install_cwd_binds_current_harness_workspace(research, use_roots):
+    import mcp.types as types
+
+    state, _ = research
+
+    async def roots(context):
+        return types.ListRootsResult(roots=[types.Root(uri=state.parent.as_uri())])
+
+    async def run():
+        params = StdioServerParameters(
+            command=sys.executable, args=["-B", str(LAUNCHER)], cwd=str(ROOT), env=environment()
+        )
+        async with (
+            stdio_client(params) as (read, write),
+            ClientSession(
+                read,
+                write,
+                list_roots_callback=roots if use_roots else None,
+                read_timeout_seconds=timedelta(seconds=15),
+            ) as client,
+        ):
+            await client.initialize()
+            args = {} if use_roots else {"workspace": str(state.parent)}
+            result = await client.call_tool("research_status", args)
+            assert not result.isError, result
+            assert result.structuredContent["state_dir"] == str(state)
+            if not use_roots:
+                wrong = await client.call_tool("research_status", {"workspace": "relative"})
+                assert wrong.isError and wrong.structuredContent["error"]["code"] == "NO_WORKSPACE"
+
+    asyncio.run(run())
+
+
 def environment():
     env = dict(os.environ)
     env.pop("SMR_WORKSPACE", None)
+    env.pop("MRL_WORKSPACE", None)
     env["PYTHONIOENCODING"] = "utf-8"
     return env
 
@@ -80,11 +115,20 @@ def test_sdk_initialization_schemas_and_every_tool(research):
             ClientSession(read, write, read_timeout_seconds=timedelta(seconds=15)) as client,
         ):
             initialized = await client.initialize()
-            assert initialized.serverInfo.name == "structured-math-research"
+            assert initialized.serverInfo.name == "math-research-ledger"
+            assert "checkpoint" in initialized.instructions
             assert initialized.capabilities.tools is not None
             tools = (await client.list_tools()).tools
             assert {t.name for t in tools} == set(SCHEMAS) == set(DESCRIPTIONS)
             for tool in tools:
+                assert tool.annotations.readOnlyHint == (
+                    tool.name
+                    not in {
+                        "research_ingest_episode",
+                        "research_save_note",
+                        "research_request_acceptance",
+                    }
+                )
                 assert tool.inputSchema == SCHEMAS[tool.name].model_json_schema()
                 assert tool.description and "not " in tool.description.lower()
                 assert tool.inputSchema["additionalProperties"] is False
@@ -221,8 +265,11 @@ def test_resolution_precedence_no_init_and_raw_protocol(tmp_path, research):
     nested = state.parent / "nested/deep"
     nested.mkdir(parents=True)
     env = {"SMR_WORKSPACE": str(other)}
+    assert (
+        resolve_workspace(cwd=nested, environ={**env, "MRL_WORKSPACE": str(state.parent)}) == state
+    )
     assert resolve_workspace(state.parent, cwd=nested, environ=env) == state
-    assert resolve_workspace(cwd=nested, environ=env) == other / ".math-research"
+    assert resolve_workspace(cwd=nested, environ=env) == other / ".math-research-ledger"
     assert resolve_workspace(cwd=nested, environ={}) == state
     assert resolve_workspace(state, environ={}) == state
     empty = tmp_path / "empty"
@@ -240,10 +287,10 @@ def test_resolution_precedence_no_init_and_raw_protocol(tmp_path, research):
         assert "--workspace" in reply["structuredContent"]["error"]["action"]
     with raw_client(empty, env={**environment(), "SMR_WORKSPACE": str(other)}) as client:
         reply = client.call("research_status", {})
-        assert reply["structuredContent"]["state_dir"] == str(other / ".math-research")
-    assert not (empty / ".math-research").exists()
+        assert reply["structuredContent"]["state_dir"] == str(other / ".math-research-ledger")
+    assert not (empty / ".math-research-ledger").exists()
     drive_root = Path(state.anchor)
-    if not (drive_root / ".math-research").exists():
+    if not (drive_root / ".math-research-ledger").exists():
         with pytest.raises(WorkspaceError):
             resolve_workspace(cwd=drive_root, environ={})
         with raw_client(drive_root) as client:

@@ -67,6 +67,8 @@ class Ledger:
         """
         path = Path(artifact["path"])
         if path.is_relative_to(self.state):
+            # Frozen v1 hash token, NOT an operational path. Changing it would
+            # invalidate every historical version pin during a directory rename.
             return {**artifact, "path": ".math-research/" + path.relative_to(self.state).as_posix()}
         return artifact
 
@@ -89,6 +91,11 @@ class Ledger:
 
         def add(kind, record, pid, states=None, *, ident=None, body=None, paths=()):
             data = record.model_dump(mode="json")
+            if kind == "episode":
+                # New optional checkpoint fields must not change legacy versions.
+                for key in ("state_delta", "next_research_directions"):
+                    if not data.get(key):
+                        data.pop(key, None)
             ref = ObjectRef(
                 problem_id=pid,
                 kind=kind,

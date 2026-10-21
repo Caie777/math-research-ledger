@@ -70,7 +70,7 @@ def seed_run(ot: Path, pid: str = "PROBLEM-0001") -> Path:
 
 @pytest.fixture
 def asset_run(tmp_path):
-    ot = tmp_path / ".math-research"
+    ot = tmp_path / ".math-research-ledger"
     return ot, seed_run(ot)
 
 

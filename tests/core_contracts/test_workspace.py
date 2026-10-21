@@ -31,11 +31,11 @@ def test_init_minimal_metadata_packaged_instructions_and_no_fake_records(tmp_pat
     assert "research_status" in (root / "AGENTS.md").read_text("utf-8")
     config = yaml.safe_load((root / "workspace.yaml").read_text("utf-8"))
     assert set(config) == {"workspace_version", "name", "created_at"}
-    assert config["workspace_version"] == 1 and config["name"] == root.name
+    assert config["workspace_version"] == 2 and config["name"] == root.name
     assert load_config(root / "workspace.yaml").created_at.tzinfo is not None
-    assert not (root / ".math-research/config.yaml").exists()
-    assert (root / "papers").is_dir() and (root / "notes").is_dir()
-    assert Ledger(root / ".math-research").objects() == []
+    assert not (root / ".math-research-ledger/config.yaml").exists()
+    assert not (root / "papers").exists() and not (root / "notes").exists()
+    assert Ledger(root / ".math-research-ledger").objects() == []
     before = {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
     assert init_workspace(root) == []
     assert all(p.read_bytes() == raw for p, raw in before.items())
@@ -52,17 +52,22 @@ def test_legacy_read_never_migrates_and_explicit_init_is_additive(tmp_path):
     assert resolve_workspace(root, environ={}) == state
     assert status(state)["metadata_status"] == "LEGACY_UNVERSIONED"
     assert not (root / "workspace.yaml").exists()
-    init_workspace(root)  # Explicit additive migration, no legacy config rewrite.
+    with pytest.raises(ResearchError, match="migrate"):
+        init_workspace(root)
+    from math_research.core.migration import migrate_workspace
+
+    migrate_workspace(root)
+    state = root / ".math-research-ledger"
     assert (state / "config.yaml").read_bytes() == original
     assert (root / "AGENTS.md").read_text("utf-8") == "Custom research instructions"
-    assert status(state)["workspace_metadata"]["workspace_version"] == 1
+    assert status(state)["workspace_metadata"]["workspace_version"] == 2
     assert status(state)["workspace_root"] == str(root)
 
 
 @pytest.mark.parametrize(
     "metadata",
     [
-        {"workspace_version": 2, "name": "unsupported", "created_at": "2026-10-20T00:00:00Z"},
+        {"workspace_version": 3, "name": "unsupported", "created_at": "2026-10-20T00:00:00Z"},
         {"name": "missing version", "created_at": "2026-10-20T00:00:00Z"},
         {"workspace_version": 1, "name": "invalid timestamp", "created_at": "2026-10-20"},
         {
@@ -89,7 +94,7 @@ def test_init_inside_existing_corpus_creates_selected_new_workspace(tmp_path):
     child.mkdir()
     result = CliRunner().invoke(app, ["-w", str(child), "init"])
     assert result.exit_code == 0, result.output
-    assert resolve_workspace(child, environ={}) == child / ".math-research"
+    assert resolve_workspace(child, environ={}) == child / ".math-research-ledger"
     assert load_config(child / "workspace.yaml").name == "new workspace"
 
 
@@ -107,7 +112,7 @@ def test_relocation_preserves_object_versions_and_historical_provenance(research
     assert state.resolve().is_relative_to(tmp_path.resolve())
     assert target.resolve().is_relative_to(tmp_path.resolve())
     shutil.rmtree(state)  # No old location remains available to a broken resolver.
-    moved = target / ".math-research"
+    moved = target / ".math-research-ledger"
     after = Ledger(moved)
     assert {e.qualified_id: e.version for e in after.objects()} == expected_versions
     assert after.source_version() == expected_source

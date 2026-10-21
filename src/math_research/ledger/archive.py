@@ -18,6 +18,7 @@ from pydantic import ValidationError
 from math_research.core.atomicio import atomic_write_text, file_lock
 from math_research.core.errors import ResearchError
 from math_research.core.jsonl import rewrite_jsonl
+from math_research.core.paths import STATE_DIRNAMES
 from math_research.ledger.records import store
 
 if TYPE_CHECKING:
@@ -65,6 +66,9 @@ def load_episodes(ot_dir: Path, problem_id: str | None = None) -> list[ResearchE
     A Problem view supplies the compatibility ``problem_id`` used by the current
     interpretation pipeline; it never changes primary membership or source ID.
     """
+    from math_research.ledger.checkpoint import guard_checkpoint
+
+    guard_checkpoint(ot_dir)
     by_id: dict[str, ResearchEpisode] = {}
     for path in [archive_index(ot_dir), *_legacy_indices(ot_dir)]:
         for record in _records(path):
@@ -88,7 +92,13 @@ def source_path(ot_dir: Path, relative: str) -> Path:
     parts = PureWindowsPath(relative)
     if parts.is_absolute() or parts.drive or ".." in parts.parts:
         raise ResearchError(f"Unsafe Episode source path: {relative}")
-    path = (ot_dir.parent / Path(*parts.parts)).resolve()
+    local_parts = parts.parts
+    # Historical archive paths retain their original prefix, but operational
+    # reads bind it to this explicitly selected ledger after format migration.
+    if local_parts and local_parts[0] in STATE_DIRNAMES:
+        path = (ot_dir / Path(*local_parts[1:])).resolve()
+    else:
+        path = (ot_dir.parent / Path(*local_parts)).resolve()
     if not path.is_relative_to(ot_dir.resolve()):
         raise ResearchError(f"Episode source outside project state: {relative}")
     local = path.relative_to(ot_dir.resolve()).parts

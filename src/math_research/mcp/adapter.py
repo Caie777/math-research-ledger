@@ -23,6 +23,13 @@ ProblemId = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")]
 class Arguments(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
+    workspace: str | None = Field(
+        default=None,
+        max_length=4096,
+        description="Current harness workspace absolute root. Include it when known, especially "
+        "when a plugin host launches stdio in its installation directory. Never initializes state.",
+    )
+
 
 class PageArgs(Arguments):
     problem_id: ProblemId | None = None
@@ -71,7 +78,7 @@ class NoteArgs(Arguments):
     provenance: str = Field(min_length=1, max_length=1000)
 
 
-SCHEMAS: dict[str, type[BaseModel]] = {
+SCHEMAS: dict[str, type[Arguments]] = {
     "research_status": PageArgs,
     "research_search": SearchArgs,
     "research_get_object": ObjectArgs,
@@ -118,15 +125,17 @@ DESCRIPTIONS = {
         "or accept anything. Do not interpret absence of staleness as verification."
     ),
     "research_ingest_episode": (
-        "Save a completed research run as complete UTF-8 Research Episode Markdown "
-        "with provenance. "
+        "Consolidate a meaningful checkpoint as complete UTF-8 Research Episode Markdown "
+        "with provenance. Separate Confirmed Research Increment (state_delta) from advisory "
+        "Next Research Directions; never capture every chat turn. "
         "Stages provisional candidates in the existing archive/Proposal Store; repeated identical "
         "content reuses identities. Returns candidate references, counts and omissions, not full "
         "bodies. Do not send fragments, promote facts, run checks or request human acceptance here."
     ),
     "research_save_note": (
         "Preserve one complete useful Claim, Gap, FailedAttempt, Evidence or Counterexample with "
-        "provenance. Stages a single provisional Episode candidate in the existing Proposal Store "
+        "provenance. Use sparingly for an important isolated capture, not every chat turn. "
+        "Stages a single provisional Episode candidate in the existing Proposal Store "
         "and returns its identity; duplicate content is idempotent. Do not use for a multi-section "
         "research run, arbitrary notes/files, canonicalization or granting authority."
     ),
@@ -147,6 +156,8 @@ def _ingest_summary(value: dict) -> dict:
         "canonical_records_created": 0,
         "authority": "PROVISIONAL",
         "candidate_count": len(candidates),
+        "state_delta_count": len(value["episode"].get("state_delta", [])),
+        "next_directions_advisory": True,
         "candidates": [
             {key: c[key] for key in ("candidate_id", "object_id", "kind", "problem_id")}
             for c in candidates[:20]
@@ -160,6 +171,14 @@ class LedgerAdapter:
         self.state = state
 
     def call(self, name: str, arguments: dict) -> dict:
+        from math_research.ledger.checkpoint import checkpoint_read
+
+        if name in {"research_ingest_episode", "research_save_note"}:
+            return self._call(name, arguments)
+        with checkpoint_read(self.state):
+            return self._call(name, arguments)
+
+    def _call(self, name: str, arguments: dict) -> dict:
         schema = SCHEMAS.get(name)
         if schema is None:
             raise ResearchError("Tool is not exposed. Human acceptance is never a model tool.")
@@ -167,9 +186,9 @@ class LedgerAdapter:
         with automated_scope():
             ref = Ledger(self.state).resolve(args.ref) if isinstance(args, RefArgs) else None
             if name == "research_status":
-                result = status(self.state, **args.model_dump())
+                result = status(self.state, **args.model_dump(exclude={"workspace"}))
             elif isinstance(args, SearchArgs):
-                result = search_research(self.state, **args.model_dump())
+                result = search_research(self.state, **args.model_dump(exclude={"workspace"}))
             elif isinstance(args, ObjectArgs):
                 assert ref is not None
                 view = get_object(self.state, ref)
@@ -190,10 +209,35 @@ class LedgerAdapter:
                     "total_characters": len(text),
                     "truncated": args.offset > 0 or args.offset + args.length < len(text),
                 }
+                if entry.ref.kind == "episode":
+                    delta = entry.record.get("state_delta", [])
+                    start = args.offset
+                    result["checkpoint"] = {
+                        "state_delta": [
+                            {
+                                **item,
+                                "statement": item["statement"][:600],
+                                "statement_truncated": len(item["statement"]) > 600,
+                            }
+                            for item in delta[start : start + 20]
+                        ],
+                        "delta_total": len(delta),
+                        "delta_offset": start,
+                        "delta_truncated": start > 0 or start + 20 < len(delta),
+                        "next_research_directions": entry.record.get(
+                            "next_research_directions", ""
+                        )[:2000],
+                        "directions_truncated": len(
+                            entry.record.get("next_research_directions", "")
+                        )
+                        > 2000,
+                        "next_directions_advisory": True,
+                        "authority": "SOURCE_REPORTED",
+                    }
             elif isinstance(args, ContextArgs):
                 assert ref is not None
                 result = export_context_packet(
-                    self.state, ref, **args.model_dump(exclude={"ref"})
+                    self.state, ref, **args.model_dump(exclude={"ref", "workspace"})
                 ).model_dump(mode="json")
             elif isinstance(args, RequestArgs):
                 assert ref is not None
@@ -237,7 +281,9 @@ class LedgerAdapter:
                     )
                 )
             elif isinstance(args, NoteArgs):
-                result = _ingest_summary(save_note(self.state, **args.model_dump()))
+                result = _ingest_summary(
+                    save_note(self.state, **args.model_dump(exclude={"workspace"}))
+                )
             else:
                 raise ResearchError("Unsupported validated tool arguments.")
         if len(json.dumps(result, ensure_ascii=False).encode("utf-8")) > MAX_OUTPUT_BYTES:
