@@ -90,15 +90,18 @@ fallback, not a chat UI. Server-side automated-scope gates enforce the existing 
   `.math-research` remained byte-identical across all **750 files**, with none added or removed.
 
 The [official Codex MCP documentation](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)
-states that CLI, IDE and desktop share this configuration. This task verified CLI registration,
-actual host calls and cwd behavior. The currently open desktop conversation's tool catalog
-was created before registration and has not been refreshed; actual desktop/IDE tool loading
-and child cwd have **not** been independently observed. Start a new session/reload that surface
-and confirm tools before real work. If a host starts outside the project, use an explicit
+states that CLI, IDE and desktop share this configuration. The original integration verified
+CLI registration, actual host calls and cwd behavior. On 2026-10-21 the desktop conversation's
+available tool catalog also listed all nine research tools; desktop/IDE data calls and child
+cwd have **not** been independently exercised. Confirm the selected workspace before real
+work. If a host starts outside the project, use an explicit
 absolute `--workspace` or `SMR_WORKSPACE` for that registration instead of assuming its cwd.
 
-The later corpus cutover, additive root metadata and post-cutover validation are documented
-in [Research Workspaces](research-workspaces.md). The earlier synthetic fixture evidence
+The later corpus cutover, additive root metadata and successful, explicitly authorized
+post-cutover Codex CLI status/search smoke are documented in
+[Research Workspaces](research-workspaces.md). Those calls returned
+`D:\Research\math-research` through cwd discovery, under a one-use argument/output guard;
+the permanent server registration was unchanged. The earlier synthetic fixture evidence
 above remains a historical test snapshot.
 
 On this Windows environment the restricted execution sandbox blocks asyncio's local socket

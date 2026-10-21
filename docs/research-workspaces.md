@@ -145,12 +145,26 @@ Read-only status returned root `D:\Research\math-research`, state
 `D:\Research\math-research\.math-research`, and versioned metadata. A bounded search returned
 one existing hit. Local stdio validation does not invoke an external model.
 
-The requested fresh Codex model session was blocked by automatic approval review because
-real status/search/content could be transmitted to an external Codex service. Approval was
-requested for status plus one bounded search excerpt only. Until authorized and run, this
-report does **not** claim a post-cutover real Codex host behavior pass. Exact local payload
-preview: `.local-eval/workspace-decoupling-20261020/host-readonly-payload-preview.json`.
-Earlier synthetic CLI host discovery remains documented in [Codex MCP](codex-mcp.md).
+The initial fresh Codex model session was blocked by automatic approval review over private
+data transmission. On 2026-10-21 the human explicitly approved the previewed status plus
+one bounded search excerpt. A fresh ephemeral Codex CLI session then successfully called:
+
+- `research_status` with exactly `{"limit":20}`;
+- `research_search` with exactly `{"query":"PROBLEM-0001","limit":1}`.
+
+Status returned workspace root `D:\Research\math-research`; search returned one hit. Both
+live results matched the approved preview exactly. An ephemeral stdio guard delegated to
+the production server, allowing only those exact argument/result pairs; other tools were
+disabled. It supplied no workspace argument or SMR_WORKSPACE override, preserving actual
+cwd discovery. The permanent global registration remained unchanged. No body/context or
+write tool was called, and all 750 ledger files remained byte-identical afterwards.
+
+This is an explicitly instructed two-call host smoke, not a new natural-language-only tool
+selection test. The earlier unprompted synthetic CLI discovery remains documented in
+[Codex MCP](codex-mcp.md). Private command/events/guard evidence and the exact payload preview
+are in `.local-eval/workspace-decoupling-20261020/approved-host-*` and
+`host-readonly-payload-preview.json`; public-safe summary reports are also preserved alongside
+the corpus's migration inventory. No private tool result is committed to the tool repository.
 
 Validation: workspace/config tests 8 passed; combined workspace/MCP/assets/interfaces tests
 52 passed; complete pytest 127 passed; Ruff lint/format 98 files; mypy 84 source files;
