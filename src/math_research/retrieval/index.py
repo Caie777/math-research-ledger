@@ -3,7 +3,7 @@
 Builds a keyword/BM25 index over project artifacts (memory, claims, papers,
 reports, experiments) so the agent can recall the *right* context instead of
 dumping everything into the prompt. The index is plain JSONL under
-``.math-research/index/`` — inspectable and git-friendly. No network or embeddings
+``.math-research-ledger/index/`` — inspectable and git-friendly. No network or embeddings
 are required; an embeddings backend can be added later behind the same API.
 """
 
@@ -324,7 +324,7 @@ def scoped_memory_documents(
 
 
 def build_index(ot_dir: Path, embedder: Embedder | None = None) -> IndexStatus:
-    """Gather all artifacts and persist the index under ``.math-research/index/``.
+    """Gather all artifacts and persist the index under ``.math-research-ledger/index/``.
 
     When an ``embedder`` is supplied, document vectors are computed and cached so
     later queries only embed the query. Without one, a BM25-only index is built.

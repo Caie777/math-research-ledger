@@ -417,7 +417,7 @@ def proof_evidence_count(ot_dir: Path, problem_id: str) -> int:
     rewrite that mass-closes gaps can be challenged when nothing new arrived.
 
     Experiments live in TWO stores: the agent's ``exp_new``/``exp_run`` tools record
-    workspace-level ``.math-research/experiments/EXP-*``, while the dossier CRUD records
+    workspace-level ``.math-research-ledger/experiments/EXP-*``, while the dossier CRUD records
     ``problems/<pid>/experiments/``. The merged view counts both — an experiment the
     model actually ran must never be invisible to this gate (observed: a prove run
     with 7 real EXP-* was still challenged, and experiment work never reset the

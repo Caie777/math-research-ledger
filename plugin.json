@@ -1,0 +1,28 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "math-research-ledger",
+  "version": "1.1.0",
+  "description": "Persistent research memory, context, dependencies and verification for mathematical research agents.",
+  "author": {
+    "name": "Caie777"
+  },
+  "repository": "https://github.com/Caie777/math-research-ledger",
+  "license": "Apache-2.0",
+  "keywords": [
+    "mathematics",
+    "research",
+    "ledger",
+    "mcp"
+  ],
+  "extensions": {
+    "com.openai": {
+      "skills": "./skills/",
+      "mcpServers": "./mcp.json",
+      "interface": {
+        "displayName": "MathResearch Ledger",
+        "shortDescription": "Persistent mathematical research state across sessions",
+        "category": "Developer Tools"
+      }
+    }
+  }
+}

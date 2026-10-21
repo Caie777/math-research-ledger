@@ -1,6 +1,6 @@
 # Tool development
 
-- This checkout contains structured-math-research tooling. Do not conduct mathematical
+- This checkout contains MathResearch Ledger tooling. Do not conduct mathematical
   research here or create an active research workspace in the repository root.
 - Keep core/ledger/retrieval/verification independent of CLI, MCP and external harnesses.
   CLI/MCP call shared deterministic services; do not duplicate business decisions in adapters.

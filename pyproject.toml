@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "structured-math-research"
+name = "math-research-ledger"
 dynamic = ["version"]
 description = "Research ledger, bounded context, verification and human authority for mathematics."
 readme = "README.md"
@@ -14,14 +14,16 @@ authors = [{ name = "Galileo" }]
 dependencies = ["typer>=0.12", "pydantic>=2.0", "pyyaml>=6.0", "pypdf>=4.0"]
 
 [project.urls]
-Repository = "https://github.com/Caie777/structured-math-research"
-Issues = "https://github.com/Caie777/structured-math-research/issues"
+Repository = "https://github.com/Caie777/math-research-ledger"
+Issues = "https://github.com/Caie777/math-research-ledger/issues"
 
 [project.optional-dependencies]
 mcp = ["mcp>=1.30,<2"]
 dev = ["pytest>=8.0", "ruff==0.15.17", "mypy~=2.1", "types-PyYAML", "build>=1.0"]
 
 [project.scripts]
+math-research-ledger = "math_research.cli.main:run"
+math-research-ledger-mcp = "math_research.mcp.server:main"
 smr = "math_research.cli.main:run"
 math-research = "math_research.cli.main:run"
 smr-mcp = "math_research.mcp.server:main"

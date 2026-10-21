@@ -1,6 +1,6 @@
 """Single source of truth for the cross-cutting epistemic invariant.
 
-Mathematical Research has two claim/evidence views — the workspace-global research stack
+MathResearch Ledger has two claim/evidence views — the workspace-global research stack
 (:mod:`math_research.ledger.global_claims` / :mod:`math_research.research.evidence`) and the
 per-problem dossier stack (:mod:`math_research.ledger.records`). Their *status
 ladders* differ by design, but the core rule that keeps the system honest is

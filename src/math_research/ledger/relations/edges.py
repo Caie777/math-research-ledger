@@ -1,7 +1,7 @@
 """A minimal artifact graph (no graph database).
 
 Edges between artifacts (claims, experiments, papers, reports, patches, ...) are
-stored as JSON lines in ``.math-research/graph.jsonl``. Relations are validated
+stored as JSON lines in ``.math-research-ledger/graph.jsonl``. Relations are validated
 against a fixed vocabulary so the graph stays meaningful and queryable.
 """
 
@@ -166,10 +166,10 @@ def to_mermaid_html(edges: list[GraphEdge]) -> str:
     return (
         "<!doctype html>\n"
         '<html lang="en">\n<head>\n<meta charset="utf-8">\n'
-        "<title>Mathematical Research artifact graph</title>\n"
+        "<title>MathResearch Ledger artifact graph</title>\n"
         '<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>\n'
         "<script>mermaid.initialize({startOnLoad:true});</script>\n"
-        "</head>\n<body>\n<h1>Mathematical Research artifact graph</h1>\n"
+        "</head>\n<body>\n<h1>MathResearch Ledger artifact graph</h1>\n"
         f'<pre class="mermaid">\n{diagram}\n</pre>\n'
         "</body>\n</html>\n"
     )
@@ -181,7 +181,7 @@ def export_graph(
     """Export the graph as ``mermaid`` or ``ascii``; optionally write an HTML file.
 
     Returns the rendered text. When ``open_file`` is set (mermaid only), a
-    standalone HTML page is written under ``.math-research/graph.html`` and its path
+    standalone HTML page is written under ``.math-research-ledger/graph.html`` and its path
     is appended to the returned text. ``scope="literature"`` restricts the diagram
     to edges touching a ``PAPER-*`` artifact.
     """

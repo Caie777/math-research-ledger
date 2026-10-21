@@ -91,7 +91,7 @@ def file_lock(
             if time.monotonic() >= deadline:
                 raise ResearchError(
                     f"Timed out after {timeout:g}s waiting for the lock on {path.name}. "
-                    f"Another Mathematical Research process is writing this workspace; if none is, "
+                    f"Another MathResearch Ledger process is writing this workspace; if none is, "
                     f"remove {lock}."
                 ) from None
             time.sleep(_LOCK_POLL_SECONDS)

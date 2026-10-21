@@ -1,5 +1,6 @@
 # Guard against accidentally creating research state in the tool checkout.
 /.math-research/
+/.math-research-ledger/
 /workspace.yaml
 .research-migration-*/
 /.architecture-audit/

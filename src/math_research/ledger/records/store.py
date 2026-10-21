@@ -2,7 +2,7 @@
 
 Everything is plain YAML / JSONL / Markdown on disk so a dossier is fully
 inspectable and Git-friendly. There is no database. A dossier lives under
-``.math-research/problems/PROBLEM-XXXX/`` with this layout::
+``.math-research-ledger/problems/PROBLEM-XXXX/`` with this layout::
 
     PROBLEM-0001/
       statement.md

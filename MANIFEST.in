@@ -1,0 +1,8 @@
+include plugin.json mcp.json README.zh-CN.md
+include .codex-plugin/plugin.json
+recursive-include scripts *.py
+recursive-include skills *.md
+recursive-include integrations *.md *.yml *.cjs
+recursive-include docs *.md
+recursive-include examples *.md
+recursive-include tests *.py

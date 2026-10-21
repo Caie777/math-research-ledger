@@ -1,0 +1,10 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "math-research-ledger": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["-B", "${PLUGIN_ROOT}/scripts/smr_mcp.py"]
+    }
+  }
+}

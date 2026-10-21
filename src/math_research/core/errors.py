@@ -1,4 +1,4 @@
-"""Mathematical Research exception hierarchy.
+"""MathResearch Ledger exception hierarchy.
 
 All recoverable, user-facing failures inherit from :class:`ResearchError` so the
 CLI can render them as helpful, actionable messages instead of raw tracebacks.
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 
 class ResearchError(Exception):
-    """Base class for all Mathematical Research errors."""
+    """Base class for all MathResearch Ledger errors."""
 
 
 class RecoverableToolError(ResearchError):
