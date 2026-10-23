@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.2.1 (local candidate, not released)
+
+### Read-only checkpoint consistency
+
+- Pure MCP reads no longer require creating `.checkpoint.lock`; optimistic generation/content fences validate complete reads with bounded replay. Interrupted journals remain fail closed.
+- Old writers must not be mixed concurrently with new readers: the generation protocol assumes upgraded writers.
+
+### Workspace scope
+
+- Bind each MCP server to one workspace at startup. Tool `workspace` becomes a compatibility assertion; arbitrary cross-workspace selection is rejected.
+
+### DSH integration
+
+- Replace JS transport/runtime-pointer packaging with a configuration-only Bundle using DSH native `dsh-mcp-client`. Keep Python in an external persistent runtime; Python 3.12 is recommended.
+- Prepare explicit startup pins without installing DSH plugins or modifying Profiles. Real Desktop/Host acceptance remains pending.
+
+### Behavior change
+
+- Deployments previously relying on tool-provided workspace paths or incidental process cwd must provide an explicit startup `--workspace` or `MRL_WORKSPACE`. MCP roots do not grant scope.
+
 ## 1.2.0
 
 ### Research state safety

@@ -1,77 +1,55 @@
-# Known limitations and deferred review
+# Known limitations and candidate status
 
-MathResearch Ledger 1.2.0 provides the core Ledger, CLI, nine-tool MCP surface and
-Codex integration. Automated regression tests and recorded integration checks cover
-these paths; they do not establish mathematical truth or general long-term research reliability.
+MathResearch Ledger **1.2.1 is a local candidate, not a published release**. The core,
+CLI, nine MCP tools and Codex share deterministic services; tests do not establish
+mathematical truth or general long-term research reliability.
 
-DeepSeek Harness is **experimental**. Historical isolated Host ToolRuntime checks
-verified nine-tool discovery, read-only calls and ON/OFF/ON. User-provided Desktop
-diagnostics report successful nine-tool registration but unsuccessful status on an
-existing Windows research workspace. These are different acceptance levels.
+## Implemented in the candidate
 
-## Windows diagnosis
+- Pure MCP reads and Episode preview no longer create/remove a state-directory lock.
+  Generation/content fencing checks the entire operation with bounded replay; observed
+  interrupted journals remain fail closed. Writes retain locks and recovery semantics.
+- MCP captures one workspace at startup. Tool `workspace` only asserts that same root;
+  arbitrary cross-workspace selection is refused. MCP roots do not authorize scope.
+  Use explicit `--workspace` or MRL_WORKSPACE for deployment; incidental cwd is a fallback.
+- DSH now uses a configuration-only Bundle referencing the Host's native MCP client,
+  with an external noneditable Python runtime. Python 3.12 is recommended. JS wrapper,
+  Bundle private venv, runtime pointer and peer dependency glue have been removed.
 
-The reported sandbox Python process runs at Low Integrity; the workspace root received
-a Low label, while its existing Ledger subtree remained Medium. Denied creation of
-`.math-research-ledger/.checkpoint.lock` is the observed failure. Windows Mandatory
-Integrity Control's no-write-up rule explains that failure given those reported labels;
-the release task has not independently inspected or modified the real directory.
+Old writers must not run concurrently with new optimistic readers: the generation
+protocol assumes upgraded writers. Do not silently mix cached pre-fix installations.
+See [read consistency](archive/2026-10/read-only-checkpoint-2026-10-23.md),
+[scope evidence](archive/2026-10/workspace-scope-2026-10-23.md) and
+[Codex configuration](codex-mcp.md). Measured read latency is recorded in that evidence;
+this work adds no cache, FTS, prefetch or reranker.
 
-The lock fix bounds waiting and surfaces permission errors. It does not change security
-attributes. Successful MCP handshake or tools/list does not establish tools/call access.
-Keep the exact error, distinguish process startup from file-access failure, and have
-the user inspect process and subtree integrity levels separately from ordinary ACLs.
-Stop on denied access. Installation and calls never silently change ACLs, labels,
-owners, authentication or Full Access settings. Any targeted security change requires
-separate informed user approval; no such repair is part of this release.
+## DSH acceptance remains pending
 
-Real Windows existing-workspace DSH status/search and post-restart session acceptance
-remain incomplete. macOS/Linux DSH Host acceptance is untested. This does not block
-the core/Codex release, and is not a claim that DSH installs work for every user.
+The new configuration-only candidate has not been installed or accepted in a real DSH
+Desktop/Profile/user session. Rendering, packaging, Python imports and MCP stdio smoke
+do not prove actual DSH discovery, ON/OFF, read/write access or post-restart continuity.
+Historical Host/JS Bundle evidence does not transfer automatically to this replacement.
+macOS/Linux DSH Host acceptance is untested.
 
-## 1.2.1 development — not yet released
+Historical user diagnostics described a Low Integrity process, a Low workspace root and
+Medium existing private state, with a denied checkpoint-lock create. The read-path fix
+removes that write requirement for pure reads; it does not repair permissions or prove
+the diagnosis applies to the real current MCP Host. A sandboxed shell's integrity and
+socketpair failure are not acceptance evidence for that Host path. No real ACL, owner,
+integrity label or data was inspected/changed by this candidate work.
 
-The working-tree read-path fix replaces the six pure MCP tools' exclusive checkpoint
-lock with bounded whole-operation consistency checks. Episode preview also uses this
-read path. It requires readable state, not state-directory writes; acceptance requests
-remain writes. All concurrent checkpoint writers must use the new generation protocol;
-reload old cached installations before mixing readers and writers. See the
-[implementation and validation report](archive/2026-10/read-only-checkpoint-2026-10-23.md).
+Preserve actual Host errors and distinguish spawn, handshake and tool-call failures.
+The plugin never changes permissions, authentication or Full Access automatically.
+Install/upgrade only from an ordinary terminal; see the [DSH guide](../integrations/deepseek-harness/README.md).
 
-This does not repair existing Windows security labels or establish real DSH Host
-acceptance. Formal package metadata remains 1.2.0 until a separately authorized release.
+## Deferred
 
-The read-only fix is committed locally as `e0748d3`. A subsequent uncommitted scope fix
-pins the MCP session at startup and rejects different tool-level workspace paths.
-MCP roots do not authorize scope in this version; the public Codex package needs a private
-startup pin when the Host starts it in its install directory. It cannot infer the active
-project from model arguments. See [workspace binding](codex-mcp.md#workspace-binding)
-and the [scope audit](archive/2026-10/workspace-scope-2026-10-23.md).
+Real deployment needs a durable runtime, explicit startup pin and fresh Host session.
+For Codex, keep project-only activation and disable bundled MCP when using the supported
+project-local direct MCP deployment to avoid duplicate tools. No automatic project-root
+placeholder is assumed. Multi-root selection, Host roots authorization, dynamic switching,
+workspace registry, doctor/backup, caches/FTS, embeddings, legacy API removal and acceptance
+authentication hardening remain separate work.
 
-## Remaining review backlog — not implemented or promised fixes
-
-1. **Read-path deployment:** released 1.2.0 readers still create/remove a checkpoint lock.
-   The development fix above needs release and real Host acceptance. It does not move
-   locks into `%TEMP%` or make write tools work on nonwritable state.
-2. **Windows sandbox compatibility:** investigate Low/Medium Integrity mismatch for
-   existing Ledger state only after user approval and with narrowly scoped acceptance.
-3. **Workspace scope deployment:** validate private startup pins with the intended Host;
-   do not mistake the unpinned portable package for automatic session-root binding.
-4. **Multi-root selection:** deferred until the Host provides a reliable authorized root
-   set. Do not select or authorize a Ledger merely because its state directory exists.
-5. **Legacy public APIs:** keep retrieval/compatibility APIs frozen until a consumer and
-   deprecation audit. No approximately 651-LOC removal is included.
-6. **DSH native Bundle:** retain experimental status; complete Windows user-session
-   acceptance and document supported platforms before broad compatibility claims.
-7. **Performance:** current corpus scale does not justify a new cache or FTS subsystem.
-   Revisit only with measured usage needs.
-
-Deferred suggestions also include SQLite FTS5, BM25 caches, embeddings, rerankers,
-prefetch, backup/doctor commands, PID-aware lock redesign, TTY acceptance authentication,
-a custom DSH MCP client and large retrieval refactors. None is part of 1.2.0.
-
-Human acceptance is a workflow boundary on the supported MCP surface, not authentication
-or sandboxing against arbitrary local code/filesystem access. See
-[architecture](architecture.md), [Codex setup](codex-mcp.md),
-[DSH installation](../integrations/deepseek-harness/README.md) and
-[historical engineering evidence](archive/2026-10/README.md).
+Human acceptance is a workflow boundary, not authentication against arbitrary local
+code/filesystem access. Authority, verification and acceptance remain separate.

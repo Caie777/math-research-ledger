@@ -5,7 +5,7 @@
 MathResearch Ledger 不是另一个研究 Agent runtime。外部 Agent 负责研究；Ledger 保留可跨会话
 恢复的研究状态。用 Codex 或其他 Harness 推理、阅读和实验，下次会话继续使用同一份研究记录。
 
-[English](README.md) · [1.2.0 更新记录](CHANGELOG.md)
+[English](README.md) · [1.2.1 更新记录](CHANGELOG.md)
 
 ## 为什么需要研究 Ledger？
 
@@ -38,7 +38,7 @@ workspace 必须在工具仓库之外，由用户显式初始化。init 创建�
 保留已有指令和普通文件，不创建 demo 研究对象。上面的 create-problem 创建用户显式指定的问题。
 
 也可从 [GitHub Releases](https://github.com/Caie777/math-research-ledger/releases) 下载 wheel，
-用 `python -m pip install './math_research_ledger-1.2.0-py3-none-any.whl[mcp]'` 安装。
+用 `python -m pip install './math_research_ledger-1.2.1-py3-none-any.whl[mcp]'` 安装。
 接着按 [Codex 安装指南](docs/codex-mcp.md) 安装插件，在研究项目启用并新开会话。
 安装与启用是两步；普通项目可关闭。独立 MCP client 可用 stdio 启动
 `math-research-ledger-mcp --workspace '<research-workspace>'`，MCP 不会初始化缺失的工作区。
@@ -98,10 +98,10 @@ Harness 拥有 workspace，用户拥有普通文件，Ledger 只拥有 `.math-re
 
 - **Core Ledger、CLI、九个 MCP 工具、Codex：**有自动化测试与已记录的集成验证。
   [Codex 指南](docs/codex-mcp.md) 说明原生启停和项目范围；GitHub 发布不代表已上架公开插件目录。
-- **DeepSeek Harness：experimental。**[原生 Bundle](integrations/deepseek-harness/README.md)
-  复用同一 Python 服务和 Ledger。历史隔离 Host 测试已通过，但真实 Windows 既有工作区验收
-  仍受报告中的 Low/Medium Integrity 边界阻塞；macOS/Linux DSH Host 未验收。
-  插件不会修改 ACL、完整性标签、认证或切换 Full Access。
+- **DeepSeek Harness：发布前真实 Host 验收待完成。**推荐使用
+  [configuration-only Bundle](integrations/deepseek-harness/README.md)，由 DSH 原生 MCP client
+  连接外部 Python runtime（推荐 3.12），在准备时固定 workspace。本地 1.2.1 candidate
+  完成后仍需真实 Desktop 安装和用户会话验收；不会修改 ACL、完整性标签、认证或 Full Access。
 
 [已知限制与 1.2.1 待审事项](docs/known-limitations.md) 明确当前边界。本版不新增 Agent loop、
 模型路由或第二套研究数据库。开发命令见 [English README](README.md)；

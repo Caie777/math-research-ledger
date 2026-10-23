@@ -8,7 +8,7 @@ External agents do the research; Ledger preserves durable research state.
 Use Codex or another harness for reasoning, reading and experiments, then carry the
 same research workspace into the next session without reconstructing it from chat.
 
-[中文说明](README.zh-CN.md) · [1.2.0 changelog](CHANGELOG.md)
+[中文说明](README.zh-CN.md) · [1.2.1 changelog](CHANGELOG.md)
 
 ## Why keep a research ledger?
 
@@ -58,7 +58,7 @@ It creates empty state, `workspace.yaml` and research `AGENTS.md`, preserves exi
 instructions and ordinary files, and creates no demonstration research objects.
 The `create-problem` command above creates the Problem you explicitly request.
 
-For a downloaded wheel, use `python -m pip install './math_research_ledger-1.2.0-py3-none-any.whl[mcp]'`
+For a downloaded wheel, use `python -m pip install './math_research_ledger-1.2.1-py3-none-any.whl[mcp]'`
 instead of the editable install. See [GitHub Releases](https://github.com/Caie777/math-research-ledger/releases).
 Then follow [Codex plugin setup](docs/codex-mcp.md), enable the plugin for your research
 project and start a fresh session. Installation and enablement are separate; ordinary
@@ -132,11 +132,11 @@ Git-local exclusions. Historical provenance is not rewritten by tool upgrades.
 - **Core Ledger, CLI, nine-tool MCP and Codex:** covered by automated tests and recorded
   integration checks. [Codex installation](docs/codex-mcp.md) includes native opt-in and
   project scoping. GitHub publication does not imply a public Plugin Directory listing.
-- **DeepSeek Harness: experimental.** Its [native Bundle](integrations/deepseek-harness/README.md)
-  shares the Python services and workspace. Historical isolated Host checks passed;
-  real Windows existing-workspace acceptance remains incomplete at the reported
-  Low/Medium Integrity boundary. macOS/Linux DSH Host acceptance is untested.
-  The plugin never changes ACLs, integrity labels, authentication or Full Access settings.
+- **DeepSeek Harness: pre-release Host acceptance pending.** The recommended
+  [configuration-only Bundle](integrations/deepseek-harness/README.md) uses DSH's native
+  MCP client and an external Python runtime (3.12 recommended), pinned at preparation.
+  Real Desktop installation and user-session acceptance still need to follow this local
+  1.2.1 candidate. No ACL, security label, authentication or Full Access changes occur.
 
 [Known limitations and deferred 1.2.1 review](docs/known-limitations.md) distinguishes
 current support from planned investigation. This release adds no agent loop, model

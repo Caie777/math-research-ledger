@@ -3,10 +3,15 @@ include CHANGELOG.md
 include .codex-plugin/plugin.json
 recursive-include scripts *.py
 recursive-include skills *.md
-recursive-include integrations *.md *.yml *.cjs *.mjs *.py
-include integrations/deepseek-harness/bundle/package.json
-prune integrations/deepseek-harness/bundle/.venv
-recursive-exclude integrations .runtime.json .runtime.json.tmp
+include integrations/deepseek-harness/*.md
+include integrations/deepseek-harness/*.yml
+include integrations/deepseek-harness/*.cjs
+include integrations/deepseek-harness/config-bundle/README.md
+include integrations/deepseek-harness/config-bundle/cordis.patch.yml
+include integrations/deepseek-harness/config-bundle/package.json
+include integrations/deepseek-harness/config-bundle/locale/en.json
+include integrations/deepseek-harness/config-bundle/locale/zh.json
+include integrations/deepseek-harness/config-bundle/icon.svg
 recursive-include docs *.md
 recursive-include examples *.md
 recursive-include tests *.py

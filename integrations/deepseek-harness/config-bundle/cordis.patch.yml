@@ -1,0 +1,15 @@
+- insert:
+    - id: mcp-math-research-ledger
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: math-research-ledger
+        transport: stdio
+        command: __MRL_PYTHON__
+        args:
+          - '-B'
+          - '-m'
+          - 'math_research.mcp.server'
+          - '--workspace'
+          - __MRL_WORKSPACE__
+        failOnStartupError: true
+        toolCallTimeoutMs: 120000
