@@ -1,0 +1,4 @@
+- insert:
+    - id: mcp-math-research-ledger
+      name: dsh-math-research-ledger
+      config: {}

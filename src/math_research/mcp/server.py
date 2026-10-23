@@ -168,7 +168,11 @@ def create_server(workspace: Path | None = None):
         try:
             args = SCHEMAS[name].model_validate(arguments)
             state = await client_workspace(args.workspace)
-            value = LedgerAdapter(state).call(name, arguments)
+            import anyio
+
+            # Deterministic services use filesystem locks. Keep their bounded
+            # waits and IO off the stdio event loop (including under contention).
+            value = await anyio.to_thread.run_sync(LedgerAdapter(state).call, name, arguments)
             output = result(value)
             # Include BOTH protocol representations, escaping and SDK fields.
             # Reserve 1 KiB for the JSON-RPC envelope (normal host request IDs).

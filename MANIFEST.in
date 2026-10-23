@@ -2,7 +2,10 @@ include plugin.json mcp.json README.zh-CN.md
 include .codex-plugin/plugin.json
 recursive-include scripts *.py
 recursive-include skills *.md
-recursive-include integrations *.md *.yml *.cjs
+recursive-include integrations *.md *.yml *.cjs *.mjs *.py
+include integrations/deepseek-harness/bundle/package.json
+prune integrations/deepseek-harness/bundle/.venv
+recursive-exclude integrations .runtime.json .runtime.json.tmp
 recursive-include docs *.md
 recursive-include examples *.md
 recursive-include tests *.py

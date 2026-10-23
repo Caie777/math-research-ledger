@@ -1,0 +1,17 @@
+{
+  "name": "dsh-math-research-ledger",
+  "version": "1.1.0",
+  "description": "MathResearch Ledger tools for DeepSeek Harness, backed by the shared Python MCP server.",
+  "type": "module",
+  "main": "./index.mjs",
+  "exports": { ".": "./index.mjs" },
+  "license": "Apache-2.0",
+  "repository": { "type": "git", "url": "https://github.com/Caie777/math-research-ledger.git", "directory": "integrations/deepseek-harness/bundle" },
+  "engines": { "node": ">=22.15", "dsh": ">=0.2.1-rc.2 <0.3.0" },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-mcp-client": ">=0.2.1-rc.2 <0.3.0",
+    "@deepseek-ai/schemastery": "*"
+  },
+  "files": ["index.mjs", "transport.mjs", "cordis.patch.yml", "install.py", "runtime/*.whl", "README.md", "LICENSE"],
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
+}

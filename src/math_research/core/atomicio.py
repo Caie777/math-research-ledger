@@ -21,6 +21,7 @@ the write, not just the write.
 from __future__ import annotations
 
 import errno
+import math
 import os
 import tempfile
 import time
@@ -35,6 +36,10 @@ _LOCK_TIMEOUT_SECONDS = 15.0
 # A holder that died leaves its lock file behind. Reclaim one that is older than any
 # plausible read-modify-write rather than blocking every later run forever.
 _LOCK_STALE_SECONDS = 120.0
+_WINDOWS = os.name == "nt"
+# Windows delete-pending/sharing errors can briefly masquerade as access denial.
+# Never turn a persistent ACL denial into an ordinary, indefinitely held lock.
+_WINDOWS_ACCESS_RETRIES = 3
 
 
 @contextmanager
@@ -51,63 +56,99 @@ def file_lock(
     goes wrong. A lock file older than ``stale_after`` is assumed to belong to a
     process that died and is reclaimed, so a crash cannot wedge the workspace.
 
-    Raises :class:`ResearchError` on timeout — a caller that cannot take the lock
-    must not fall through and write anyway, which is the very behaviour this exists
-    to prevent.
+    Every retry checks the monotonic deadline and sleeps. Only EEXIST establishes
+    contention; unreadable state and cleanup errors fail diagnostically. Known
+    Windows sharing/delete-pending access errors receive a short bounded retry.
+    A caller that cannot take the lock must never fall through and write anyway.
     """
     lock = path.with_name(path.name + ".lock")
-    lock.parent.mkdir(parents=True, exist_ok=True)
+    if not math.isfinite(timeout) or timeout < 0:
+        raise ValueError("Lock timeout must be finite and nonnegative.")
+    if not math.isfinite(stale_after) or stale_after < 0:
+        raise ValueError("Lock stale_after must be finite and nonnegative.")
+
+    def failure(operation: str, exc: OSError) -> ResearchError:
+        return ResearchError(f"Cannot {operation} lock {lock}: {type(exc).__name__}: {exc}")
+
+    def release() -> None:
+        try:
+            lock.unlink()
+        except OSError as exc:
+            raise failure("remove owned", exc) from exc
+
+    try:
+        lock.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise failure("prepare directory for", exc) from exc
     deadline = time.monotonic() + timeout
+    access_retries = 0
+    last_error: OSError | None = None
+
+    def timed_out() -> ResearchError:
+        detail = f" Last error: {type(last_error).__name__}: {last_error}." if last_error else ""
+        return ResearchError(
+            f"Timed out after {timeout:g}s waiting for lock {lock}.{detail} "
+            "Inspect the lock holder and workspace access; no write was performed."
+        )
+
+    first_attempt = True
     while True:
-        held = False
+        if not first_attempt and time.monotonic() >= deadline:
+            raise timed_out() from last_error
+        first_attempt = False
         try:
             fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
-        except FileExistsError:
-            held = True
-        except PermissionError as exc:
-            # Windows reports a lock file that is *pending deletion* as
-            # ERROR_ACCESS_DENIED, not EEXIST — the ordinary "someone else holds it"
-            # case, arriving as errno 13. Treating it as fatal made the lock fail
-            # under exactly the concurrency it exists for; CI caught it on
-            # windows-latest, where a POSIX box never would.
-            if os.name != "nt":
-                raise ResearchError(f"Cannot create a lock file next to {path}: {exc}") from exc
-            held = True
-        except OSError as exc:  # pragma: no cover - filesystem without O_EXCL support
-            if exc.errno in (errno.EACCES, errno.EPERM):
-                raise ResearchError(f"Cannot create a lock file next to {path}: {exc}") from exc
-            raise
-        if held:
+        except FileExistsError as exc:
+            last_error = exc
             try:
                 age = time.time() - lock.stat().st_mtime
-            except OSError:
-                continue  # released between the failed open and the stat
-            if age > stale_after:
-                try:
-                    lock.unlink()
-                except OSError:
-                    pass
-                continue
-            if time.monotonic() >= deadline:
-                raise ResearchError(
-                    f"Timed out after {timeout:g}s waiting for the lock on {path.name}. "
-                    f"Another MathResearch Ledger process is writing this workspace; if none is, "
-                    f"remove {lock}."
-                ) from None
-            time.sleep(_LOCK_POLL_SECONDS)
-            continue
+            except FileNotFoundError:
+                pass  # released during inspection; still use the bounded retry below
+            except OSError as exc:
+                raise failure("inspect existing", exc) from exc
+            else:
+                if age > stale_after:
+                    try:
+                        lock.unlink()
+                    except FileNotFoundError:
+                        pass  # another contender already reclaimed it
+                    except OSError as exc:
+                        raise failure("remove stale", exc) from exc
+        except PermissionError as exc:
+            last_error = exc
+            # The Windows CRT can return EACCES without preserving winerror
+            # for a delete-pending lock. This is a transient access retry,
+            # never evidence that another holder exists or permission to write.
+            transient_access = getattr(exc, "winerror", None) in {5, 32, 303} or (
+                getattr(exc, "winerror", None) is None and exc.errno == errno.EACCES
+            )
+            if not _WINDOWS or not transient_access or access_retries >= _WINDOWS_ACCESS_RETRIES:
+                raise failure("create (access denied)", exc) from exc
+            access_retries += 1
+        except OSError as exc:
+            raise failure("create", exc) from exc
+        else:
+            break
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise timed_out() from last_error
+        time.sleep(min(_LOCK_POLL_SECONDS, remaining))
+
+    try:
         try:
             os.write(fd, f"{os.getpid()}\n".encode())
         finally:
             os.close(fd)
-        break
+    except OSError as exc:
+        try:
+            release()
+        except ResearchError as cleanup:
+            raise cleanup from exc
+        raise failure("initialize", exc) from exc
     try:
         yield
     finally:
-        try:
-            lock.unlink()
-        except OSError:
-            pass
+        release()
 
 
 def atomic_write_text(path: Path, data: str, *, encoding: str = "utf-8") -> None:
