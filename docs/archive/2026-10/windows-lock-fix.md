@@ -1,5 +1,8 @@
 # Windows lock failure correction
 
+> Historical engineering evidence; results refer to the recorded revision, not a new acceptance.
+> Machine-specific locations are generalized. See [current limitations](../../known-limitations.md).
+
 2026-10-22. This is a code and artifact correction, not a new DSH Host acceptance.
 No real research workspace, real Profile, authentication, ACL or model was used.
 
@@ -86,7 +89,7 @@ privileges, ACL changes, real DSH Host, research workspace or user Profile were 
 Both actual handler heartbeat cases and existing real stdio tests passed, followed
 by the entire 176-test suite. This validates the changed revision rather than relying
 on the older 151-pass baseline. JUnit XML, exit codes and parsed counts are retained
-under ignored dist/_run/lock-fix-ipc (focused.xml/full.xml and their logs).
+under ignored <local-evidence> (focused.xml/full.xml and their logs).
 
 ## Artifacts and next acceptance
 
@@ -101,8 +104,8 @@ and found no private data, personal paths, credentials or local configuration.
 The automated-test closing task rechecked its inner wheel and both installed Bundle
 copies against the unchanged fixed source; all comparisons passed without rebuilding.
 The artifact audit and installed-runtime results are retained under the ignored
-dist/_run/lock-fix directory. These checks do not certify an already-running process.
-Raw logs, injected-error proof and hash comparisons stay in ignored dist/_run/lock-fix.
+<local-evidence> directory. These checks do not certify an already-running process.
+Raw logs, injected-error proof and hash comparisons stay in ignored <local-evidence>
 
 Existing running Python/DSH processes may still hold old imported bytecode; refreshing
 files does not reload them. The user must arrange later Host restart/acceptance and

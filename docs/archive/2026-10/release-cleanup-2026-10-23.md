@@ -1,7 +1,10 @@
 # Release / commit cleanup：2026-10-23
 
+> Historical engineering evidence; results refer to the recorded revision, not a new acceptance.
+> Machine-specific locations are generalized. See [current limitations](../../known-limitations.md).
+
 当前准备版本：**1.2.0，未发布、未提交**。所有检查、测试、构建和 Git 命令执行目录均为
-`D:\Projects\math-research-ledger`。本轮不开展数学研究，不访问真实研究记录、notes 仓库、
+`<repo>`。本轮不开展数学研究，不访问真实研究记录、notes 仓库、
 真实 DSH Profile 或认证存储，不修改 ACL / MIC，不运行真实 Harness 或模型。
 
 本报告是当前 release 工程整理入口。2026-10-22 各专项报告中的测试数字、包哈希、
@@ -74,12 +77,12 @@ Python 唯一版本源为 `math_research.__version__`，pyproject 动态读取�
 DSH package、实际 wheel/sdist 元数据及 README 均一致。
 
 保留 `math_research` import，以及 `math-research-ledger`、`math-research`、`smr` 和 MCP CLI aliases。
-收紧损坏内容/无效结构处理是有意的 fail-closed 行为，见 [CHANGELOG](../CHANGELOG.md)。
+收紧损坏内容/无效结构处理是有意的 fail-closed 行为，见 [CHANGELOG](../../../CHANGELOG.md)。
 本轮未创建 tag、提交、push 或 registry 发布；既有安装缓存仍是历史本地测试版本。
 
 ## 本轮实际验证
 
-执行目录：`D:\Projects\math-research-ledger`。使用仓库 Python 环境及新的 dist 临时目录。
+执行目录：`<repo>`。使用仓库 Python 环境及新的 dist 临时目录。
 完整回归在允许本地 IPC 的普通用户环境运行，不使用管理员权限、真实 DSH 或研究数据。
 
 | 检查 | 实际结果 |
@@ -127,7 +130,7 @@ package/runtime/math_research_ledger-1.2.0-py3-none-any.whl
 `.runtime.json`、Ledger 状态目录、研究数据、raw credential、本机 runtime 配置或日志。
 源码分发内历史报告的执行路径/聚合元数据按前述边界保留，不作为可执行配置。
 
-本地证据统一放在 ignored `dist/_run/release-cleanup-20261023/`：inventory/before 副本、
+本地证据统一放在 ignored `<local-evidence>`：inventory/before 副本、
 full.log/xml/exitcode、静态检查、安装/stdio smoke、build/npm-pack/package-audit 及最终清单。
 旧 dist 产物、运行时、配置备份和历史证据原样保留。没有安装到真实 Codex/DSH Profile。
 

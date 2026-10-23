@@ -1,7 +1,10 @@
 # Context precision after vertical slice
 
+> Historical engineering evidence; results refer to the recorded revision, not a new acceptance.
+> Machine-specific locations are generalized. See [current limitations](../../known-limitations.md).
+
 任务编号：2026-10-22。所有代码、测试、文档、Git 命令执行目录：
-`D:\Projects\math-research-ledger`。本轮只做工程加固，没有数学研究、真实 ingest、canonicalize、
+`<repo>`。本轮只做工程加固，没有数学研究、真实 ingest、canonicalize、
 verify/accept、DSH 排障或 Git add/commit/push。原有未提交成果保留。
 
 ## 冻结的真实观察与调用分类
@@ -82,7 +85,7 @@ MCP status 没有增加正文，64 KiB envelope 和预算上限不变。
 
 ## Precision benchmark
 
-[固定合成结构与执行方法](../benchmarks/precision/README.md)：主目标、Gap、输入三项 MUST，
+[固定合成结构与执行方法](../../../benchmarks/precision/README.md)：主目标、Gap、输入三项 MUST，
 checkpoint/三个产物/直接 failed route/反例六项 SHOULD，同 Problem 强重合但无关历史、旧 handoff，
 以及需要 exact read 的大 proof。实际调用 LedgerAdapter，输出成本来自真实返回值。
 before 使用保留的 `1.1.1+hardening.20261022` 安装源码，after 使用当前源码，
@@ -140,7 +143,7 @@ checkpoint 元数据仍不授予数学权威，proof 正文没有被悄悄嵌入
 实际读取的 **68 个 Ledger 文件**前后 SHA-256 相同，写入尝试为零；
 已有共享图 reader 内部会扫描 registry 和其他 Problem 的记录，不代表对其他 Problem 开展查询/研究。
 未复制数学正文到公开文档；私有 metadata/refs 和哈希明细留在 ignore 的
-`dist/_run/context-precision-20261022/real-results.json`、`real-hashes.private.json`。
+`<local-private-evidence>`、`real-hashes.private.json`。
 这是读取范围内字节稳定的观察，不是全局加锁数据库快照，也未修改任何研究记录。
 
 ## 文件和交付边界

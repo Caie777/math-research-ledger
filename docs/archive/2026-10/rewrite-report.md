@@ -1,10 +1,13 @@
 > Historical audit of the earlier runtime-to-ledger cutover. Retained as history;
+
+> Historical engineering evidence; results refer to the recorded revision, not a new acceptance.
+> Machine-specific locations are generalized. See [current limitations](../../known-limitations.md).
 > use README.md and codex-mcp.md for current product identity and installation.
 
 # Scope contraction delivery — 2026-10-20
 
 Historical snapshot at `f419a69`. Its MCP skeleton/untested-host statements are
-superseded by [the subsequent MCP/Codex integration](codex-mcp.md).
+superseded by [the subsequent MCP/Codex integration](../../codex-mcp.md).
 
 ## 1. New product path
 

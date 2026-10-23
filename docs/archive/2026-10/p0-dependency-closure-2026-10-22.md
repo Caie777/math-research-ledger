@@ -1,14 +1,17 @@
 # P0-1：依赖身份、版本与工作前提判断闭环
 
+> Historical engineering evidence; results refer to the recorded revision, not a new acceptance.
+> Machine-specific locations are generalized. See [current limitations](../../known-limitations.md).
+
 2026-10-22；本地工作树实现，未提交/发布。所有代码、测试、静态和 Git 命令执行目录均为
-`D:\Projects\math-research-ledger`。真实 corpus 仅在最终回归通过后做只读诊断，结果见后文。
+`<repo>`。真实 corpus 仅在最终回归通过后做只读诊断，结果见后文。
 DSH、排序调优、embedding、UI、Episode P0-2 和真实数学研究不在本轮范围。
 
 ## 原缺陷与先红后绿证据
 
 先新增 `tests/core_contracts/test_dependency_closure.py`，在修改实现前运行已知三类问题：
 same-Episode Uses、legacy unpinned、refuted/rejected/invalidated upstream，共 5 个选中用例均失败，退出码 1。
-JUnit、失败日志及退出码保存在忽略的 `dist/_run/p0-dependency-20261022/red.*`。
+JUnit、失败日志及退出码保存在忽略的 `<local-evidence>`。
 这把上轮探针转为了真正的回归，而不是依赖报告结论直接改代码。
 
 1. RESULT-2 Uses RESULT-1 经 candidate ID 转换后落到 unresolved，而 Manifest 对象使用 stable ID。
@@ -17,7 +20,7 @@ JUnit、失败日志及退出码保存在忽略的 `dist/_run/p0-dependency-2026
 
 ## 共享身份契约
 
-[identity.py](../src/math_research/ledger/identity.py) 的 ScopedIdentityResolver 只读取既有 records、
+[identity.py](../../../src/math_research/ledger/identity.py) 的 ScopedIdentityResolver 只读取既有 records、
 Proposal 与 latest ReviewDecision；不新建 alias 表或对象数据库。Manifest、KnowledgeState、
 Episode local mapping、人工作业的 reference gate 和显式 link_dependency 复用该契约。
 
@@ -39,7 +42,7 @@ human review 仍要求依赖/target 已经通过原有 canonical gate，并保�
 
 ## Version pin：记录实际输入，不制造历史
 
-[bindings.py](../src/math_research/ledger/bindings.py) 集中生成候选依赖，
+[bindings.py](../../../src/math_research/ledger/bindings.py) 集中生成候选依赖，
 Proposal 新增可选 dependency_pins，默认空；旧空字段不改变历史 record 的内容哈希算法。
 
 | 输入情况 | 行为 |
@@ -59,7 +62,7 @@ same-Episode pin 对应本次原文中的新对象，不是 ingest 以后查到�
 
 ## Role 与 freshness
 
-[dependencies.py](../src/math_research/ledger/dependencies.py) 集中定义 VERSION_ROLES / PREMISE_ROLES。
+[dependencies.py](../../../src/math_research/ledger/dependencies.py) 集中定义 VERSION_ROLES / PREMISE_ROLES。
 当前证据不足以安全放宽出处/工件影响，本轮保持所有八种 role 的保守版本遍历：
 
 | Role | 缺失 pin / 版本变化 | 是否作为正前提传播语义 eligibility |
@@ -79,7 +82,7 @@ same-Episode pin 对应本次原文中的新对象，不是 ingest 以后查到�
 
 ## 共享 premise eligibility
 
-[premises.py](../src/math_research/ledger/premises.py) 负责语义规则与 logical/definition 闭包；
+[premises.py](../../../src/math_research/ledger/premises.py) 负责语义规则与 logical/definition 闭包；
 ObjectView 和公开 KnowledgeState 使用同一 currentness/authority projection。
 Manifest 内部只调用 intrinsic KnowledgeState pass，避免递归投影；它不是另一份对外安全结论。
 
@@ -127,9 +130,9 @@ reject/defer、缺失/非法 ref、缺少/提供历史 pin、八种 role 的 unb
 复现（选择全新 basetemp；从上述仓库根目录执行）：
 
 ```powershell
-$env:TEMP = (Resolve-Path dist/_run/p0-dependency-20261022/tmp).Path
+$env:TEMP = (Resolve-Path <local-evidence>).Path
 $env:TMP = $env:TEMP
-.\.venv-win\Scripts\python.exe -m pytest -p no:cacheprovider --basetemp dist/_run/p0-dependency-20261022/NEW_TEMP
+.\.venv-win\Scripts\python.exe -m pytest -p no:cacheprovider --basetemp <local-evidence>
 .\.venv-win\Scripts\python.exe -m ruff check src tests scripts
 .\.venv-win\Scripts\python.exe -m ruff format --check src tests scripts
 .\.venv-win\Scripts\python.exe -m mypy
@@ -163,7 +166,7 @@ CURRENT=173、UNKNOWN=97（旧审计为 205/65）；Unknown 增加来自未绑�
 eligibility 为 CONDITIONAL 101、BLOCKED 169；authority 仍 PROVISIONAL 217/CANONICAL 53，
 270 个对象仍 NOT_CHECKED。没有新增 canonical/human acceptance/verification。
 
-证据位于 `dist/_run/p0-dependency-20261022/corpus-readonly.private.json`、
+证据位于 `<local-private-evidence>`、
 `corpus-hashes.private.json`、`corpus.log` 和 `corpus.exitcode`，均被 dist 忽略规则保护。
 
 ## 修改范围与保留问题
@@ -186,5 +189,5 @@ core-product-audit 增加本报告链接，保留旧审计数字和原缺陷历�
 
 最终 Git 状态：`main@60bf0d04b95624bcf9f1269c2e66a7a4a5053694`，
 21 个 tracked modifications、20 个未跟踪文件（逐文件计数，包含全部既有未提交成果），index 无暂存变更。
-详细文件列表、JUnit 解析与检查退出码见忽略的 `dist/_run/p0-dependency-20261022/results.json`。
+详细文件列表、JUnit 解析与检查退出码见忽略的 `<local-evidence>`。
 既有 atomicio.py 与 MCP server.py 的字节哈希仍与进入本轮前一致；Codex manifest/Skills 未改。

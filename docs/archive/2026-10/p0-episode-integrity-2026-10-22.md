@@ -1,6 +1,9 @@
 # P0-2：Episode 预检与原文完整性
 
-2026-10-22；本地未提交实现。命令执行目录：`D:\Projects\math-research-ledger`。
+> Historical engineering evidence; results refer to the recorded revision, not a new acceptance.
+> Machine-specific locations are generalized. See [current limitations](../../known-limitations.md).
+
+2026-10-22；本地未提交实现。命令执行目录：`<repo>`。
 DSH 冻结，不进行 Harness、retrieval 排序、embedding、UI 或真实数学研究。
 本报告与 [P0-1](p0-dependency-closure-2026-10-22.md) 配套；历史审计数字保留在原审计文档中。
 
@@ -8,7 +11,7 @@ DSH 冻结，不进行 Harness、retrieval 排序、embedding、UI 或真实数�
 
 改实现前固化三个失败回归：已归档 Episode 追加字节后，专用 reader 拒绝，
 generic get_object 却成功；重复 local ID 与多个 target 没有结构化诊断。
-三项均先失败，日志、JUnit 和退出码位于忽略的 `dist/_run/p0-episode-20261022/red.*`。
+三项均先失败，日志、JUnit 和退出码位于忽略的 `<local-evidence>`。
 这些是合成 workspace 的直接观察；没有篡改真实研究原文。
 
 ## 一个 parser、一个 preview contract
@@ -121,7 +124,7 @@ index/docs/vectors/status 是可重建缓存，使用自己的 reader，不通�
 
 ## 唯一一次真实 corpus dry-run
 
-执行目录仍为 `D:\Projects\math-research-ledger`；脚本直接调用只读 preview/archive reader，
+执行目录仍为 `<repo>`；脚本直接调用只读 preview/archive reader，
 不经过 checkpoint 写锁、MCP 或 ingest。Python audit hook 拒绝研究目录写入及 Ledger 目录之外的
 研究文件读取；前后分别对全部文件作 SHA-256。一次诊断退出码 0，750 → 750，全部 bytes 相同。
 未访问 notes repo、未回填 pins/delta/metadata、未升级 schema 或修 digest。
@@ -155,7 +158,7 @@ index/docs/vectors/status 是可重建缓存，使用自己的 reader，不通�
 因此上述 ERROR、原文 hash、格式、历史 pin 观察仍有效，但 276 条 UNRESOLVED_USES 中
 哪些为真实未知引用、哪些为空字段误报，尚未在最终代码上逐条复核；当前有效 WARNING 总数未实测。
 不擅自从统计里删掉整个类别，也不把未运行的最终 corpus lint 宣称为通过。
-原始明细与前后 hash 仅在忽略的 `dist/_run/p0-episode-20261022/corpus*.private.json` 中保留。
+原始明细与前后 hash 仅在忽略的 `<local-private-evidence>` 中保留。
 
 合法 legacy 格式继续支持；旧文档缺少新发布所需 target/pin 是结构风险或历史未知，
 不等于 digest corruption。现有历史仍可读取，本轮没有重新提取或迁移其中任何对象。
@@ -177,7 +180,7 @@ index/docs/vectors/status 是可重建缓存，使用自己的 reader，不通�
 本轮相对 P0-1 的 218 项基线新增 **51 项**：Episode/integrity 48、真实 stdio 合同 1、
 Windows CRT/未知 native code 边界 2。全部为合成 fixtures，不调用模型或真实研究 checker。
 
-最终命令执行目录均为 `D:\Projects\math-research-ledger`，Python 为仓库 `.venv-win`：
+最终命令执行目录均为 `<repo>`，Python 为仓库 `.venv-win`：
 
 | 检查 | 最终结果 |
 |---|---|
@@ -189,7 +192,7 @@ Windows CRT/未知 native code 边界 2。全部为合成 fixtures，不调用�
 
 pytest 使用新建 dist 临时目录、`-p no:cacheprovider`、`--basetemp`、JUnit、
 `-X faulthandler -o faulthandler_timeout=45`；完整套件在已授权的普通用户 IPC 环境运行，
-没有管理员权限或 DSH Host。最终证据为 `dist/_run/p0-episode-20261022/closure.*`，
+没有管理员权限或 DSH Host。最终证据为 `<local-evidence>`，
 48 项 Episode 专项为 `post-corpus.*`；静态检查日志与机器可读汇总也在同目录。
 原始 red、CRT red、两次失败全量结果以及后续绿色结果全部保留，不以绿色结果覆盖失败证据。
 

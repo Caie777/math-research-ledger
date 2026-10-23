@@ -1,7 +1,10 @@
 # Vertical-slice continuity 加固
 
+> Historical engineering evidence; results refer to the recorded revision, not a new acceptance.
+> Machine-specific locations are generalized. See [current limitations](../../known-limitations.md).
+
 2026-10-22。所有代码、测试、文档、Git 与配置审计命令执行目录：
-`D:\Projects\math-research-ledger`。本轮不做数学研究、不 ingest、不操作 DSH、notes、
+`<repo>`。本轮不做数学研究、不 ingest、不操作 DSH、notes、
 verification/human acceptance，不 add/commit/push。
 既有未提交修改与未跟踪文件保留。
 
@@ -13,7 +16,7 @@ Run 2 的 status 1 / get_object 12 / context 4 / search 2，以及两次 read �
 没有取得最终 Run 1/Run 2 的完整逐调用 trace；一次 app chat 列表读取未及时返回，已停止等待。
 不改写既有运行历史来填补这一空白。下文区分用户提供的观察、源码复现和本轮新实验。
 
-本地忽略证据位于 `dist/_run/continuity-hardening-20261022/`。
+本地忽略证据位于 `<local-evidence>`。
 该目录可能包含本地路径、配置备份和私有只读核验 metadata，不进入公开仓库/分发包。
 
 ## 1. 插件为何未手动选择仍可用
@@ -63,7 +66,7 @@ Ledger 目录仅用于已启动服务的 workspace resolver，不是 Codex plugi
 ### 已实施的最小配置修改
 
 按用户授权，先将用户配置完整备份到忽略目录 `codex-config.before.toml`，
-再仅把该插件 user enabled 改为 false；新建 `D:\Math Research\.codex\config.toml`：
+再仅把该插件 user enabled 改为 false；新建 `<research-workspace>\.codex\config.toml`：
 
 ```toml
 [plugins."math-research-ledger@math-research-ledger-local"]

@@ -1,4 +1,4 @@
-# DeepSeek Harness Bundle
+# DeepSeek Harness Bundle (experimental)
 
 The primary DSH integration is a native Bundle named `dsh-math-research-ledger`,
 separate from Codex's plugin.json/mcp.json. Its `dsh.bundle.patch` contributes one
@@ -11,13 +11,13 @@ Declared DSH range: `>=0.2.1-rc.2 <0.3.0`. Native installation and ON/OFF have p
 in a historical isolated Windows Host ToolRuntime. Real Windows workspace acceptance
 is incomplete and troubleshooting is paused: the user reports Desktop discovery of
 nine tools, followed by a denied checkpoint-lock create. macOS/Linux Host behavior
-remains untested. See the [current handoff](../../docs/dsh-adaptation-handoff-2026-10-22.md)
-and [historical validation](../../docs/dsh-plugin-report.md).
+remains untested. See the [current handoff](../../docs/archive/2026-10/dsh-adaptation-handoff-2026-10-22.md)
+and [historical validation](../../docs/archive/2026-10/dsh-plugin-report.md).
 A valid manifest or successful pack alone does not establish Host acceptance.
 
-The prepared 1.2.0 package aligns release metadata with the shared Python service.
+The 1.2.0 package aligns release metadata with the shared Python service.
 This packaging update does not renew the historical Host acceptance or change the
-paused Windows status. See [release cleanup](../../docs/release-cleanup-2026-10-23.md).
+paused Windows status. See [release cleanup](../../docs/archive/2026-10/release-cleanup-2026-10-23.md).
 
 ## Build and install
 

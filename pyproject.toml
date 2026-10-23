@@ -1,16 +1,17 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77.0.3", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "math-research-ledger"
 dynamic = ["version"]
-description = "Research ledger, bounded context, verification and human authority for mathematics."
+description = "Persistent research memory, context, dependency tracking and verification for mathematics."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-authors = [{ name = "Galileo" }]
+authors = [{ name = "Caie777" }]
+keywords = ["mathematics", "research", "ledger", "mcp"]
 dependencies = ["typer>=0.12", "pydantic>=2.0", "pyyaml>=6.0", "pypdf>=4.0"]
 
 [project.urls]

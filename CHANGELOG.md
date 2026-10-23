@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.0 — prepared, not published
+## 1.2.0
 
 ### Research state safety
 
@@ -37,6 +37,14 @@
   isolated Host checks passed; real Windows workspace acceptance remains incomplete at
   the reported integrity boundary. Windows DSH troubleshooting is paused. The plugin
   does not change ACLs, integrity labels, authentication or Full Access settings.
+
+### Distribution and documentation
+
+- Test Python 3.11 and 3.12 on Linux and Windows CI; align the build backend minimum
+  with PEP 639 license metadata and the package author with the plugin identity.
+- Add a user-first quickstart, clarify the MCP acceptance workflow boundary and input
+  limits, and move historical engineering reports into a dated archive.
+- Keep DSH experimental and record deferred compatibility work separately from this release.
 
 Checked is not accepted; canonical is not verified. Historical verification and acceptance
 receipts remain historical evidence. No automatic acceptance or canonicalization is added.

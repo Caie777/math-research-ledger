@@ -1,5 +1,8 @@
 # DSH Bundle engineering acceptance
 
+> Historical engineering evidence; results refer to the recorded revision, not a new acceptance.
+> Machine-specific locations are generalized. See [current limitations](../../known-limitations.md).
+
 Historical engineering record. The authoritative current status and resume plan are in
 [the 2026-10-22 handoff](dsh-adaptation-handoff-2026-10-22.md). Test counts below identify
 earlier runs; this stage's fresh results and package hash are recorded there separately.
@@ -118,18 +121,18 @@ No real Profile, credential store, Ledger or notes repo was accessed in this clo
 
 ## Reproduction and remaining boundary
 
-See the [DSH installation guide](../integrations/deepseek-harness/README.md) and
-[Bundle manual](../integrations/deepseek-harness/bundle/README.md) for build, explicit
+See the [DSH installation guide](../../../integrations/deepseek-harness/README.md) and
+[Bundle manual](../../../integrations/deepseek-harness/bundle/README.md) for build, explicit
 runtime installation, native ON/OFF, diagnostics and uninstall commands.
 
 Use a writable temporary directory and disable pytest's cacheprovider when an old
 temporary directory/cache has stale permissions. For Windows PowerShell:
 
 ```powershell
-New-Item -ItemType Directory -Force dist/_run/tmp | Out-Null
-$env:TMP = (Resolve-Path dist/_run/tmp).Path
+New-Item -ItemType Directory -Force <local-evidence> | Out-Null
+$env:TMP = (Resolve-Path <local-evidence>).Path
 $env:TEMP = $env:TMP
-python -m pytest -q -p no:cacheprovider --basetemp dist/_run/bt
+python -m pytest -q -p no:cacheprovider --basetemp <local-evidence>
 ```
 
 For an offline runtime, prepare a wheelhouse separately and run

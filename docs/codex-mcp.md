@@ -74,7 +74,7 @@ The 2026-10-22 audit found user-level Ledger enablement. It was changed, after b
 actual inventory checks, to a disabled user default plus an enabled research project.
 Both ordinary and marker-only synthetic workspaces then exposed zero Ledger tools; the
 trusted research project exposed nine. UI/session persistence beyond these fresh-Host
-checks remains unknown. See [continuity hardening](vertical-slice-continuity-hardening-2026-10-22.md).
+checks remains unknown. See [continuity hardening](archive/2026-10/vertical-slice-continuity-hardening-2026-10-22.md).
 This audit also observed `codex plugin add` re-enable the plugin in user config during an
 update. After installing/updating, recheck the intended disabled user default and enabled
 research-project override; do not assume the installer preserved project-only availability.
@@ -108,7 +108,7 @@ project/user policy above; it is not globally enabled.
 
 `scripts/codex_plugin_smoke.py` checks fresh app-server tool inventories and synthetic
 calls without a model. The separate natural-language host test and cross-harness
-results are recorded in [finalization report](finalization-report.md). No private
+results are recorded in [finalization report](archive/2026-10/finalization-report.md). No private
 conversation or real research payload belongs in the public report.
 
 Official schema and workflow: [Package your plugin](https://developers.openai.com/plugins/build/plugins),

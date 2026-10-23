@@ -1,6 +1,11 @@
 # External Research Episode contract
 
-Supply UTF-8 Markdown up to 10 MiB. Preserve complete statements/proofs and explicit failures. Pass provenance separately to identify the external harness session or original source.
+For `research_ingest_episode`, supply nonempty Markdown of at most **128,000 Unicode
+characters** per call (the MCP schema limit), with provenance supplied separately.
+Preserve complete statements/proofs and explicit failures. The lower-level CLI/file
+ingestion service separately rejects uploads above 10 MiB of UTF-8 bytes; that ceiling
+does not enlarge the MCP text limit. MCP responses are bounded to 64 KiB, independently
+of these input limits. Read long archived objects through the tool's paginated windows.
 
 Consolidate meaningful checkpoints; keep ongoing reasoning light. Use two top-level
 sections: **Confirmed Research Increment** and **Next Research Directions**. The first

@@ -34,8 +34,9 @@ Store broadly, retrieve selectively: retain raw Episodes, proof bodies, failures
 The harness owns the workspace, the user owns ordinary files, and Ledger owns only
 .math-research-ledger/. Do not directly edit private state or reorganize ordinary files.
 Never stage, commit, push or select research publication on the user's behalf.
-Soft review is advisory. Checked != accepted; canonical != verified. Models cannot grant
-themselves authority. Acceptance is human-only. Stale is derived current state; preserve
+Soft review is advisory. Checked != accepted; canonical != verified. Human acceptance
+is absent from this MCP surface: a workflow boundary, not authentication or sandboxing
+against arbitrary local code or filesystem access. Stale is derived current state; preserve
 historical receipts. Missing workspace requires explicit human initialization, never auto-init.
 """
 

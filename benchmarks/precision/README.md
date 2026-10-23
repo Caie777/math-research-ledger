@@ -32,4 +32,4 @@ local-reasoning calls. A page continuation is necessary content access, not auto
 duplicate waste. Zero unsafe counts do not establish mathematical correctness.
 At 2k, omitted SHOULD navigation is expected and separately visible in SHOULD recall.
 
-See [results and real-data read-only limits](../../docs/context-precision-after-vertical-slice-2026-10-22.md).
+See [results and real-data read-only limits](../../docs/archive/2026-10/context-precision-after-vertical-slice-2026-10-22.md).

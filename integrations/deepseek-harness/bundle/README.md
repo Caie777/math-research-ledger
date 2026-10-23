@@ -14,7 +14,7 @@ Windows compatibility status (2026-10-22): historical isolated Host discovery an
 ON/OFF/ON passed, but real Desktop workspace acceptance is incomplete. The user reports
 nine registered tools and a denied checkpoint-lock create across a Low/Medium Integrity
 boundary. Windows troubleshooting is paused; this is not a universal install-and-use
-release. See the source repository's `docs/dsh-adaptation-handoff-2026-10-22.md`.
+release. See the source repository's `docs/archive/2026-10/dsh-adaptation-handoff-2026-10-22.md`.
 The plugin never changes ACLs, integrity labels or the Host's Full Access setting.
 
 The prepared 1.2.0 package includes the current shared Python service. Packaging checks

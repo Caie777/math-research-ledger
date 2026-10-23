@@ -1,5 +1,8 @@
 # DSH 适配阶段交接：2026-10-22
 
+> Historical engineering evidence; results refer to the recorded revision, not a new acceptance.
+> Machine-specific locations are generalized. See [current limitations](../../known-limitations.md).
+
 归档说明（2026-10-23）：下文测试数、包版本和哈希保留原阶段含义。
 1.2.0 仅重新整理发布元数据与当前共享 Python 源码，见
 [release 整理](release-cleanup-2026-10-23.md)；没有新增 DSH Host 验收或改变以下冻结状态。
@@ -11,16 +14,16 @@ Windows/DSH 真实环境排障按用户要求冻结。本轮没有启动 DSH Des
 [锁修复报告](windows-lock-fix.md) 保留各自历史证据，不把历史通过等同于当前真实会话验收。
 
 所有本轮代码检查、测试、构建、导入与 Git 命令的执行目录均为
-`D:\Projects\math-research-ledger`。本轮只修改文档，并重新构建本地分发包；
+`<repo>`。本轮只修改文档，并重新构建本地分发包；
 保留全部已有源码修改、未跟踪文件、旧运行时、旧包和测试证据。
 
 ## 仓库与证据归属
 
 | 位置 | 职责与边界 |
 |---|---|
-| `D:\Projects\math-research-ledger`，`Caie777/math-research-ledger` | 工具、Codex 插件、DSH Bundle 源码；当前分支 main |
-| `D:\Math Research` | 用户/Harness 的统一数学研究工作区，Ledger 只拥有 `.math-research-ledger/` |
-| 上述工作区内 `math-research-notes`，`Caie777/math-research-notes` | 嵌套的独立成果发布仓库；只发布用户选择的成熟成果，本轮未操作 |
+| `<repo>`，`Caie777/math-research-ledger` | 工具、Codex 插件、DSH Bundle 源码；当前分支 main |
+| `<research-workspace>` | 用户/Harness 的统一数学研究工作区，Ledger 只拥有 `.math-research-ledger/` |
+| 上述工作区内 `publication-notes`，`<publication-repo-remote>` | 嵌套的独立成果发布仓库；只发布用户选择的成熟成果，本轮未操作 |
 
 研究私有状态、workspace.yaml 和研究 AGENTS.md 应保持 local-only；插件不自动 Git staging、
 commit、push 或选择公开成果。这里的规范路径是用户要求归档的诊断上下文，不是公开插件默认配置；
@@ -75,7 +78,7 @@ docs/windows-lock-fix.md、docs/finalization-report.md、DSH 安装指南和 Bun
 官方 Bundle 契约是 `package.json -> dsh.bundle.patch -> cordis.patch.yml`。
 适配入口复用 `@deepseek-ai/dsh-mcp-client` 的连接、发现、注册与释放；Core Services、Ledger、
 workspace resolver、九个工具 schema 和人工权威边界与 Codex 共用，没有第二套 Agent loop/数据库。
-安装和卸载方式已写入[安装指南](../integrations/deepseek-harness/README.md)：
+安装和卸载方式已写入[安装指南](../../../integrations/deepseek-harness/README.md)：
 
 ```text
 python scripts/build_dsh_bundle.py FRESH_BUNDLE_DIRECTORY
@@ -92,7 +95,7 @@ OFF 不删除数据，卸载也不删除研究状态；关闭后的零工具结�
 
 | 证据层级 | 已核对的结果 | 限制 |
 |---|---|---|
-| 历史隔离 Host | `dist/_run/host-assertions.json`：ON/OFF/ON = 9/0/9；status 为 1 个合成 Problem/对象，search 命中合成 PROBLEM-0001；无模型，合成文件字节不变 | 发生于后续锁修复之前，本轮不重跑，不认证当前真实会话 |
+| 历史隔离 Host | `<local-evidence>`：ON/OFF/ON = 9/0/9；status 为 1 个合成 Problem/对象，search 命中合成 PROBLEM-0001；无模型，合成文件字节不变 | 发生于后续锁修复之前，本轮不重跑，不认证当前真实会话 |
 | 历史解释器追踪 | 4 次 MCP 启动均使用 Bundle 内 Python，未用开发 venv | 不是当前运行进程的证明 |
 | 用户提供的真实 Desktop 诊断 | 已安装、服务启动、MCP 握手/tools/list 成功，九个工具注册 | 是用户会话观察；本轮不再次读取 Profile 或调用 Host；不等于数据访问成功 |
 | 本轮静态/自动化核对 | 九个既有工具的 schema、Bundle 清单、启动/缺失运行时诊断、真实 stdio、锁与权限边界测试均在全套回归中通过 | 不替代 GUI 或真实工作区验收 |
@@ -121,16 +124,16 @@ workspace 解析中的少量同步路径/元数据检查仍存在；测试不声
 
 ### 本轮实际回归（非历史数字）
 
-执行目录统一为 `D:\Projects\math-research-ledger`；沿用已授权的普通用户本地 IPC 测试环境，
+执行目录统一为 `<repo>`；沿用已授权的普通用户本地 IPC 测试环境，
 不使用管理员权限，不启动 DSH，不改变沙箱/ACL/账户配置。TMP/TEMP 和 basetemp 均在本轮 dist 子目录。
 
 ```powershell
-$env:TMP = (Resolve-Path dist/_run/archive-20261022/tmp).Path
+$env:TMP = (Resolve-Path <local-evidence>).Path
 $env:TEMP = $env:TMP
-.\.venv-win\Scripts\python.exe -X faulthandler -m pytest -p no:cacheprovider --basetemp dist/_run/archive-20261022/pytest-temp --junitxml dist/_run/archive-20261022/pytest.xml -o faulthandler_timeout=30
+.\.venv-win\Scripts\python.exe -X faulthandler -m pytest -p no:cacheprovider --basetemp <local-evidence> --junitxml <local-evidence> -o faulthandler_timeout=30
 .\.venv-win\Scripts\python.exe -m ruff check src tests scripts
 .\.venv-win\Scripts\python.exe -m ruff format --check src tests scripts
-.\.venv-win\Scripts\python.exe -m mypy --cache-dir dist/_run/archive-20261022/mypy-cache
+.\.venv-win\Scripts\python.exe -m mypy --cache-dir <local-evidence>
 git diff --check
 ```
 
@@ -155,9 +158,9 @@ Codex 清单、Skills、MCP schema、checkpoint 协议和其他 Ledger/检索/�
 
 ### 当前产物与旧证据分开保存
 
-新产物：`dist/_run/archive-20261022/dsh-math-research-ledger-1.1.0.tgz`。
+新产物：`<local-evidence>`。
 SHA-256：`f69e17c001e1b78f838cd024c008085bdcda70dab8a8213fa1fecf4cd2c11ec5`。
-构建到新的 `dist/_run/archive-20261022/bundle`，没有覆盖已有安装目录或运行时；本轮只更新包内说明。
+构建到新的 `<local-evidence>`，没有覆盖已有安装目录或运行时；本轮只更新包内说明。
 新 wheel 的全部 math_research 包文件与当前 src 逐字节一致；七个外层文件与当前 Bundle 源文件/许可证一致。
 实际 npm pack JSON 与 tar 成员一致，恰好包含：
 
@@ -188,13 +191,13 @@ mcp/server.py cae09d50d96761d0d9ff7fa15dbde6c23bda9483bec6ffc878d037e0e31073e4
 新旧哈希不同是重新构建/说明更新，不能混用旧报告哈希标记新包。
 
 本轮日志、JUnit、退出码、npm-pack.json、静态检查和 current/original-artifact-audit.json
-位于忽略的 `dist/_run/archive-20261022/`；早期 dist/_run/lock-fix、lock-fix-ipc、Host 证据全部保留。
+位于忽略的 `<local-evidence>`；早期 <local-evidence>、lock-fix-ipc、Host 证据全部保留。
 dist 未被 Git tracked，运行时、临时 Profile、日志不会进入此 tarball；不得把整个 dist 上传。
 
 ## B. 已确认的真实环境问题：观察与解释分开
 
 **用户提供的直接观察（本轮不独立重测）：**真实 DSH 会话九个工具已注册，MCP 链路可工作；
-对 `D:\Math Research` 调用 research_status 仍被拒绝创建 `.math-research-ledger\.checkpoint.lock`。
+对 `<research-workspace>` 调用 research_status 仍被拒绝创建 `.math-research-ledger\.checkpoint.lock`。
 沙箱 Python 为 Low Integrity；工作区根目录已成功取得 Low Integrity 标签，
 但既有 `.math-research-ledger` 目录及旧内容仍为 Medium Integrity。
 

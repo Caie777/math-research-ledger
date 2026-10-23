@@ -1,12 +1,15 @@
 # P1 vertical slice run 1：启动前检查记录
 
+> Historical engineering evidence; results refer to the recorded revision, not a new acceptance.
+> Machine-specific locations are generalized. See [current limitations](../../known-limitations.md).
+
 日期：2026-10-22。状态：**PREFLIGHT BLOCKED；尚未开始真实研究**。
-命令执行目录均为 `D:\Projects\math-research-ledger`。
+命令执行目录均为 `<repo>`。
 本报告是待续的实验记录，不能作为完成 state restore / research / continuity 的证据。
 
 ## 当前安装与实际会话
 
-本轮按 [continue-research skill](../skills/continue-research/SKILL.md) 和当前用户明确的
+本轮按 [continue-research skill](../../../skills/continue-research/SKILL.md) 和当前用户明确的
 continuation policy 执行；先核对运行实现，再读取真实 Problem。
 本会话原始九工具 schema 中，status 没有 since，ingest 没有 dry_run。
 原安装缓存 adapter 与当前源码 SHA-256 不同，不能直接开展要求使用 P0-3 的实验。
@@ -27,7 +30,7 @@ continuation policy 执行；先核对运行实现，再读取真实 Problem。
   该 Host 没有调用模型，没有读取真实研究记录；它不能替代本对话的实际连接验收。
 - 本机受限执行环境的 CIM 进程查询被拒绝，未尝试提权或更改权限。
 
-本地忽略证据目录：`dist/_run/vertical-slice-p1-run1-20261022/`。
+本地忽略证据目录：`<local-evidence>`。
 其中 `marketplace.before.json` 保存旧本地源清单，`fresh-host-preflight.json` 保存新 Host
 schema 判断和合成返回；不包含真实数学正文、认证数据或真实研究 transcript。
 

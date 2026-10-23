@@ -1,6 +1,9 @@
 # P0-3：明确续研入口与固定 continuity 评测
 
-2026-10-22；本地工作树工程。所有命令执行目录：`D:\Projects\math-research-ledger`。
+> Historical engineering evidence; results refer to the recorded revision, not a new acceptance.
+> Machine-specific locations are generalized. See [current limitations](../../known-limitations.md).
+
+2026-10-22；本地工作树工程。所有命令执行目录：`<repo>`。
 基线为 P0-2 的 269 passed；既有修改、未跟踪文件和构建证据保留。
 本轮不处理 DSH、embedding、模型 reranker、UI、自动研究 loop 或数学研究。
 
@@ -73,7 +76,7 @@ handoff 使用现有 reserved-heading reader / 已保存 next directions，不�
 
 ## 冻结合成集与方法
 
-[benchmark](../benchmarks/continuity/README.md) 固定 18 个双语任务、三种策略和 2k/8k/16k 预算。
+[benchmark](../../../benchmarks/continuity/README.md) 固定 18 个双语任务、三种策略和 2k/8k/16k 预算。
 任务输入与 gold 单独存放，固定 SHA-256 由回归测试检查；生产源码不导入任何 benchmark/gold。
 没有将 fixture IDs、真实 IDs 或 gold 加进生产 ranker，未修改 BM25 权重。
 
@@ -147,7 +150,7 @@ A/C 每种预算都误召回一个无关历史来源；保留原 gold 负标签�
 跨 scope 的错误返回与同 scope 的相关性误召回分开记分，后者仍是待改进的 relevance 问题。
 没有为了本轮指标改 ranker；正文特别长的预算截断由独立回归另行覆盖。
 
-本地忽略的工程证据：`dist/_run/p0-continuity-20261022/` 下的
+本地忽略的工程证据：`<local-evidence>` 下的
 `full.log`、`full.xml`、`full.exitcode`、`mypy.log`、三份 `full-temp/**/benchmark.json`。
 JSON 包含各任务调用参数、结果、memory 快照和完整指标，均来自合成 workspace。
 这些运行产物与 `.venv` 不提交，不重建或宣称刷新 DSH Bundle / 已安装插件缓存。
@@ -157,7 +160,7 @@ JSON 包含各任务调用参数、结果、memory 快照和完整指标，均�
 在合成评测和完整回归通过后，从选定 PROBLEM-0001 的 canonical metadata 准备 **6 条**候选。
 只导出 refs、query、record status、已有 dependency IDs；不复制数学陈述/证明/标题/正文。
 gold/relevance_labels 保持 null、annotation_status=PENDING_HUMAN，不自动作正确性或相关性判断。
-输出位于忽略的 `dist/_run/p0-continuity-20261022/real-p1-eval-candidates.json`。
+输出位于忽略的 `<local-evidence>`。
 公开仓库仅保留通用脚本和合成测试，不保留该私有候选 JSON。
 
 执行 `scripts/prepare_continuity_candidates.py` 退出 0；审计 hook 将研究目录读取限于指定 Problem，

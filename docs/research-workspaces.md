@@ -8,15 +8,15 @@ stage/commit/push, or select publication as part of Ledger capture.
 <tool-checkout>\       tool/plugin source: Caie777/math-research-ledger
 <research-workspace>\                      user's unified research workspace
 ├─ ordinary research files/directories  preserved in their existing locations
-├─ math-research-notes\                 separate Git repo: Caie777/math-research-notes
+├─ publication-notes\                 separate Git repo: <publication-repo-remote>
 ├─ workspace.yaml                       local-only metadata
 ├─ AGENTS.md                            local-only research instructions
 └─ .math-research-ledger\                local-only persistent ledger
 ```
 
-The actual publication repo is nested under the workspace; the workspace root is not
-a Git repo. Preserve this user-confirmed layout. The publication repo contains mature
-research selected by the user, never provisional state automatically.
+This example keeps a separate publication repo nested under a workspace that is not
+itself a Git repo. Preserve each user's actual layout. A publication repo contains
+mature research selected by the user, never provisional state automatically.
 
 When a workspace itself is a Git repo, inspect `git ls-files` before local exclusion.
 Add `.math-research-ledger/`, `workspace.yaml`, `AGENTS.md` to `.git/info/exclude`, not

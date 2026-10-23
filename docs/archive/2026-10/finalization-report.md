@@ -1,5 +1,8 @@
 # Finalization and acceptance report
 
+> Historical engineering evidence; results refer to the recorded revision, not a new acceptance.
+> Machine-specific locations are generalized. See [current limitations](../../known-limitations.md).
+
 Historical product/finalization baseline. For the current, paused DSH Windows status,
 fresh engineering checks and remaining acceptance, see the
 [2026-10-22 handoff](dsh-adaptation-handoff-2026-10-22.md).
@@ -52,7 +55,7 @@ The final native config is **enabled = false**. Enable through Plugins UI or the
 `plugins."math-research-ledger@math-research-ledger-local"` config, then start a fresh session.
 Developer staging uses a stable venv interpreter through MRL_PYTHON; the portable command
 remains bare python. A normal install needs the transport dependencies in its interpreter.
-[Installation details](codex-mcp.md).
+[Installation details](../../codex-mcp.md).
 
 ## 5. Legacy global registration
 
@@ -95,14 +98,14 @@ operational reads, and never rewrite historical absolute provenance.
 ## 8. Actual workspace discovery and final layout
 
 The user confirmed the renamed canonical root `<research-workspace>`. Discovery found one
-nonempty corpus (750 files) under Research/math-research/.math-research, plus a separate
-zero-file legacy child under Research/riemann-surfaces. No competing nonempty ledger,
+nonempty corpus (750 files) under <legacy-ledger-location>, plus a separate
+zero-file legacy child under <legacy-child-workspace>. No competing nonempty ledger,
 partial corpus or merge was inferred. The empty child was preserved, not repurposed.
 
 ```text
 <research-workspace>\
 ├─ existing ordinary research directories/files (unchanged)
-├─ math-research-notes\       existing independent publication Git repo
+├─ publication-notes\       existing independent publication Git repo
 ├─ AGENTS.md                  local-only
 ├─ workspace.yaml             local-only, workspace_version: 2
 └─ .math-research-ledger\     migrated private state
@@ -142,13 +145,13 @@ file was moved, renamed, edited or deleted. Ledger raw state also matched per-fi
 The notes repository's HEAD and Git index stayed unchanged through migration.
 
 The actual root is not itself a Git repo. As confirmed by the user, publication remains
-nested at `<research-workspace>\math-research-notes`, whose remote is independently
-`https://github.com/Caie777/math-research-notes.git`.
+nested at `<research-workspace>\publication-notes`, whose remote is independently
+`<publication-repo-remote>`.
 
 | Repository | Responsibility |
 |---|---|
 | math-research-ledger | Tool/plugin source, synthetic tests and public-safe engineering reports |
-| math-research-notes | Mature mathematical results/notes deliberately selected by the user |
+| publication-notes | Mature mathematical results/notes deliberately selected by the user |
 
 Private state and root metadata live outside the publication repo. Defense-in-depth local
 exclusions were added only to that repo's `.git/info/exclude`: .math-research-ledger/,
@@ -221,7 +224,7 @@ in `%USERPROFILE%\.dsh`. The optional desktop-account.patch.yml restores those s
 for the invocation and selects deepseek-account. The real model run succeeded through
 that existing account. No raw token was read/printed/copied into this repository; no new
 credential store, global login change, sign-out or API-key fallback was performed.
-[DeepSeek setup](../integrations/deepseek-harness/README.md).
+[DeepSeek setup](../../../integrations/deepseek-harness/README.md).
 
 ## 17. Cross-harness continuity
 
@@ -246,7 +249,7 @@ A second model-free smoke boots the actual installed DeepSeek profile/ToolRuntim
 discovers nine tools, reads a separate synthetic A and writes B through the official
 client. Omitting the Ledger patch was also checked in a fresh real DSH runtime:
 zero Ledger tools. No fake harness core was substituted. Public-safe machine evidence is in
-[continuity contract](testing/cross-harness-continuity.json); raw conversations and full
+[continuity contract](../../testing/cross-harness-continuity.json); raw conversations and full
 private inventories remain excluded from Git.
 
 ## 18. Verification
@@ -288,4 +291,4 @@ retain exact trust/authority boundaries. A separately initialized empty child re
 separate if explicitly opened. Desktop native UI rendering is the only un-driven host
 surface check; installation/config and fresh native hosts were measured. No real research
 text has been authorized for a new external-model smoke in this task, and none was sent.
-Publication to math-research-notes remains a separate, explicit user decision.
+Publication to publication-notes remains a separate, explicit user decision.

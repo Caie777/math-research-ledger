@@ -1,5 +1,8 @@
 # MathResearch Ledger 核心产品审计与下一阶段路线图
 
+> Historical engineering evidence; results refer to the recorded revision, not a new acceptance.
+> Machine-specific locations are generalized. See [current limitations](../../known-limitations.md).
+
 2026-10-22；基于当前 `main@60bf0d04b95624bcf9f1269c2e66a7a4a5053694` 加既有未提交工作树。
 **结论：这是已有实际价值的研究记录与安全边界基础设施；尚不是经过真实长程研究验证的可靠续研系统。**
 最需要投入的不是增加 Agent 或 Harness，而是让对象身份、版本依赖、读取校验和续研入口真正闭环。
@@ -13,7 +16,7 @@ P0-3 阶段回归为 300 passed；这是历史结果，不等于当前 release �
 也不等于已经完成真实长期研究/模型续研验收。
 下文未标为“后续状态”的“本轮”均指原始产品审计阶段；实现后的文件和测试结果以专项报告为准。
 
-所有阅读、分析脚本与 Git 检查命令执行目录均为 `D:\Projects\math-research-ledger`。
+所有阅读、分析脚本与 Git 检查命令执行目录均为 `<repo>`。
 DSH ACL/MIC/Host/Bundle 排障冻结，见[阶段交接](dsh-adaptation-handoff-2026-10-22.md)。
 本轮没有改生产代码、测试或 README，没有构建 Bundle，没有运行数学研究、形式化检查或 human acceptance。
 仅新增本文；已有未提交成果全部保留，没有 add、commit、push。
@@ -30,29 +33,29 @@ DSH ACL/MIC/Host/Bundle 排障冻结，见[阶段交接](dsh-adaptation-handoff-
 这是一份字节稳定的观察，不是锁定数据库快照或数学正确性验证，也没有证明未来并发读永远一致。
 
 本轮另在忽略目录的全新合成 workspace 执行五项诊断探针；结果明确标为观察，不冒充新增回归测试。
-聚合证据、私有引用清单和文件哈希保存在 `dist/_run/core-audit-20261022/`，不进入公开分发包。
+聚合证据、私有引用清单和文件哈希保存在 `<local-evidence>`，不进入公开分发包。
 本文仅记录聚合统计和少量定位 ID，不复制真实数学正文、证明、Episode 或 transcript。
 
 ## 2. 当前核心系统地图
 
 | 层/源码 | 实际职责 | 权威来源与边界 |
 |---|---|---|
-| [paths](../src/math_research/core/paths.py#L22)、[config](../src/math_research/core/config.py#L57)、[workspace](../src/math_research/core/workspace.py#L16) | 发现 v1/v2 state，校验 workspace.yaml，拒绝冲突/未完成迁移，显式初始化 | 普通用户文件由用户拥有；MCP 不自动 init；读取不迁移 |
-| [MCP resolver](../src/math_research/mcp/server.py#L47) | 部署参数 > MRL_WORKSPACE > SMR_WORKSPACE > cwd；handler 另先处理 MCP roots，再处理 tool workspace | roots/部署 pin 可以优先于 per-call；CLI ancestor 防误绑定规则与 MCP cwd 规则不完全相同，不能宣称完全同一个 resolver |
-| [Problem/typed records](../src/math_research/ledger/records/models.py#L186)、records/store、claims、validation | Problem、Definition、Assumption、KnownResult、Claim、Proof、Gap、Evidence、Counterexample、FailedAttempt 等持久记录 | YAML/JSONL/正文文件是当前 canonical 内容；type、status 和 formalization_status 含义不同 |
-| [ObjectRef/VersionPin](../src/math_research/core/refs.py#L6) | problem:kind:id 身份与 64 位哈希版本分离，拒绝不明 scope 的碰撞 | ID 不携带版本，bare ID 必须唯一；kind 是开放字符串，不是数学本体推断 |
-| [ManifestEntry/Ledger](../src/math_research/ledger/manifest.py#L25) | 汇集 typed records、proposals、Episode、sources、旧 checker、assets、新 receipts，生成统一对象与边 | 派生读视图，不是另一个数据库；accepted aliases 折叠到 canonical，raw/rejected 仍可保留 |
-| [KnowledgeState](../src/math_research/ledger/state.py#L125) | review/alias、已确认关系、proof/claim 状态、failed route 和上游警告的旧研究状态投影 | 不修改原记录；已有数学关系必须来自受控确认，不从自由正文猜测 |
-| [ObjectView](../src/math_research/ledger/projection.py#L12)、[freshness](../src/math_research/verification/freshness.py#L23)、[authority](../src/math_research/verification/authority.py#L10) | 在 Manifest 上叠加 CURRENT/STALE/UNKNOWN、receipt currentness、HUMAN_ACCEPTED 和 premise 标志 | 新旧状态层并存；本轮发现 eligibility 不一致，不能把它们视为已完全统一 |
-| [archive](../src/math_research/ledger/archive.py#L63)、[episodes](../src/math_research/ledger/episodes.py#L131)、[parser](../src/math_research/ledger/decomposition.py#L160)、[ingest](../src/math_research/services/ingest.py#L45) | 原文内容去重、scope membership、格式拆解、provisional candidates、来源 span、typed delta、advisory directions | 原文/metadata/proposal/review 是持久输入；state_delta 是 source-reported，不是 canonical 修改指令 |
-| [dependencies](../src/math_research/ledger/dependencies.py)、[link_dependency](../src/math_research/services/research.py#L109) | 显式 pin 与既有字段推导的 typed edges；记录 role 和 provenance | 显式 edge 存 ledger/dependencies.jsonl；旧 depends_on/uses 等字段产生的边常无 pin |
-| [checkpoint](../src/math_research/ledger/checkpoint.py#L46)、[atomic IO](../src/math_research/core/atomicio.py#L41)、[history](../src/math_research/ledger/history.py#L26) | 两索引 publication journal/rollback、独占文件锁、原子替换、部分对象版本快照 | 不是所有业务写入统一事务；不是全量 event sourcing 或全对象自动版本档案 |
-| [index/BM25](../src/math_research/retrieval/index.py#L400)、[policy](../src/math_research/retrieval/policy.py#L191)、recall/selection | 实时文档、词法排序、双语意图规则、最多两跳图扩展、对象/失败路线导航 | index/docs/vectors/status 是可重建缓存；相关性不赋予权威 |
-| [context](../src/math_research/retrieval/context.py#L159)、[packet](../src/math_research/retrieval/packet.py#L74) | 内部丰富选择器与外部预算 JSON；MUST/SHOULD/MAY、缺失/截断、版本前后校验 | 外部 packet 并未完整暴露内部 explore/handoff；complete 仅针对已计算 required 集合 |
-| [review](../src/math_research/services/review.py#L18) | 固定 Claim/Gap 的完整审查输入、外部 advisory report 的版本匹配 | 没有内建 LLM reviewer；NO_GAP_FOUND 不验证、不接受 |
-| [verification](../src/math_research/services/verification.py#L93)、verification/formal | 本地注册 exact checker；Lean frozen statement/config、固定 build/type/axiom probe、日志与 receipts | Lean 路径有实现；通用 exact/validated computation 没有随包附带数学 checker |
-| [acceptance](../src/math_research/services/acceptance.py#L32)、[write boundary](../src/math_research/ledger/records/write_boundary.py) | 通过且 current 的硬验证才能 request；受信任人工通道创建 acceptance receipt | MCP 无 accept；ContextVar/环境标志是调用边界，不是对任意本地进程的认证或加密签名 |
-| [MCP adapter](../src/math_research/mcp/adapter.py#L169)、server、CLI | schema/参数、workspace、分页、64 KiB SDK envelope、错误与共享服务调用 | 九个工具不含编译器/shell/任意文件写入；同步服务进入 worker thread；业务决策留在服务/ledger |
+| [paths](../../../src/math_research/core/paths.py#L22)、[config](../../../src/math_research/core/config.py#L57)、[workspace](../../../src/math_research/core/workspace.py#L16) | 发现 v1/v2 state，校验 workspace.yaml，拒绝冲突/未完成迁移，显式初始化 | 普通用户文件由用户拥有；MCP 不自动 init；读取不迁移 |
+| [MCP resolver](../../../src/math_research/mcp/server.py#L47) | 部署参数 > MRL_WORKSPACE > SMR_WORKSPACE > cwd；handler 另先处理 MCP roots，再处理 tool workspace | roots/部署 pin 可以优先于 per-call；CLI ancestor 防误绑定规则与 MCP cwd 规则不完全相同，不能宣称完全同一个 resolver |
+| [Problem/typed records](../../../src/math_research/ledger/records/models.py#L186)、records/store、claims、validation | Problem、Definition、Assumption、KnownResult、Claim、Proof、Gap、Evidence、Counterexample、FailedAttempt 等持久记录 | YAML/JSONL/正文文件是当前 canonical 内容；type、status 和 formalization_status 含义不同 |
+| [ObjectRef/VersionPin](../../../src/math_research/core/refs.py#L6) | problem:kind:id 身份与 64 位哈希版本分离，拒绝不明 scope 的碰撞 | ID 不携带版本，bare ID 必须唯一；kind 是开放字符串，不是数学本体推断 |
+| [ManifestEntry/Ledger](../../../src/math_research/ledger/manifest.py#L25) | 汇集 typed records、proposals、Episode、sources、旧 checker、assets、新 receipts，生成统一对象与边 | 派生读视图，不是另一个数据库；accepted aliases 折叠到 canonical，raw/rejected 仍可保留 |
+| [KnowledgeState](../../../src/math_research/ledger/state.py#L125) | review/alias、已确认关系、proof/claim 状态、failed route 和上游警告的旧研究状态投影 | 不修改原记录；已有数学关系必须来自受控确认，不从自由正文猜测 |
+| [ObjectView](../../../src/math_research/ledger/projection.py#L12)、[freshness](../../../src/math_research/verification/freshness.py#L23)、[authority](../../../src/math_research/verification/authority.py#L10) | 在 Manifest 上叠加 CURRENT/STALE/UNKNOWN、receipt currentness、HUMAN_ACCEPTED 和 premise 标志 | 新旧状态层并存；本轮发现 eligibility 不一致，不能把它们视为已完全统一 |
+| [archive](../../../src/math_research/ledger/archive.py#L63)、[episodes](../../../src/math_research/ledger/episodes.py#L131)、[parser](../../../src/math_research/ledger/decomposition.py#L160)、[ingest](../../../src/math_research/services/ingest.py#L45) | 原文内容去重、scope membership、格式拆解、provisional candidates、来源 span、typed delta、advisory directions | 原文/metadata/proposal/review 是持久输入；state_delta 是 source-reported，不是 canonical 修改指令 |
+| [dependencies](../../../src/math_research/ledger/dependencies.py)、[link_dependency](../../../src/math_research/services/research.py#L109) | 显式 pin 与既有字段推导的 typed edges；记录 role 和 provenance | 显式 edge 存 ledger/dependencies.jsonl；旧 depends_on/uses 等字段产生的边常无 pin |
+| [checkpoint](../../../src/math_research/ledger/checkpoint.py#L46)、[atomic IO](../../../src/math_research/core/atomicio.py#L41)、[history](../../../src/math_research/ledger/history.py#L26) | 两索引 publication journal/rollback、独占文件锁、原子替换、部分对象版本快照 | 不是所有业务写入统一事务；不是全量 event sourcing 或全对象自动版本档案 |
+| [index/BM25](../../../src/math_research/retrieval/index.py#L400)、[policy](../../../src/math_research/retrieval/policy.py#L191)、recall/selection | 实时文档、词法排序、双语意图规则、最多两跳图扩展、对象/失败路线导航 | index/docs/vectors/status 是可重建缓存；相关性不赋予权威 |
+| [context](../../../src/math_research/retrieval/context.py#L159)、[packet](../../../src/math_research/retrieval/packet.py#L74) | 内部丰富选择器与外部预算 JSON；MUST/SHOULD/MAY、缺失/截断、版本前后校验 | 外部 packet 并未完整暴露内部 explore/handoff；complete 仅针对已计算 required 集合 |
+| [review](../../../src/math_research/services/review.py#L18) | 固定 Claim/Gap 的完整审查输入、外部 advisory report 的版本匹配 | 没有内建 LLM reviewer；NO_GAP_FOUND 不验证、不接受 |
+| [verification](../../../src/math_research/services/verification.py#L93)、verification/formal | 本地注册 exact checker；Lean frozen statement/config、固定 build/type/axiom probe、日志与 receipts | Lean 路径有实现；通用 exact/validated computation 没有随包附带数学 checker |
+| [acceptance](../../../src/math_research/services/acceptance.py#L32)、[write boundary](../../../src/math_research/ledger/records/write_boundary.py) | 通过且 current 的硬验证才能 request；受信任人工通道创建 acceptance receipt | MCP 无 accept；ContextVar/环境标志是调用边界，不是对任意本地进程的认证或加密签名 |
+| [MCP adapter](../../../src/math_research/mcp/adapter.py#L169)、server、CLI | schema/参数、workspace、分页、64 KiB SDK envelope、错误与共享服务调用 | 九个工具不含编译器/shell/任意文件写入；同步服务进入 worker thread；业务决策留在服务/ledger |
 
 ### Source of truth 与派生状态
 
@@ -90,7 +93,7 @@ ingest **不会**直接 revise/refute/invalidate canonical 对象，不运行 ch
 只有另行的受信任 `review_candidate` 才能把选定 proposal 映射到 canonical record；
 关系确认、数学验证、新 acceptance receipt 仍是不同动作。
 REVISION candidate 的人工提交主要生成 Approach/FailedAttempt，并不是通用旧对象替换器
-（[commit](../src/math_research/ledger/episodes.py#L1019)）。
+（[commit](../../../src/math_research/ledger/episodes.py#L1019)）。
 
 ### 搜索到续研
 
@@ -111,7 +114,7 @@ research_context_packet(ref, query, purpose, budget)
 
 “research continuation” 的推理者是外部 Agent；Ledger 没有研究循环。
 当前 MCP status 不输出 primary target，get_object 的 Problem 正文也不输出完整 problem.yaml 元数据；
-内部 [research_map](../src/math_research/retrieval/research_map.py#L92) 知道 primary_claim_id，但不在九个工具的结果中完整呈现。
+内部 [research_map](../../../src/math_research/retrieval/research_map.py#L92) 知道 primary_claim_id，但不在九个工具的结果中完整呈现。
 这会使纯 MCP 新会话难以明确知道“当前主目标”，不能靠 `.current` 或最早的 Claim ID 猜测。
 静态链路还显示一个兼容断点：Manifest 为缺少 object_id 的旧 proposal 返回 CANDIDATE 身份，
 而 ResearchTarget 校验只匹配 candidate.object_id 或 canonical Claim；旧候选可被搜索/读取不代表可以直接构造 context。
@@ -146,7 +149,7 @@ research_context_packet(ref, query, purpose, budget)
 
 ### 5.1 Episode 拆解：可靠的是语法，不是数学含义
 
-[decomposition.py](../src/math_research/ledger/decomposition.py#L8) 识别严格 H2 `RESULT/PROOF/GAP/EVIDENCE/
+[decomposition.py](../../../src/math_research/ledger/decomposition.py#L8) 识别严格 H2 `RESULT/PROOF/GAP/EVIDENCE/
 COUNTEREXAMPLE/REFUTATION/REVISION/FAILED-ATTEMPT/BRANCH-n`，以及中英白名单的独立加粗字段。
 字段前空行、heading 层级、命名都有实际约束；普通 prose 留在 raw archive，不会自动抽取结论。
 legacy `## Claim: ...` 等是另一条有限语法；numbered 与 legacy 不能假定可随意混排。
