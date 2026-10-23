@@ -15,6 +15,10 @@ remains untested. See the [current handoff](../../docs/dsh-adaptation-handoff-20
 and [historical validation](../../docs/dsh-plugin-report.md).
 A valid manifest or successful pack alone does not establish Host acceptance.
 
+The prepared 1.2.0 package aligns release metadata with the shared Python service.
+This packaging update does not renew the historical Host acceptance or change the
+paused Windows status. See [release cleanup](../../docs/release-cleanup-2026-10-23.md).
+
 ## Build and install
 
 From the source checkout, with build dependencies installed:

@@ -22,19 +22,32 @@ The same workspace state belongs to neither a session nor a harness. Python 3.11
 is required. Distribution/plugin ID: `math-research-ledger`; Python imports remain
 `math_research` to preserve integrations.
 
+The prepared release version is **1.2.0**; see [CHANGELOG](CHANGELOG.md).
+Local cache test versions are not release identities. This checkout has not been published.
+
 ## Install and opt in
 
 ```powershell
 python -m pip install -e '.[mcp]'
-math-research-ledger --workspace 'D:\Math Research' init
+math-research-ledger --workspace 'C:\path\to\your\research' init
 ```
 
 Enable the local **MathResearch Ledger** plugin in the harness when needed and start
 a fresh session. Leave it disabled for ordinary work. Use the harness's native plugin
 state; no custom switch or global always-on MCP registration is required.
 [Codex setup](docs/codex-mcp.md) covers portable packaging, the compatibility manifest
-and local installation. [DeepSeek's one-shot patch](integrations/deepseek-harness/README.md)
-is optional per run. There is no public Plugin Directory submission in this release.
+and local installation. [DeepSeek Harness installation](integrations/deepseek-harness/README.md)
+uses a separate native DSH Bundle: build/extract it, explicitly prepare Python, then
+register it with Desktop's `dsh plugin --profile desktop add PATH`. DSH's native Plugins
+page controls profile-wide ON/OFF. The one-shot MCP patch remains an advanced alternative.
+The Bundle has an independently installed Python environment. Historical isolated DSH
+Host tests verified discovery, read-only calls and ON/OFF. Real Windows workspace
+acceptance is **incomplete**: Desktop registers nine tools, but checkpoint-lock creation
+is denied by the reported Low/Medium Integrity boundary. DSH Windows troubleshooting
+is paused. The plugin never changes ACLs/integrity labels or switches to Full Access.
+See the [current handoff](docs/dsh-adaptation-handoff-2026-10-22.md) and
+[engineering evidence](docs/dsh-plugin-report.md); this is not a universal install-and-use claim.
+There is no registry publication or public Plugin Directory submission in this release.
 
 The canonical CLI is `math-research-ledger`. `smr` and `math-research` remain legacy
 compatibility aliases; `smr-mcp` also remains available. Without refreshed entry points,
@@ -65,6 +78,21 @@ source-reported typed state changes; **Next Research Directions** remain advisor
 Use `research_save_note` sparingly for important isolated results, gaps, failures or
 evidence, never continuous recording of every chat turn.
 
+Preview with `research_ingest_episode(dry_run=true)` before publication. Correct ERRORs,
+review WARNINGs, then ingest once; `archive_only=true` explicitly preserves raw Markdown
+without extraction. Exact archived-source reads fail with `INTEGRITY_ERROR` on digest mismatch.
+See the [Episode preview and integrity contract](docs/p0-episode-integrity-2026-10-22.md).
+
+Start each research session with an explicitly selected Problem in `research_status`,
+then restore its exact primary target/context once. Continue local reasoning freely;
+retrieve again when memory could change the next decision. See the
+[continuation contract and fixed evaluation](docs/p0-continuity-evaluation-2026-10-22.md).
+Plugin availability does not imply per-turn memory access. Research workspaces can enable
+Ledger by project while retrieval stays event-triggered; ordinary workspaces can leave it
+disabled. See [Codex scope and navigation hardening](docs/vertical-slice-continuity-hardening-2026-10-22.md).
+`CONTINUE_RESEARCH` selects the target's local checkpoint closure; optional proofs supply
+navigation until exact reading is needed. See [context precision](docs/context-precision-after-vertical-slice-2026-10-22.md).
+
 Store broadly, retrieve selectively: retain raw Episodes, full proofs, failed attempts,
 counterexamples, rejected/deferred routes, provenance and revision history. Optimize
 retrieval and context budgets before deleting history.
@@ -90,12 +118,13 @@ python -m pip install -e '.[dev,mcp]'
 python -m pytest
 ruff check src tests scripts
 ruff format --check src tests scripts
-mypy
+python -m mypy
 python -m build
 git diff --check
 ```
 
-See [architecture](docs/architecture.md), [verification](docs/formalization-v0.md) and
-[finalization evidence](docs/finalization-report.md). The project evolved from a
+See [architecture](docs/architecture.md), [verification](docs/formalization-v0.md),
+[release cleanup](docs/release-cleanup-2026-10-23.md) and
+[historical finalization evidence](docs/finalization-report.md). The project evolved from a
 standalone research-agent runtime into an agent-agnostic research ledger and tool layer.
 Repository: [Caie777/math-research-ledger](https://github.com/Caie777/math-research-ledger).

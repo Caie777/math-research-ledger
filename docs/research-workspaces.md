@@ -5,8 +5,8 @@ Harness owns the workspace. User owns ordinary files. MathResearch Ledger owns o
 stage/commit/push, or select publication as part of Ledger capture.
 
 ```text
-D:\Projects\math-research-ledger\       tool/plugin source: Caie777/math-research-ledger
-D:\Math Research\                      user's unified research workspace
+<tool-checkout>\       tool/plugin source: Caie777/math-research-ledger
+<research-workspace>\                      user's unified research workspace
 ├─ ordinary research files/directories  preserved in their existing locations
 ├─ math-research-notes\                 separate Git repo: Caie777/math-research-notes
 ├─ workspace.yaml                       local-only metadata

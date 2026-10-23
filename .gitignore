@@ -16,6 +16,8 @@
 .env.*
 !.env.example
 /.local/
+/integrations/deepseek-harness/bundle/.runtime.json
+/integrations/deepseek-harness/bundle/.runtime.json.tmp
 .envrc
 .pypirc
 .streamlit/secrets.toml

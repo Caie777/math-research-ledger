@@ -17,6 +17,9 @@ boundary. Windows troubleshooting is paused; this is not a universal install-and
 release. See the source repository's `docs/dsh-adaptation-handoff-2026-10-22.md`.
 The plugin never changes ACLs, integrity labels or the Host's Full Access setting.
 
+The prepared 1.2.0 package includes the current shared Python service. Packaging checks
+do not renew the historical Host acceptance or resolve the paused Windows issue.
+
 Extract the release tarball to a stable writable directory first. Prepare Python before
 registering the directory, because DSH installs enable their bundle by default:
 

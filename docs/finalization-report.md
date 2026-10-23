@@ -1,5 +1,11 @@
 # Finalization and acceptance report
 
+Historical product/finalization baseline. For the current, paused DSH Windows status,
+fresh engineering checks and remaining acceptance, see the
+[2026-10-22 handoff](dsh-adaptation-handoff-2026-10-22.md).
+
+Local machine path examples in this public report are redacted; historical Ledger provenance is unchanged.
+
 2026-10-21–22 (Asia/Shanghai). Tool/plugin development and synthetic engineering only.
 No new real mathematical research, formalization or human acceptance was conducted.
 
@@ -12,7 +18,7 @@ there is no namespace conflict and renaming imports would break integrations for
 
 ## 2. Repositories and initial audit
 
-Started at `D:\Projects\math-research-ledger`, branch `main`, HEAD
+Started at `<tool-checkout>`, branch `main`, HEAD
 `77753f98901b929bad9200b99798ae13d0e28bb5`, with clean tracked status. Initial distribution
 and server identity used the previous brand; console scripts were smr, math-research and
 smr-mcp. No plugin package existed. Global Codex registration pointed to the renamed-away
@@ -40,7 +46,7 @@ compatibility manifest references the same product and server configuration. No 
 daemon, custom switch, or public Plugin Directory submission was added.
 
 Native local marketplace `math-research-ledger-local` is installed from
-`D:\Projects\math-research-ledger\.local\codex-marketplace`. The cached plugin is under
+`<tool-checkout>\.local\codex-marketplace`. The cached plugin is under
 `%USERPROFILE%\.codex\plugins\cache\math-research-ledger-local\math-research-ledger\1.1.0`.
 The final native config is **enabled = false**. Enable through Plugins UI or the native
 `plugins."math-research-ledger@math-research-ledger-local"` config, then start a fresh session.
@@ -88,13 +94,13 @@ operational reads, and never rewrite historical absolute provenance.
 
 ## 8. Actual workspace discovery and final layout
 
-The user confirmed the renamed canonical root `D:\Math Research`. Discovery found one
+The user confirmed the renamed canonical root `<research-workspace>`. Discovery found one
 nonempty corpus (750 files) under Research/math-research/.math-research, plus a separate
 zero-file legacy child under Research/riemann-surfaces. No competing nonempty ledger,
 partial corpus or merge was inferred. The empty child was preserved, not repurposed.
 
 ```text
-D:\Math Research\
+<research-workspace>\
 ├─ existing ordinary research directories/files (unchanged)
 ├─ math-research-notes\       existing independent publication Git repo
 ├─ AGENTS.md                  local-only
@@ -136,7 +142,7 @@ file was moved, renamed, edited or deleted. Ledger raw state also matched per-fi
 The notes repository's HEAD and Git index stayed unchanged through migration.
 
 The actual root is not itself a Git repo. As confirmed by the user, publication remains
-nested at `D:\Math Research\math-research-notes`, whose remote is independently
+nested at `<research-workspace>\math-research-notes`, whose remote is independently
 `https://github.com/Caie777/math-research-notes.git`.
 
 | Repository | Responsibility |
@@ -277,7 +283,7 @@ The current open desktop conversation needs a fresh session after manual enable.
 
 No tooling/authentication blocker remains for the tested paths. The user must select
 an actual Problem and deliberately enable Ledger in a fresh harness session opened at
-D:\Math Research. Use status/context and inspect the existing unproved-target cautions;
+<research-workspace>. Use status/context and inspect the existing unproved-target cautions;
 retain exact trust/authority boundaries. A separately initialized empty child remains
 separate if explicitly opened. Desktop native UI rendering is the only un-driven host
 surface check; installation/config and fresh native hosts were measured. No real research

@@ -4,10 +4,11 @@ description: Continue an existing long-horizon mathematical research problem usi
 ---
 
 Inspect `research_status` when continuing research. Obtain `research_context_packet`
-Include `workspace` with the current harness absolute workspace root in tool calls;
-Codex may launch plugin stdio in the installation directory without MCP roots.
 before substantial work on an existing Problem, Claim or Gap. Inspect exact objects
 when required context is missing; search relevance is not evidence or a trusted premise.
+
+Include `workspace` with the current harness absolute workspace root in tool calls;
+Codex may launch plugin stdio in the installation directory without MCP roots.
 
 Keep research hot paths light. At meaningful checkpoints, submit complete Markdown
 through `research_ingest_episode`: separate Confirmed Research Increment from advisory

@@ -57,6 +57,28 @@ enabled = false
 Set enabled = true to opt in and start a fresh session. Config policy is enforced by
 Codex; disabled plugins do not expose Ledger tools. No public directory submission.
 
+For project-only availability, set the plugin to `enabled = false` in user config and
+`enabled = true` in the trusted research workspace's `.codex/config.toml`. Trusted project
+settings override user defaults; command-line overrides have higher precedence. Installation,
+marketplace discovery and enabling are separate. A `.math-research-ledger/` directory is data,
+not a Codex plugin activation marker. See [configuration precedence](https://learn.chatgpt.com/docs/config-file/config-basic)
+and [repo plugin enablement](https://developers.openai.com/plugins/build/plugins).
+
+Plugin availability does not imply per-turn memory access. In research workspaces,
+Ledger may be available throughout the session while retrieval remains event-triggered.
+Restore once at session start; local reasoning defaults to zero calls; query on a relevant
+decision event and checkpoint meaningful changes. Existing open connections may need a
+reload/new session after configuration or runtime changes.
+
+The 2026-10-22 audit found user-level Ledger enablement. It was changed, after backup and
+actual inventory checks, to a disabled user default plus an enabled research project.
+Both ordinary and marker-only synthetic workspaces then exposed zero Ledger tools; the
+trusted research project exposed nine. UI/session persistence beyond these fresh-Host
+checks remains unknown. See [continuity hardening](vertical-slice-continuity-hardening-2026-10-22.md).
+This audit also observed `codex plugin add` re-enable the plugin in user config during an
+update. After installing/updating, recheck the intended disabled user default and enabled
+research-project override; do not assume the installer preserved project-only availability.
+
 ## Workspace binding
 
 The installed Codex 0.160.0 starts plugin stdio in the package directory, even when cwd
@@ -80,8 +102,9 @@ After plugin-owned calls work, remove only the old entry:
 codex mcp remove structured-math-research
 ```
 
-Do not register a second always-on server. Preserve other MCP settings. The current
-local deployment has removed that legacy entry and leaves the plugin disabled.
+Do not register a second always-on server. Preserve other MCP settings. The legacy global
+MCP entry is absent in the audited configuration. Current plugin availability follows the
+project/user policy above; it is not globally enabled.
 
 `scripts/codex_plugin_smoke.py` checks fresh app-server tool inventories and synthetic
 calls without a model. The separate natural-language host test and cross-harness
