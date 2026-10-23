@@ -49,7 +49,7 @@ workspace 必须在工具仓库之外，由用户显式初始化。init 创建�
 **Free research by default; memory intervention by exception.**
 默认自由研究，只有记忆可能影响决策时才介入。
 
-1. 显式调用 `research_status(problem_id="PROBLEM-0001")`，必要时带 workspace。
+1. 显式调用 `research_status(problem_id="PROBLEM-0001")`；开发版 MCP 须预先在启动时绑定 workspace。
    检查 primary target、gaps、风险、checkpoint 和 advisory handoff。
 2. 用 `research_get_object` 精确读目标，再调用
    `research_context_packet(ref="<qualified target>", purpose="CONTINUE_RESEARCH", token_budget=8000)`。

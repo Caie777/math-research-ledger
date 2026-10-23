@@ -81,18 +81,47 @@ research-project override; do not assume the installer preserved project-only av
 
 ## Workspace binding
 
-The installed Codex 0.160.0 starts plugin stdio in the package directory, even when cwd
-is omitted. This client did not advertise MCP roots. Hardcoding a research directory
-would break multi-workspace use. Every tool therefore accepts an optional workspace
-scope; the skill, server instructions and argument schema tell the agent to supply
-its current harness absolute root. A natural-language continuation smoke automatically
-supplied this argument and called status/context, without the user naming the plugin.
+The recorded Codex 0.160.0 plugin behavior starts stdio in the package directory,
+even when cwd is omitted, and did not advertise MCP roots. Released 1.2.0 therefore
+accepted a model-supplied workspace fallback. **The 1.2.1 development source removes
+that fallback:** a tool argument is not authority to access another Ledger.
 
-Resolution: explicit server --workspace / MRL_WORKSPACE (legacy SMR_WORKSPACE supported),
-then a single harness MCP file root when available, then request workspace, then process
-cwd ancestors. Explicitly selected missing state never falls through to another corpus.
-Multiple host roots fail explicitly. This scope selects an existing ledger; it never
-initializes state and never permits arbitrary file writes outside its private data.
+Scope is captured once when the server starts: explicit `--workspace` > `MRL_WORKSPACE`
+> legacy `SMR_WORKSPACE` > startup cwd ancestor discovery. A missing explicit selection
+never falls through to another corpus. No later cwd/env change or tool argument rebinds
+the session. MCP roots are not a scope source in this version, whether zero, one or
+several are offered; operators must pin the deployment if startup cwd is not the project.
+There is no root watcher, automatic multi-root selection or authorization registry.
+
+Normally omit `workspace` in tool calls. The field remains for compatibility, accepting
+only the exact pinned root after `expanduser`/filesystem `resolve` normalization.
+Relative forms are anchored to the pinned root. Equivalent root symlinks/junctions and
+Windows path case are allowed; a parent, child, sibling or different Ledger returns
+`WORKSPACE_OUT_OF_SCOPE` before services run. This is a workflow scope, not a sandbox
+against arbitrary local code or filesystem mutation. CLI workspace selection is unchanged.
+
+The portable public `mcp.json` has no per-user pin. If the Host starts it in its install
+directory without a usable scope, tools/list still works but calls return `NO_WORKSPACE`;
+supplying a tool path or MCP roots does not fix that. Configure the private deployment's
+startup args, for example:
+
+```json
+"args": ["-B", "${PLUGIN_ROOT}/scripts/smr_mcp.py", "--workspace", "/absolute/research-root"]
+```
+
+Alternatively set `MRL_WORKSPACE` in that private server's startup environment (preserve
+any interpreter settings). Then reload/start a fresh session. Do not put the user's path
+in the public package or enable that pinned deployment in ordinary projects: a deployment
+pin binds every session using it, not automatically the current chat's project. Plugin
+installation/update can replace local package settings, so retain the private configuration
+and recheck it after updates. No automatic Codex session-root injection is claimed.
+
+The supported stdio command/args/env/cwd configuration is documented in
+[official MCP configuration](https://learn.chatgpt.com/docs/extend/mcp) and
+[desktop plugin packaging](https://developers.openai.com/plugins/deploy/desktop-only).
+See the [scope audit](archive/2026-10/workspace-scope-2026-10-23.md) for synthetic evidence
+and current Host limitations. This source change has not refreshed the user's installed
+plugin cache or real project configuration.
 
 ## Migration from a global MCP
 

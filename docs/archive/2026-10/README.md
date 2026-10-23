@@ -21,3 +21,4 @@ For users: [README](../../../README.md), [known limitations](../../known-limitat
 - [vertical-slice-continuity-hardening-2026-10-22](vertical-slice-continuity-hardening-2026-10-22.md)
 - [vertical-slice-p1-run1-2026-10-22](vertical-slice-p1-run1-2026-10-22.md)
 - [windows-lock-fix](windows-lock-fix.md)
+- [workspace-scope-2026-10-23](workspace-scope-2026-10-23.md)

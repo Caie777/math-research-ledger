@@ -7,7 +7,6 @@ import logging
 import os
 from collections.abc import Mapping
 from pathlib import Path
-from urllib.parse import unquote, urlparse
 
 from pydantic import ValidationError
 
@@ -19,9 +18,10 @@ from math_research.mcp.adapter import DESCRIPTIONS, MAX_OUTPUT_BYTES, SCHEMAS, L
 logger = logging.getLogger(__name__)
 
 SERVER_INSTRUCTIONS = """MathResearch Ledger persists research state across harness sessions.
-Include workspace=<current harness absolute workspace root> in tool calls when known.
-Some plugin hosts start stdio in PLUGIN_ROOT and do not supply MCP roots. This explicit
-request scope then binds the same existing ledger without hardcoded per-user paths.
+This server is pinned to one workspace at startup. Omit workspace in tool calls;
+the optional compatibility field can only assert the same resolved workspace root.
+Tool arguments never authorize another workspace. If no scope is configured, ask
+the operator to restart with --workspace or MRL_WORKSPACE; do not search other roots.
 When continuing long-horizon research, inspect research_status first. Before substantial
 work on an existing Problem, obtain research_context_packet and respect missing context.
 Search hits are relevance candidates, not evidence or trusted premises: inspect exact
@@ -42,6 +42,10 @@ historical receipts. Missing workspace requires explicit human initialization, n
 
 
 class WorkspaceError(ResearchError):
+    pass
+
+
+class WorkspaceScopeError(WorkspaceError):
     pass
 
 
@@ -83,47 +87,32 @@ def create_server(workspace: Path | None = None):
         raise RuntimeError('Install the optional transport with pip install -e ".[mcp]".') from exc
 
     server = Server("math-research-ledger", version=__version__, instructions=SERVER_INSTRUCTIONS)
+    # Capture deployment authority once, never from model arguments or mutable
+    # per-call cwd/environment. Host roots are not a scope source in this version.
+    try:
+        pinned_state = resolve_workspace(workspace)
+        if pinned_state.resolve() != pinned_state:
+            raise WorkspaceError("Research state redirects outside the startup workspace.")
+        scope_error = ""
+    except ResearchError as exc:
+        pinned_state = None
+        scope_error = str(exc)
 
-    async def client_workspace(requested: str | None) -> Path:
-        # Portable plugin hosts can launch stdio in PLUGIN_ROOT. MCP roots are
-        # supplied by the harness and bind this request to its actual workspace.
-        if (
-            workspace is not None
-            or os.environ.get("MRL_WORKSPACE")
-            or os.environ.get("SMR_WORKSPACE")
-        ):
-            return resolve_workspace(workspace)
-        session = server.request_context.session
-        params = session.client_params
-        roots = (
-            (await session.list_roots()).roots
-            if params and params.capabilities.roots is not None
-            else []
-        )
-        if roots:
-            paths = []
-            for root in roots:
-                uri = urlparse(str(root.uri))
-                if uri.scheme != "file" or uri.netloc not in {"", "localhost"}:
-                    continue
-                value = unquote(uri.path)
-                if os.name == "nt" and len(value) > 2 and value[0] == "/" and value[2] == ":":
-                    value = value[1:]
-                paths.append(Path(value))
-            if len(paths) == 1:
-                return resolve_workspace(paths[0])
-            if len(paths) > 1:
-                raise WorkspaceError(
-                    "Multiple harness roots; select one with MRL_WORKSPACE explicitly."
-                )
+    def client_workspace(requested: str | None) -> Path:
+        if pinned_state is None:
+            raise WorkspaceError(scope_error)
         if requested is not None:
-            path = Path(requested).expanduser()
-            if not path.is_absolute():
-                raise WorkspaceError(
-                    "workspace must be the current harness absolute workspace root."
-                )
-            return resolve_workspace(path)
-        return resolve_workspace()
+            try:
+                path = Path(requested).expanduser()
+                if not path.is_absolute():
+                    path = pinned_state.parent / path
+                matches = path.resolve() == pinned_state.parent
+            except (OSError, RuntimeError, ValueError):
+                matches = False
+            if not matches:
+                # Do not inspect the requested Ledger, echo its path or reveal content.
+                raise WorkspaceScopeError("workspace does not match the pinned session root.")
+        return pinned_state
 
     def result(payload: dict, *, error: bool = False):
         import json
@@ -168,7 +157,7 @@ def create_server(workspace: Path | None = None):
             )
         try:
             args = SCHEMAS[name].model_validate(arguments)
-            state = await client_workspace(args.workspace)
+            state = client_workspace(args.workspace)
             import anyio
 
             # Deterministic services use filesystem locks. Keep their bounded
@@ -184,13 +173,20 @@ def create_server(workspace: Path | None = None):
                     "Reduce limit, token_budget or length; use paginated object windows.",
                 )
             return output
+        except WorkspaceScopeError as exc:
+            return failure(
+                "WORKSPACE_OUT_OF_SCOPE",
+                str(exc),
+                "Omit workspace or use the pinned root. A different workspace requires an "
+                "operator-configured server session.",
+            )
         except WorkspaceError as exc:
             return failure(
                 "NO_WORKSPACE",
                 str(exc),
-                "Pass --workspace ABSOLUTE_ROOT, set MRL_WORKSPACE, or start inside an existing "
-                "research project. Initialize explicitly with math-research-ledger init "
-                "if intended.",
+                "Restart with --workspace ABSOLUTE_ROOT, set MRL_WORKSPACE before startup, or "
+                "start inside an existing research project. Tool workspace and MCP roots cannot "
+                "grant scope. Initialize explicitly with math-research-ledger init if intended.",
             )
         except ValidationError as exc:
             return failure(

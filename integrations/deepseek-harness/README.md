@@ -70,6 +70,14 @@ be overridden by a model. Desktop cwd can differ from the research directory: pa
 absolute workspace arguments per call, or pin workspace in the private Profile patch.
 Missing state returns actionable NO_WORKSPACE; installation never initializes it.
 
+**1.2.1 source development:** the model-supplied workspace fallback above is removed
+in the new Python server. Configure the existing private `workspace` setting: the
+transport already forwards it as `--workspace`, obtaining the same single-session pin.
+Without that setting, only startup environment/cwd can bind scope; MCP roots and tool
+arguments do not authorize another Ledger. The existing distributed Bundle/wheel is not
+rebuilt or installed as part of this scope change, and no real Profile or Host is tested.
+See the [scope audit](../../docs/archive/2026-10/workspace-scope-2026-10-23.md).
+
 The native **Plugins** page selects/deselects the Bundle. This is **Profile-wide**, not
 a per-chat switch. HMR applies it live when enabled; otherwise restart/reload. OFF keeps
 the installed dependency and data while removing Ledger tools. Home/invocation patches

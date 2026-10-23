@@ -82,14 +82,19 @@ def test_episode_preview_and_integrity_error_over_real_stdio(research):
     asyncio.run(run())
 
 
-@pytest.mark.parametrize("use_roots", [False, True])
-def test_plugin_install_cwd_binds_current_harness_workspace(research, use_roots):
+@pytest.mark.parametrize("root_count", [0, 1, 2])
+def test_unpinned_plugin_cannot_use_tool_argument_or_host_roots(research, root_count):
     import mcp.types as types
 
     state, _ = research
+    second = state.parent / "second-root"
+    if root_count == 2:
+        init_workspace(second)
 
     async def roots(context):
-        return types.ListRootsResult(roots=[types.Root(uri=state.parent.as_uri())])
+        return types.ListRootsResult(
+            roots=[types.Root(uri=p.as_uri()) for p in [state.parent, second][:root_count]]
+        )
 
     async def run():
         params = StdioServerParameters(
@@ -100,18 +105,16 @@ def test_plugin_install_cwd_binds_current_harness_workspace(research, use_roots)
             ClientSession(
                 read,
                 write,
-                list_roots_callback=roots if use_roots else None,
+                list_roots_callback=roots if root_count else None,
                 read_timeout_seconds=timedelta(seconds=15),
             ) as client,
         ):
             await client.initialize()
-            args = {} if use_roots else {"workspace": str(state.parent)}
+            args = {} if root_count else {"workspace": str(state.parent)}
             result = await client.call_tool("research_status", args)
-            assert not result.isError, result
-            assert result.structuredContent["state_dir"] == str(state)
-            if not use_roots:
-                wrong = await client.call_tool("research_status", {"workspace": "relative"})
-                assert wrong.isError and wrong.structuredContent["error"]["code"] == "NO_WORKSPACE"
+            assert result.isError and result.structuredContent["error"]["code"] == "NO_WORKSPACE"
+            wrong = await client.call_tool("research_status", {"workspace": str(state.parent)})
+            assert wrong.isError and wrong.structuredContent["error"]["code"] == "NO_WORKSPACE"
 
     asyncio.run(run())
 

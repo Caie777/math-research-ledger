@@ -97,3 +97,9 @@ Interrupted metadata needs trusted-human
 `ingest recover`. No per-turn capture hook or full-ledger rewrite is installed.
 
 MCP exposes nine top-level `research_*` tools: status, search, object windows, context/review packets, stale reports, provisional Episode/note ingestion and pending acceptance requests. `tools/list` provides descriptions and strict schemas; there is no generic dispatcher. External references are strings, resolved to internal ObjectRef values without guessing ambiguous IDs. Episode/note writes reuse the existing archive/Proposal Store, content deduplication, locks and atomic IO. Output, including both SDK representations, is bounded to 64 KiB; review inputs are never silently truncated. Errors include a code and recovery action. There is no compiler, filesystem, shell or human accept. See [Codex integration and validation](codex-mcp.md).
+
+In 1.2.1 development, MCP captures a single canonical workspace from startup flag,
+environment or cwd discovery. Tool `workspace` is only an exact-root compatibility
+assertion; it cannot expand scope. MCP roots are not used for authorization in this
+version. CLI selection remains independent. No authorization database or filesystem
+sandbox is introduced.

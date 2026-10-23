@@ -7,8 +7,10 @@ Inspect `research_status` when continuing research. Obtain `research_context_pac
 before substantial work on an existing Problem, Claim or Gap. Inspect exact objects
 when required context is missing; search relevance is not evidence or a trusted premise.
 
-Include `workspace` with the current harness absolute workspace root in tool calls;
-Codex may launch plugin stdio in the installation directory without MCP roots.
+Omit `workspace` normally: the server session is pinned at startup. The optional
+compatibility field can only assert the same resolved root; it cannot select another
+Ledger. On NO_WORKSPACE, ask the operator to configure startup `--workspace` or
+`MRL_WORKSPACE` and restart; do not try other paths. MCP roots alone do not grant scope.
 
 Keep research hot paths light. At meaningful checkpoints, submit complete Markdown
 through `research_ingest_episode`: separate Confirmed Research Increment from advisory

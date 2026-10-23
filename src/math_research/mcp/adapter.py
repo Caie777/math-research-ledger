@@ -27,8 +27,8 @@ class Arguments(BaseModel):
     workspace: str | None = Field(
         default=None,
         max_length=4096,
-        description="Current harness workspace absolute root. Include it when known, especially "
-        "when a plugin host launches stdio in its installation directory. Never initializes state.",
+        description="Optional compatibility assertion of the pinned session workspace root. "
+        "Omit normally; equivalent resolved paths only. Cannot select or authorize another Ledger.",
     )
 
 

@@ -72,7 +72,7 @@ remain available; the Python import namespace is `math_research`.
 **Free research by default; memory intervention by exception.**
 
 1. Select the existing Problem explicitly with `research_status(problem_id="PROBLEM-0001")`;
-   include your workspace when the host cannot supply it. Inspect the primary target,
+   the development MCP server must already be pinned at startup. Inspect the primary target,
    gaps, risks, latest checkpoint and advisory handoff.
 2. Read the exact target with `research_get_object`; restore context once with
    `research_context_packet(ref="<qualified target>", purpose="CONTINUE_RESEARCH", token_budget=8000)`.

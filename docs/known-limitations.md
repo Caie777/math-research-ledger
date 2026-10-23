@@ -41,6 +41,13 @@ reload old cached installations before mixing readers and writers. See the
 This does not repair existing Windows security labels or establish real DSH Host
 acceptance. Formal package metadata remains 1.2.0 until a separately authorized release.
 
+The read-only fix is committed locally as `e0748d3`. A subsequent uncommitted scope fix
+pins the MCP session at startup and rejects different tool-level workspace paths.
+MCP roots do not authorize scope in this version; the public Codex package needs a private
+startup pin when the Host starts it in its install directory. It cannot infer the active
+project from model arguments. See [workspace binding](codex-mcp.md#workspace-binding)
+and the [scope audit](archive/2026-10/workspace-scope-2026-10-23.md).
+
 ## Remaining review backlog — not implemented or promised fixes
 
 1. **Read-path deployment:** released 1.2.0 readers still create/remove a checkpoint lock.
@@ -48,11 +55,10 @@ acceptance. Formal package metadata remains 1.2.0 until a separately authorized 
    locks into `%TEMP%` or make write tools work on nonwritable state.
 2. **Windows sandbox compatibility:** investigate Low/Medium Integrity mismatch for
    existing Ledger state only after user approval and with narrowly scoped acceptance.
-3. **Workspace scope:** prefer authoritative Host/MCP roots over arbitrary model-supplied
-   absolute workspace paths where the host can provide them. Current deployment pins
-   and explicit workspace behavior remain as documented.
-4. **Multi-root selection:** consider selecting the unique root containing Ledger state;
-   current ambiguous-root behavior must not be mistaken for completed support.
+3. **Workspace scope deployment:** validate private startup pins with the intended Host;
+   do not mistake the unpinned portable package for automatic session-root binding.
+4. **Multi-root selection:** deferred until the Host provides a reliable authorized root
+   set. Do not select or authorize a Ledger merely because its state directory exists.
 5. **Legacy public APIs:** keep retrieval/compatibility APIs frozen until a consumer and
    deprecation audit. No approximately 651-LOC removal is included.
 6. **DSH native Bundle:** retain experimental status; complete Windows user-session
