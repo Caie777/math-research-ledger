@@ -10,7 +10,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from math_research.core.errors import ResearchError
-from math_research.ledger.archive import source_path
+from math_research.ledger.archive import episode_navigation_text, source_path
 from math_research.ledger.episodes import (
     ResearchEpisode,
     ReviewDecision,
@@ -649,7 +649,7 @@ def build_research_manifest(
                 title=episode.source_filename,
                 status="archived_source",
                 reason="上述材料可追溯的原始研究 Episode",
-                content=path.read_text(encoding="utf-8") if path.is_file() else "",
+                content=episode_navigation_text(ot_dir, episode),
                 source_path=str(path) if path.is_file() else None,
                 provenance=[episode.archive_path, episode.content_sha256, episode.provenance or ""],
             )
@@ -768,9 +768,7 @@ def build_research_manifest(
                     title=episode.source_filename,
                     status="archived_source",
                     reason="检索材料对应的完整原始 Episode；非逻辑前提",
-                    content=episode_path.read_text(encoding="utf-8")
-                    if episode_path.is_file()
-                    else "",
+                    content=episode_navigation_text(ot_dir, episode),
                     source_path=str(episode_path) if episode_path.is_file() else None,
                     provenance=[
                         episode.archive_path,

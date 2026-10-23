@@ -5,6 +5,7 @@ from enum import StrEnum
 from pydantic import BaseModel, Field
 
 from math_research.core.refs import ObjectRef
+from math_research.ledger.dependencies import VERSION_ROLES
 from math_research.ledger.manifest import ManifestEntry
 from math_research.verification.models import VersionPin
 
@@ -50,12 +51,27 @@ class FreshnessResolver:
             if any(a["sha256"] is None for a in entry.artifact_refs):
                 stale = True
                 reasons.append(f"Missing artifact: {key}")
+            if entry.integrity == "FAILED":
+                stale = True
+                reasons.append(f"INTEGRITY_ERROR: {key}")
             if any("SHA-256 mismatch" in w for w in entry.warnings):
                 stale = True
                 reasons.append(f"Pinned source changed: {key}")
             visiting.add(key)
             for edge in entry.dependencies:
+                if edge.role not in VERSION_ROLES:
+                    continue
                 target = self.entries.get(edge.target.qualified_id)
+                if edge.resolution_reason:
+                    reasons.append(
+                        f"Unresolved dependency: {edge.target.qualified_id}: "
+                        f"{edge.resolution_reason}"
+                    )
+                if edge.expected_version is None:
+                    reasons.append(
+                        f"Unbound dependency: {edge.target.qualified_id} "
+                        f"({edge.role.value}); historical input version unknown"
+                    )
                 if edge.expected_version and (
                     target is None or target.version != edge.expected_version
                 ):

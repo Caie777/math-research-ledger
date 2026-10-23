@@ -135,7 +135,7 @@ def test_malformed_ingest_and_tampered_preview_do_not_write(research):
     state, ref = research
     before = snapshot(state)
     with pytest.raises(ResearchError):
-        ingest_episode(state, ref.problem_id, "x.md", b"arbitrary unknown prose", provenance="test")
+        ingest_episode(state, ref.problem_id, "x.md", b"", provenance="test")
     with pytest.raises(ResearchError):
         ingest_episode(
             state, ref.problem_id, "x.md", episode(ref), provenance="test", expected_sha256="0" * 64

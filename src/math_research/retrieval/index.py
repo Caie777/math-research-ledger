@@ -20,8 +20,8 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
-from math_research.core.errors import ResearchError
-from math_research.ledger.archive import source_path
+from math_research.core.errors import IntegrityError, ResearchError
+from math_research.ledger.archive import episode_text
 from math_research.ledger.records.evidence_content import render_evidence
 from math_research.ledger.relations.ledger import active_relations
 
@@ -43,6 +43,7 @@ class IndexDoc(BaseModel):
     problem_id: str | None = None
     record_status: str | None = None
     caveats: list[str] = Field(default_factory=list)
+    integrity: str = "NOT_APPLICABLE"
 
 
 class IndexStatus(BaseModel):
@@ -240,15 +241,7 @@ def gather_documents(ot_dir: Path, *, problem_id: str | None = None) -> list[Ind
         for episode in list_episodes(ot_dir, pid):
             if (episode.provenance or "").startswith("SOURCE_DIGEST:"):
                 continue  # Advisory review snapshots are not research/source recall material.
-            docs.append(
-                IndexDoc(
-                    artifact_id=episode.episode_id,
-                    artifact_type="dossier:episode",
-                    title=episode.source_filename,
-                    text=_read_text(source_path(ot_dir, episode.archive_path), 100_000),
-                    problem_id=pid,
-                )
-            )
+            docs.append(_episode_document(ot_dir, episode, pid))
 
         # Derived cautions accompany retrieval; they never rewrite epistemic
         # status or remove historical objects/source files from the Problem Record.
@@ -296,16 +289,41 @@ def gather_documents(ot_dir: Path, *, problem_id: str | None = None) -> list[Ind
             if (episode.provenance or "").startswith("SOURCE_DIGEST:"):
                 continue
             if episode.episode_id not in indexed_sources:
-                docs.append(
-                    IndexDoc(
-                        artifact_id=episode.episode_id,
-                        artifact_type="dossier:episode",
-                        title=episode.source_filename,
-                        text=_read_text(source_path(ot_dir, episode.archive_path), 100_000),
-                    )
-                )
+                docs.append(_episode_document(ot_dir, episode))
 
+    # Body snapshots derived from an Episode must not bypass its immutable source.
+    from math_research.ledger.manifest import Ledger
+
+    failed_sources = {
+        (e.ref.problem_id, e.ref.object_id)
+        for e in Ledger(ot_dir).objects(problem_id)
+        if e.integrity == "FAILED"
+    }
+    for doc in docs:
+        if (doc.problem_id, doc.artifact_id) in failed_sources:
+            doc.text = "INTEGRITY_ERROR: content excluded; metadata navigation only"
+            doc.title = doc.artifact_id
+            doc.integrity = "FAILED"
+            doc.caveats.append("integrity=FAILED")
     return docs
+
+
+def _episode_document(state, episode, problem_id=None) -> IndexDoc:
+    try:
+        text = episode_text(state, episode)[:100_000]
+        integrity, caveats = "VERIFIED", []
+    except IntegrityError as exc:
+        text = ""
+        integrity, caveats = "FAILED", [str(exc)]
+    return IndexDoc(
+        artifact_id=episode.episode_id,
+        artifact_type="dossier:episode",
+        title=episode.source_filename,
+        text=text,
+        problem_id=problem_id,
+        integrity=integrity,
+        caveats=caveats,
+    )
 
 
 def scoped_memory_documents(
@@ -378,7 +396,7 @@ def _vector_key(doc: IndexDoc) -> str:
 
 
 def load_documents(ot_dir: Path) -> list[IndexDoc]:
-    """Load the cached index, falling back to a live gather if not yet built."""
+    """Use cached membership/order, but source content must come from a verified live read."""
     path = _docs_path(ot_dir)
     if not path.is_file():
         return gather_documents(ot_dir)
@@ -387,7 +405,8 @@ def load_documents(ot_dir: Path) -> list[IndexDoc]:
         line = line.strip()
         if line:
             docs.append(IndexDoc.model_validate_json(line))
-    return docs
+    live = {_vector_key(doc): doc for doc in gather_documents(ot_dir)}
+    return [live[_vector_key(doc)] for doc in docs if _vector_key(doc) in live]
 
 
 def index_status(ot_dir: Path) -> IndexStatus:

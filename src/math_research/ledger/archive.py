@@ -16,7 +16,8 @@ from typing import TYPE_CHECKING
 from pydantic import ValidationError
 
 from math_research.core.atomicio import atomic_write_text, file_lock
-from math_research.core.errors import ResearchError
+from math_research.core.errors import IntegrityError, ResearchError
+from math_research.core.integrity import verified_bytes, verified_text
 from math_research.core.jsonl import rewrite_jsonl
 from math_research.core.paths import STATE_DIRNAMES
 from math_research.ledger.records import store
@@ -38,7 +39,11 @@ def _rows(path: Path) -> list[dict]:
     if not path.exists():
         return []
     rows = []
-    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except (UnicodeError, OSError) as exc:
+        raise IntegrityError(f"Unreadable Episode index {path}") from exc
+    for number, line in enumerate(lines, 1):
         if not line.strip():
             continue
         try:
@@ -47,7 +52,7 @@ def _rows(path: Path) -> list[dict]:
                 raise ValueError("Episode index row must be an object")
             rows.append(row)
         except ValueError as exc:
-            raise ResearchError(f"Invalid Episode index {path}:{number}: {exc}") from exc
+            raise IntegrityError(f"Invalid Episode index {path}:{number}: {exc}") from exc
     return rows
 
 
@@ -57,7 +62,7 @@ def _records(path: Path) -> list[ResearchEpisode]:
     try:
         return [ResearchEpisode.model_validate(row) for row in _rows(path)]
     except ValidationError as exc:
-        raise ResearchError(f"Invalid Episode metadata in {path}: {exc}") from exc
+        raise IntegrityError(f"Invalid Episode metadata in {path}") from exc
 
 
 def load_episodes(ot_dir: Path, problem_id: str | None = None) -> list[ResearchEpisode]:
@@ -115,16 +120,30 @@ def source_path(ot_dir: Path, relative: str) -> Path:
 
 def _verified_bytes(ot_dir: Path, record: ResearchEpisode) -> bytes:
     path = source_path(ot_dir, record.archive_path)
-    if not path.is_file():
-        raise ResearchError(f"Missing Episode source: {record.archive_path}")
-    raw = path.read_bytes()
-    if hashlib.sha256(raw).hexdigest() != record.content_sha256:
-        raise ResearchError(f"Episode SHA-256 mismatch: {record.episode_id}")
+    raw = verified_bytes(path, record.content_sha256, label=record.episode_id)
     try:
         raw.decode("utf-8")
     except UnicodeDecodeError as exc:
-        raise ResearchError(f"Episode source is not UTF-8: {record.episode_id}") from exc
+        from math_research.core.errors import IntegrityError
+
+        raise IntegrityError(f"Episode source is not UTF-8: {record.episode_id}") from exc
     return raw
+
+
+def episode_text(ot_dir: Path, record: ResearchEpisode) -> str:
+    return verified_text(
+        source_path(ot_dir, record.archive_path), record.content_sha256, label=record.episode_id
+    )
+
+
+def episode_navigation_text(ot_dir: Path, record: ResearchEpisode) -> str:
+    """Metadata navigation can survive corruption, but must never return its bytes."""
+    from math_research.core.errors import IntegrityError
+
+    try:
+        return episode_text(ot_dir, record)
+    except IntegrityError as exc:
+        return f"integrity=FAILED; {exc}"
 
 
 def _next_path(

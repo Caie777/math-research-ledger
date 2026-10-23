@@ -67,17 +67,21 @@ def backfill_provisional_records(ot_dir: Path, problem_id: str, episode_id: str)
 
 
 def episode_local_mapping(ot_dir: Path, problem_id: str, episode_id: str) -> dict[str, str]:
+    from math_research.ledger.identity import ScopedIdentityResolver
+
+    resolver = ScopedIdentityResolver.from_state(ot_dir)
     reviews = {r.candidate_id: r for r in list_reviews(ot_dir, problem_id)}
     mapping: dict[str, str] = {}
     for candidate in list_candidates(ot_dir, problem_id, episode_id):
-        if not candidate.local_id or not candidate.object_id:
+        if not candidate.local_id:
             continue
         review = reviews.get(candidate.candidate_id)
         if review and review.decision == "reject":
             continue
-        identity = (
-            review.mapped_id if review and review.decision == "accept" else candidate.object_id
+        resolved = resolver.resolve(
+            candidate.local_id, problem_id=problem_id, episode_id=episode_id
         )
+        identity = resolved.require().object_id
         if identity:
             if candidate.local_id in mapping and mapping[candidate.local_id] != identity:
                 raise ResearchError("Ambiguous Episode-local identity.")

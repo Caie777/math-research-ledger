@@ -8,7 +8,8 @@ from io import BytesIO
 from pathlib import Path, PureWindowsPath
 
 from math_research.core.atomicio import file_lock
-from math_research.core.errors import ResearchError
+from math_research.core.errors import IntegrityError, ResearchError
+from math_research.core.integrity import verified_bytes
 from math_research.core.jsonl import next_sequential_id
 from math_research.core.limits import MAX_UPLOAD_BYTES
 from math_research.ledger.records import store
@@ -102,9 +103,9 @@ def read_source(ot_dir: Path, pid: str, ident: str) -> tuple[Paper, Path, bytes]
     path = (ot_dir / paper.local_path).resolve()
     if not root.is_relative_to(ot_dir.resolve()) or not path.is_relative_to(root):
         raise ResearchError("Source path is outside its pinned Paper directory.")
-    raw = path.read_bytes()
-    if hashlib.sha256(raw).hexdigest() != paper.sha256:
-        raise ResearchError("Pinned source SHA-256 mismatch.")
+    if paper.sha256 is None:
+        raise IntegrityError("Source has no pinned SHA-256.")
+    raw = verified_bytes(path, paper.sha256, label=paper.id)
     return paper, path, raw
 
 

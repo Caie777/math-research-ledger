@@ -40,6 +40,48 @@ ROOT = Path(__file__).resolve().parents[2]
 LAUNCHER = ROOT / "scripts/smr_mcp.py"
 
 
+def test_episode_preview_and_integrity_error_over_real_stdio(research):
+    from math_research.ledger.archive import source_path
+    from math_research.services.ingest import ingest_episode
+
+    state, ref = research
+    markdown = "## RESULT-1\n\n**Statement**\nSynthetic checkpoint.\n"
+    episode = ingest_episode(
+        state, ref.problem_id, "test.md", markdown.encode(), provenance="test"
+    )["episode"]
+    path = source_path(state, episode["archive_path"])
+    path.write_bytes(path.read_bytes() + b"tampered")
+
+    async def run():
+        params = StdioServerParameters(
+            command=sys.executable,
+            args=["-B", str(LAUNCHER), "--workspace", str(state.parent)],
+            env=environment(),
+        )
+        async with (
+            stdio_client(params) as (read, write),
+            ClientSession(read, write, read_timeout_seconds=timedelta(seconds=15)) as client,
+        ):
+            await client.initialize()
+            preview = await client.call_tool(
+                "research_ingest_episode",
+                {
+                    "problem_id": ref.problem_id,
+                    "markdown": markdown + "new",
+                    "provenance": "test",
+                    "dry_run": True,
+                },
+            )
+            assert not preview.isError and preview.structuredContent["can_publish"]
+            bad = await client.call_tool(
+                "research_get_object", {"ref": f"{ref.problem_id}:episode:{episode['episode_id']}"}
+            )
+            assert bad.isError and bad.structuredContent["error"]["code"] == "INTEGRITY_ERROR"
+            assert len(bad.model_dump_json().encode()) < MAX_OUTPUT_BYTES
+
+    asyncio.run(run())
+
+
 @pytest.mark.parametrize("use_roots", [False, True])
 def test_plugin_install_cwd_binds_current_harness_workspace(research, use_roots):
     import mcp.types as types

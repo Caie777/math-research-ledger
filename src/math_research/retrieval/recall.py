@@ -13,7 +13,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from math_research.core.errors import ResearchError
+from math_research.core.errors import IntegrityError, ResearchError
 from math_research.ledger.archive import source_path
 from math_research.ledger.episodes import list_candidates, list_episodes
 from math_research.ledger.records import store
@@ -77,6 +77,7 @@ class RecallFile(BaseModel):
     conclusion_relation: Literal["PROVES", "REFUTES"] | None = None
     lexical_score: float = 0
     warnings: list[str] = Field(default_factory=list)
+    integrity: str = "NOT_APPLICABLE"
 
 
 class FileSearchResult(BaseModel):
@@ -173,16 +174,15 @@ class ResearchRecall:
                     None,
                 )
                 assert file.path is not None
-                import hashlib
+                from math_research.ledger.archive import _verified_bytes
 
-                content = Path(file.path).read_bytes()
                 ep = next(e for e in list_episodes(self.ot_dir) if e.episode_id == artifact_id)
-                if hashlib.sha256(content).hexdigest() != ep.content_sha256:
-                    raise ResearchError("Archived Episode source SHA mismatch.")
-                return file, content
+                return file, _verified_bytes(self.ot_dir, ep)
         if doc is None:
             self._validate_absent_source(pid, kind)
             raise MemoryObjectNotFound("Artifact not found in this Problem scope.")
+        if doc.integrity == "FAILED":
+            raise IntegrityError(f"Source unavailable for {artifact_id}")
         file = self._file(
             pid,
             doc,
@@ -197,6 +197,9 @@ class ResearchRecall:
             None,
         )
         if kind == "dossier:provisional":
+            from math_research.ledger.manifest import Ledger
+
+            Ledger(self.ot_dir).get(Ledger(self.ot_dir).resolve(artifact_id, problem_id=pid))
             candidate = next(
                 c for c in list_candidates(self.ot_dir, pid) if c.object_id == artifact_id
             )
@@ -220,9 +223,10 @@ class ResearchRecall:
                 raise MemoryObjectNotFound("No original file reader for this artifact kind.")
             raise ResearchError("No original file for this artifact.")
         if kind == "dossier:episode":
-            from math_research.ledger.readers import episode_source
+            from math_research.ledger.archive import _verified_bytes
 
-            episode_source(self.ot_dir, pid, artifact_id)  # source SHA gate
+            ep = next(e for e in list_episodes(self.ot_dir, pid) if e.episode_id == artifact_id)
+            return file, _verified_bytes(self.ot_dir, ep)
         if kind == "dossier:source":
             from math_research.ledger.sources import read_source
 
@@ -354,6 +358,7 @@ class ResearchRecall:
             conclusion_relation=role,
             lexical_score=hit.retrieval_score,
             warnings=warnings,
+            integrity=doc.integrity,
         )
 
     def find_files(

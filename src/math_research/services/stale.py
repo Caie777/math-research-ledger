@@ -4,6 +4,7 @@ from pathlib import Path
 
 from math_research.ledger.manifest import Ledger
 from math_research.ledger.persistence import records
+from math_research.ledger.projection import list_objects
 from math_research.verification.freshness import Freshness, FreshnessResolver, receipt_current
 from math_research.verification.models import AcceptanceReceipt, VerificationReceipt
 
@@ -13,12 +14,17 @@ def stale_report(state: Path, problem_id: str | None = None) -> dict:
     entries = ledger.objects()
     resolver = FreshnessResolver(entries)
     objects = []
-    for entry in entries:
-        if problem_id and entry.ref.problem_id != problem_id:
-            continue
-        result = resolver.resolve(entry.ref)
-        if result.freshness != Freshness.CURRENT:
-            objects.append({"ref": entry.ref.model_dump(), **result.model_dump(mode="json")})
+    # Same authority-aware projection as get/search/status/context. UNKNOWN is a risk,
+    # not proof of drift, even though this historical endpoint is named stale_report.
+    for view in list_objects(state, problem_id):
+        if view.freshness != "CURRENT":
+            objects.append(
+                {
+                    "ref": view.object.ref.model_dump(),
+                    "freshness": view.freshness,
+                    "reasons": view.freshness_reasons,
+                }
+            )
     checks = [
         r
         for r in records(state, "verifications", VerificationReceipt)
@@ -45,6 +51,7 @@ def stale_report(state: Path, problem_id: str | None = None) -> dict:
             result.reasons.append("Accepted verification evidence changed or unavailable")
         acceptance_states.append({"id": receipt.id, **result.model_dump(mode="json")})
     return {
+        "object_scope": "non_current_including_unknown_not_only_confirmed_drift",
         "source_version": ledger.source_version(problem_id),
         "objects": objects,
         "verifications": [

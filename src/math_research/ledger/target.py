@@ -36,7 +36,7 @@ def validate_research_target(ot_dir: Path, target: ResearchTarget) -> ClaimRecor
             (
                 c
                 for c in list_candidates(ot_dir, target.problem_id)
-                if c.object_id == target.node_id and c.kind in {"claim", "gap"}
+                if target.node_id in {c.object_id, c.candidate_id} and c.kind in {"claim", "gap"}
             ),
             None,
         )

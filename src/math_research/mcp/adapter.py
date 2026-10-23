@@ -10,7 +10,7 @@ from math_research.core.errors import ResearchError
 from math_research.ledger.manifest import Ledger
 from math_research.ledger.records.write_boundary import automated_scope
 from math_research.services.acceptance import request_acceptance
-from math_research.services.ingest import ingest_episode, save_note
+from math_research.services.ingest import ingest_episode, preview_episode, save_note
 from math_research.services.research import get_object, status
 from math_research.services.retrieval import export_context_packet, search_research
 from math_research.services.review import prepare_review
@@ -68,6 +68,8 @@ class EpisodeArgs(Arguments):
     problem_id: ProblemId
     markdown: str = Field(min_length=1, max_length=128000)
     provenance: str = Field(min_length=1, max_length=1000)
+    dry_run: bool = False
+    archive_only: bool = False
 
 
 class NoteArgs(Arguments):
@@ -122,12 +124,15 @@ DESCRIPTIONS = {
     "research_stale_report": (
         "Inspect drift before reusing old checks or pending acceptance requests. Returns paginated "
         "stale objects/verification/acceptance summaries and totals. Does not recheck, invalidate "
-        "or accept anything. Do not interpret absence of staleness as verification."
+        "or accept anything. Object risks include UNKNOWN (unbound), separately from STALE "
+        "(confirmed drift). Do not interpret absence of staleness as verification."
     ),
     "research_ingest_episode": (
         "Consolidate a meaningful checkpoint as complete UTF-8 Research Episode Markdown "
         "with provenance. Separate Confirmed Research Increment (state_delta) from advisory "
         "Next Research Directions; never capture every chat turn. "
+        "Use dry_run=true to preview diagnostics without writes; ERROR blocks structured "
+        "publication. archive_only=true explicitly preserves raw text without extraction. "
         "Stages provisional candidates in the existing archive/Proposal Store; repeated identical "
         "content reuses identities. Returns candidate references, counts and omissions, not full "
         "bodies. Do not send fragments, promote facts, run checks or request human acceptance here."
@@ -154,6 +159,9 @@ def _ingest_summary(value: dict) -> dict:
         "episode_id": value["episode"]["episode_id"],
         "duplicate": value["duplicate"],
         "canonical_records_created": 0,
+        "structured_published": value.get("structured_published", True),
+        "diagnostics": value.get("diagnostics", [])[:20],
+        "diagnostics_omitted": max(0, len(value.get("diagnostics", [])) - 20),
         "authority": "PROVISIONAL",
         "candidate_count": len(candidates),
         "state_delta_count": len(value["episode"].get("state_delta", [])),
@@ -201,6 +209,12 @@ class LedgerAdapter:
                     "authority": view.authority,
                     "verification": view.verification,
                     "freshness": view.freshness,
+                    "integrity": entry.integrity,
+                    "usable_working_premise": view.usable_working_premise,
+                    "trusted_formal_premise": view.trusted_formal_premise,
+                    "premise_eligibility": view.premise_eligibility,
+                    "conditional_premise": view.conditional_premise,
+                    "premise_reasons": view.premise_reasons,
                     "research_state": entry.research_state,
                     "provenance": entry.provenance[:20],
                     "provenance_omitted": max(0, len(entry.provenance) - 20),
@@ -251,6 +265,7 @@ class LedgerAdapter:
                 report = stale_report(self.state, args.problem_id)
                 result = {
                     "source_version": report["source_version"],
+                    "object_scope": report["object_scope"],
                     **{
                         key: values[args.offset : args.offset + args.limit]
                         for key, values in report.items()
@@ -271,15 +286,26 @@ class LedgerAdapter:
                     ),
                 }
             elif isinstance(args, EpisodeArgs):
-                result = _ingest_summary(
-                    ingest_episode(
-                        self.state,
-                        args.problem_id,
-                        "research-episode.md",
-                        args.markdown.encode("utf-8"),
-                        provenance=args.provenance,
+                if args.dry_run:
+                    result = preview_summary(
+                        preview_episode(
+                            self.state,
+                            args.problem_id,
+                            "research-episode.md",
+                            args.markdown.encode("utf-8"),
+                        )
                     )
-                )
+                else:
+                    result = _ingest_summary(
+                        ingest_episode(
+                            self.state,
+                            args.problem_id,
+                            "research-episode.md",
+                            args.markdown.encode("utf-8"),
+                            provenance=args.provenance,
+                            archive_only=args.archive_only,
+                        )
+                    )
             elif isinstance(args, NoteArgs):
                 result = _ingest_summary(
                     save_note(self.state, **args.model_dump(exclude={"workspace"}))
@@ -289,3 +315,53 @@ class LedgerAdapter:
         if len(json.dumps(result, ensure_ascii=False).encode("utf-8")) > MAX_OUTPUT_BYTES:
             raise ResearchError("Bounded output exceeds 64 KiB; reduce limit/budget/window.")
         return result
+
+
+def preview_summary(value: dict) -> dict:
+    """Bounded transport projection; the full service preview remains available to CLI."""
+    result = {
+        key: value[key]
+        for key in (
+            "sha256",
+            "episode_id",
+            "detected_format",
+            "schema",
+            "can_publish",
+            "confirmed_research_increments",
+            "provisional_object_count",
+            "next_directions_advisory",
+        )
+    }
+    for key in ("diagnostics", "bindings", "local_ids"):
+        result[key] = value[key][:20]
+        result[key + "_omitted"] = max(0, len(value[key]) - 20)
+    result["candidates"] = [
+        c.model_dump(
+            include={
+                "candidate_id",
+                "kind",
+                "local_id",
+                "target_id",
+                "uses",
+                "start_line",
+                "end_line",
+            }
+        )
+        for c in value["candidates"][:20]
+    ]
+    result["candidates_omitted"] = max(0, len(value["candidates"]) - 20)
+    metadata = value["metadata"]
+    result["state_delta"] = [
+        {
+            **d.model_dump(),
+            "statement": d.statement[:600],
+            "statement_truncated": len(d.statement) > 600,
+        }
+        for d in metadata.state_delta[:20]
+    ]
+    result["state_delta_omitted"] = max(0, len(metadata.state_delta) - 20)
+    result["input_versions"] = [p.model_dump(mode="json") for p in metadata.input_versions[:20]]
+    result["input_versions_omitted"] = max(0, len(metadata.input_versions) - 20)
+    result["next_research_directions"] = metadata.next_research_directions[:2000]
+    result["directions_truncated"] = len(metadata.next_research_directions) > 2000
+    return result

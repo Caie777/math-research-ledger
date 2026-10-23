@@ -1,10 +1,9 @@
 """Scoped full-body readers shared by retrieval and services."""
 
-import hashlib
 from pathlib import Path
 
 from math_research.core.errors import ResearchError
-from math_research.ledger.archive import source_path
+from math_research.ledger.archive import episode_text
 from math_research.ledger.episodes import list_episodes
 from math_research.ledger.records import store
 
@@ -16,13 +15,16 @@ def episode_source(ot_dir: Path, problem_id: str, episode_id: str) -> str:
     )
     if episode is None:
         raise ResearchError(f"No Episode {episode_id} in {problem_id}.")
-    path = source_path(ot_dir, episode.archive_path)
-    if not path.is_file():
-        raise ResearchError("Archived Episode path is missing.")
-    raw = path.read_bytes()
-    if hashlib.sha256(raw).hexdigest() != episode.content_sha256:
-        raise ResearchError("Archived Episode content hash changed.")
-    return raw.decode("utf-8")
+    return episode_text(ot_dir, episode)
+
+
+def episode_span(
+    ot_dir: Path, problem_id: str, episode_id: str, start_line: int, end_line: int
+) -> str:
+    lines = episode_source(ot_dir, problem_id, episode_id).splitlines()
+    if not 1 <= start_line <= end_line <= len(lines):
+        raise ResearchError("Episode span lies outside the verified source.")
+    return "\n".join(lines[start_line - 1 : end_line])
 
 
 def read_full_proof(ot_dir: Path, problem_id: str, proof_id: str) -> tuple[str, Path]:

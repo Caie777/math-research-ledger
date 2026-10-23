@@ -1,8 +1,7 @@
 """Append-only JSONL persistence helpers.
 
-JSONL keeps project memory inspectable and Git-friendly. Reads are tolerant:
-corrupt lines are warned about and skipped rather than crashing the session, so a
-single bad line never makes a whole ledger unreadable.
+Authoritative rows fail closed with a line-numbered integrity diagnostic.
+Rebuildable search/vector caches use their own readers, not this persistence API.
 """
 
 from __future__ import annotations
@@ -14,6 +13,8 @@ from pathlib import Path
 from typing import TypeVar
 
 from pydantic import BaseModel, ValidationError
+
+from math_research.core.errors import IntegrityError
 
 logger = logging.getLogger("math_research")
 
@@ -62,7 +63,7 @@ def append_jsonl(path: Path, model: BaseModel) -> None:
 def atomic_append_jsonl(path: Path, model: BaseModel) -> None:
     """Publish a control-ledger row atomically; caller must hold its file lock.
 
-    Preserve the prior bytes rather than reparsing through the tolerant reader:
+    Preserve the prior bytes rather than reparsing and reserializing the records:
     a failed replace cannot damage a previous review or discard a corrupt row.
     """
     from math_research.core.atomicio import atomic_write_text
@@ -74,7 +75,7 @@ def atomic_append_jsonl(path: Path, model: BaseModel) -> None:
 
 
 def read_jsonl(path: Path, model_cls: type[ModelT]) -> list[ModelT]:
-    """Read all valid records from ``path``, skipping (and warning on) bad lines."""
+    """Read every authoritative record; never silently drop a damaged row."""
     return list(iter_jsonl(path, model_cls))
 
 
@@ -93,17 +94,21 @@ def rewrite_jsonl(path: Path, models: Sequence[BaseModel]) -> None:
 
 
 def iter_jsonl(path: Path, model_cls: type[ModelT]) -> Iterator[ModelT]:
-    if not path.is_file():
+    try:
+        with path.open("r", encoding="utf-8") as fh:
+            for lineno, raw in enumerate(fh, start=1):
+                line = raw.strip()
+                if not line:
+                    continue
+                try:
+                    yield model_cls.model_validate_json(line)
+                except ValidationError as exc:
+                    raise IntegrityError(f"Invalid JSONL row {path.name}:{lineno}") from exc
+    except FileNotFoundError:
+        # Optional, never-created logs are empty; do not initialize them on reads.
         return
-    with path.open("r", encoding="utf-8") as fh:
-        for lineno, raw in enumerate(fh, start=1):
-            line = raw.strip()
-            if not line:
-                continue
-            try:
-                yield model_cls.model_validate_json(line)
-            except ValidationError as exc:
-                logger.warning("Skipping corrupt JSONL line %d in %s: %s", lineno, path, exc)
+    except (UnicodeError, OSError) as exc:
+        raise IntegrityError(f"Unreadable JSONL {path.name}: {type(exc).__name__}") from exc
 
 
 def next_sequential_id(prefix: str, existing_count: int) -> str:
@@ -137,9 +142,8 @@ def next_id(prefix: str, existing_ids: Iterable[str]) -> str:
     """Next id derived from the highest existing numeric suffix, e.g. ``CLAIM-0007``.
 
     Unlike :func:`next_sequential_id`, this does not assume the record count
-    equals the highest id. ``read_jsonl`` silently skips corrupt lines, so a
-    count-based id can collide with a still-present record; deriving from the
-    max suffix keeps ids unique even when a line is unparseable. Use this for
+    equals the highest id. Explicit record removal can cause count-based collisions;
+    the max suffix avoids reusing a still-present identity. Use this for
     ledgers whose records are later looked up or mutated by id.
     """
     highest = 0

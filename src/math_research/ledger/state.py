@@ -19,6 +19,8 @@ from math_research.ledger.episodes import (
     list_episodes,
     list_reviews,
 )
+from math_research.ledger.identity import ScopedIdentityResolver
+from math_research.ledger.premises import PremiseDecision, semantic_premise
 from math_research.ledger.records import store
 from math_research.ledger.verification.proofs import list_proofs
 
@@ -54,27 +56,29 @@ class KnowledgeState(BaseModel):
     provenance: list[str] = Field(default_factory=list)
     relation_confirmations: list[str] = Field(default_factory=list)
     thread_ids: list[str] = Field(default_factory=list)
+    premise_decision: PremiseDecision | None = None
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def usable_premise(self) -> bool:
-        return (
-            self.authority != "REJECTED/HISTORICAL"
-            and not (self.kind == "proof" and self.verification == "VERIFIER_FAILED")
-            and self.research_state
-            not in {
-                "REVISED",
-                "REFUTED",
-                "SUPERSEDED",
-                "HISTORICAL",
-                "INVALIDATED",
-            }
-            and self.kind not in {"OPEN_GAP", "gap", "CONJECTURE", "obligation"}
-            and not any(
-                warning.startswith("upstream ") or warning.startswith("Unresolved dependency")
-                for warning in self.warnings
-            )
+        return self._premise().usable_working_premise
+
+    def _premise(self) -> PremiseDecision:
+        return self.premise_decision or semantic_premise(
+            self.kind, self.research_state, self.authority, self.verification, self.warnings
         )
+
+    @property
+    def premise_eligibility(self) -> str:
+        return self._premise().premise_eligibility
+
+    @property
+    def premise_reasons(self) -> list[str]:
+        return self._premise().premise_reasons
+
+    @property
+    def conditional_premise(self) -> bool:
+        return self._premise().conditional_premise
 
 
 def research_version(ot_dir: Path, problem_id: str) -> str:
@@ -106,15 +110,24 @@ def research_version(ot_dir: Path, problem_id: str) -> str:
     return checksum.hexdigest()
 
 
-def candidate_dependencies(candidate: Proposal, candidates: list[Proposal]) -> list[str]:
-    local = {
-        c.local_id: c.candidate_id
-        for c in candidates
-        if c.episode_id == candidate.episode_id and c.local_id
-    }
+def candidate_dependencies(
+    candidate: Proposal, candidates: list[Proposal], resolver: ScopedIdentityResolver
+) -> list[str]:
+    def resolve(value):
+        result = resolver.resolve(
+            value, problem_id=candidate.problem_id, episode_id=candidate.episode_id
+        )
+        if result.ref is None:
+            return value
+        return (
+            result.ref.object_id
+            if result.ref.problem_id == candidate.problem_id
+            else result.ref.qualified_id
+        )
+
     return list(
         dict.fromkeys(
-            local.get(value, value)
+            resolve(value)
             for value in [
                 *candidate.uses,
             ]
@@ -128,7 +141,7 @@ class KnowledgeStateResolver:
     def __init__(self, ot_dir: Path):
         self.ot_dir = ot_dir
 
-    def resolve(self, problem_id: str) -> dict[str, KnowledgeState]:
+    def resolve(self, problem_id: str, *, currentness: bool = True) -> dict[str, KnowledgeState]:
         store.require_dossier(self.ot_dir, problem_id)
         states: dict[str, KnowledgeState] = {}
         claims = store.list_claims(self.ot_dir, problem_id)
@@ -200,6 +213,7 @@ class KnowledgeStateResolver:
                     research_state="HISTORICAL" if kind == "failed_attempt" else "CURRENT",
                 )
 
+        identity = ScopedIdentityResolver.from_state(self.ot_dir)
         aliases = {
             r.candidate_id: r.mapped_id for r in reviews if r.decision == "accept" and r.mapped_id
         }
@@ -227,7 +241,9 @@ class KnowledgeStateResolver:
                             *canonical.dependencies,
                             *[
                                 aliases.get(d, d)
-                                for d in candidate_dependencies(accepted_candidate, candidates)
+                                for d in candidate_dependencies(
+                                    accepted_candidate, candidates, identity
+                                )
                             ],
                         ]
                     )
@@ -243,7 +259,7 @@ class KnowledgeStateResolver:
                     },
                 )
                 continue
-            deps = candidate_dependencies(candidate, candidates)
+            deps = candidate_dependencies(candidate, candidates, identity)
             state = KnowledgeState(
                 object_id=candidate.candidate_id,
                 kind=candidate.kind,
@@ -283,6 +299,28 @@ class KnowledgeStateResolver:
         for candidate in candidates:
             if candidate.object_id:
                 states[candidate.object_id] = states[candidate.candidate_id]
+
+        # Include explicit logical edges in the intrinsic semantic pass, too.
+        from math_research.ledger.dependencies import PREMISE_ROLES, Dependency
+        from math_research.ledger.persistence import records
+
+        for dep_edge in records(self.ot_dir, "dependencies", Dependency):
+            source_ref = identity.resolve(dep_edge.dependent.qualified_id).ref
+            target_ref = identity.resolve(dep_edge.target.qualified_id).ref
+            if (
+                dep_edge.role not in PREMISE_ROLES
+                or source_ref is None
+                or source_ref.problem_id != problem_id
+            ):
+                continue
+            if source_ref.object_id in states:
+                value = (
+                    target_ref.object_id
+                    if target_ref and target_ref.problem_id == problem_id
+                    else dep_edge.target.qualified_id
+                )
+                if value not in states[source_ref.object_id].dependencies:
+                    states[source_ref.object_id].dependencies.append(value)
 
         pending_resolutions: list[tuple[str, str, str, str]] = []
         pending_invalidations: list[tuple[str, str, str]] = []
@@ -384,7 +422,9 @@ class KnowledgeStateResolver:
                         continue
                     if upstream.review == "REJECTED":
                         state.warnings.append(f"upstream rejected dependency: {dep}")
-                    elif upstream.kind in {"CONJECTURE", "obligation"}:
+                    elif upstream.conditional_premise:
+                        state.warnings.append(f"Conditional upstream assumption: {dep}")
+                    elif upstream.kind == "obligation":
                         state.warnings.append(
                             f"upstream unproved research target dependency: {dep}"
                         )
@@ -472,4 +512,24 @@ class KnowledgeStateResolver:
             state.resolution_ids = list(dict.fromkeys(state.resolution_ids))
             state.replacement_ids = list(dict.fromkeys(state.replacement_ids))
             state.derivation_ids = list(dict.fromkeys(state.derivation_ids))
+        if currentness:
+            # Manifest uses the intrinsic pass above, avoiding recursive projection.
+            # Public KnowledgeState consumers get the same graph/currentness decision
+            # as ObjectView rather than a second interpretation of premise safety.
+            from math_research.ledger.manifest import Ledger
+            from math_research.ledger.projection import list_objects
+
+            ledger = Ledger(self.ot_dir)
+            views = list_objects(self.ot_dir)
+            entries = [view.object for view in views]
+            decisions = {view.object.qualified_id: view for view in views}
+            resolver = ledger._identity(entries)
+            for ident, state in states.items():
+                resolution = resolver.resolve(ident, problem_id=problem_id)
+                if resolution.ref:
+                    view = decisions[resolution.ref.qualified_id]
+                    state.premise_decision = PremiseDecision(
+                        premise_eligibility=view.premise_eligibility,
+                        premise_reasons=view.premise_reasons,
+                    )
         return states

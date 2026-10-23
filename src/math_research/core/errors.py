@@ -11,6 +11,13 @@ class ResearchError(Exception):
     """Base class for all MathResearch Ledger errors."""
 
 
+class IntegrityError(ResearchError):
+    """An authoritative source cannot be read or no longer matches its identity."""
+
+    def __init__(self, message: str):
+        super().__init__("INTEGRITY_ERROR: " + message)
+
+
 class RecoverableToolError(ResearchError):
     """An ordinary tool outcome the Agent can repair, not a broken runtime."""
 

@@ -106,6 +106,7 @@ class NumberedSection:
     fields: dict[str, str]
     start_line: int
     end_line: int
+    field_spans: tuple[tuple[str, int, int], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -188,12 +189,14 @@ def parse_numbered_episode(content: str) -> tuple[list[NumberedSection], list[Lo
             and (i == start + 1 or not lines[i - 1].strip())
         ]
         fields: dict[str, str] = {}
+        field_spans = []
         for index, (line_no, field) in enumerate(field_starts):
             field_end = field_starts[index + 1][0] if index + 1 < len(field_starts) else end
             value = "\n".join(lines[line_no + 1 : field_end]).strip()
-            fields[field.group(1).strip().casefold()] = (
-                f"{field.group(2)}\n{value}" if field.group(2) else value
-            ).strip()
+            key = field.group(1).strip().casefold()
+            field_spans.append((key, line_no + 1, field_end))
+            value = (f"{field.group(2)}\n{value}" if field.group(2) else value).strip()
+            fields[key] = f"{fields[key]}\n{value}" if key in fields else value
         sections.append(
             NumberedSection(
                 local_id=f"{match.group(1).upper()}-{match.group(2)}",
@@ -203,6 +206,7 @@ def parse_numbered_episode(content: str) -> tuple[list[NumberedSection], list[Lo
                 fields=fields,
                 start_line=start + 1,
                 end_line=end,
+                field_spans=tuple(field_spans),
             )
         )
     relations = [

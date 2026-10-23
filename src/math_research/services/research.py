@@ -60,6 +60,7 @@ def status(state: Path, problem_id: str | None = None, *, offset: int = 0, limit
                 "authority": v.authority,
                 "verification": v.verification,
                 "freshness": v.freshness,
+                "integrity": v.object.integrity,
                 "research_state": v.object.research_state,
             }
             for v in views[offset : offset + limit]
@@ -110,7 +111,8 @@ def link_dependency(
     state: Path, dependent: ObjectRef, target: ObjectRef, role: DependencyRole
 ) -> Dependency:
     ledger = Ledger(state)
-    ledger.get(dependent)
+    dependent = ledger.resolve(dependent.qualified_id)
+    target = ledger.resolve(target.qualified_id)
     upstream = ledger.get(target)
     if dependent == target:
         raise ResearchError("Self dependency is not permitted.")

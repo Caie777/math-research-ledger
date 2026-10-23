@@ -6,12 +6,20 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field, computed_field
 
-from math_research.core.errors import ResearchError
+from math_research.core.errors import IntegrityError, ResearchError
 from math_research.core.hashing import content_hash, sha256
 from math_research.core.refs import ObjectRef
-from math_research.ledger.archive import source_path
+from math_research.ledger.archive import episode_text, source_path
 from math_research.ledger.dependencies import Dependency, DependencyRole
-from math_research.ledger.episodes import list_candidates, list_episodes, list_reviews
+from math_research.ledger.episodes import (
+    Proposal,
+    ResearchEpisode,
+    ReviewDecision,
+    list_candidates,
+    list_episodes,
+    list_reviews,
+)
+from math_research.ledger.identity import IdentityResolution, ScopedIdentityResolver
 from math_research.ledger.persistence import records
 from math_research.ledger.records import store
 from math_research.ledger.records.experiments import list_experiments
@@ -20,6 +28,17 @@ from math_research.ledger.state import KnowledgeStateResolver
 from math_research.verification.formal.models import FormalBundle
 from math_research.verification.models import VerificationReceipt
 from math_research.verification.review import ReviewReport
+
+
+def record_content_hash(data: dict, body, artifacts: list[dict]) -> str:
+    # Optional new proposal metadata must not change old content versions.
+    semantic = {
+        k: v
+        for k, v in data.items()
+        if k not in {"created_at", "updated_at", "imported_at"}
+        and not (k == "dependency_pins" and not v)
+    }
+    return content_hash({"record": semantic, "body": body, "artifacts": artifacts})
 
 
 class ManifestEntry(BaseModel):
@@ -35,6 +54,7 @@ class ManifestEntry(BaseModel):
     record: dict
     full_content: str
     warnings: list[str] = Field(default_factory=list)
+    integrity: str = "NOT_APPLICABLE"
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -88,9 +108,15 @@ class Ledger:
         result: dict[str, ManifestEntry] = {}
         pending: list[tuple[ObjectRef, str, DependencyRole]] = []
         input_edges: list[Dependency] = []
+        candidate_inputs: list[tuple[ManifestEntry, Proposal, ResearchEpisode | None]] = []
+        all_candidates: list[Proposal] = []
+        all_reviews: list[ReviewDecision] = []
+        contexts: dict[str, set[str]] = {}
 
         def add(kind, record, pid, states=None, *, ident=None, body=None, paths=()):
             data = record.model_dump(mode="json")
+            if "dependency_pins" in data and not data["dependency_pins"]:
+                data.pop("dependency_pins")
             if kind == "episode":
                 # New optional checkpoint fields must not change legacy versions.
                 for key in ("state_delta", "next_research_directions"):
@@ -116,19 +142,10 @@ class Ledger:
                 except OSError:
                     artifacts.append({"path": str(path), "sha256": None})
                     warnings.append(f"Missing artifact: {path}")
-            semantic = {
-                k: v
-                for k, v in data.items()
-                if k not in {"created_at", "updated_at", "imported_at"}
-            }
             entry = ManifestEntry(
                 ref=ref,
-                content_hash=content_hash(
-                    {
-                        "record": semantic,
-                        "body": body,
-                        "artifacts": [self._artifact_identity(a) for a in artifacts],
-                    }
+                content_hash=record_content_hash(
+                    data, body, [self._artifact_identity(a) for a in artifacts]
                 ),
                 research_state=state.research_state if state else "CURRENT",
                 authority=state.authority if state else "CANONICAL",
@@ -165,7 +182,7 @@ class Ledger:
             pid = problem.id
             if problem_id and pid != problem_id:
                 continue
-            states = KnowledgeStateResolver(self.state).resolve(pid)
+            states = KnowledgeStateResolver(self.state).resolve(pid, currentness=False)
             base = store.dossier_dir(self.state, pid)
             add(
                 "problem",
@@ -201,41 +218,68 @@ class Ledger:
                         body = path.read_text("utf-8") if path.is_file() else ""
                     add(actual, record, pid, states, body=body, paths=paths)
             episodes = list_episodes(self.state, pid)
+            failed_episodes: set[str] = set()
             for episode in episodes:
                 path = source_path(self.state, episode.archive_path)
-                add(
+                error: str | None
+                try:
+                    source_body = episode_text(self.state, episode)
+                    error = None
+                except IntegrityError as exc:
+                    source_body, error = "", str(exc)
+                    failed_episodes.add(episode.episode_id)
+                entry = add(
                     "episode",
                     episode,
                     pid,
-                    body=path.read_text("utf-8") if path.is_file() else "",
+                    body=source_body,
                     paths=[path],
                 )
+                entry.integrity = "FAILED" if error else "VERIFIED"
+                if error:
+                    entry.warnings.append(error)
+                    # Raw assertions are content, not harmless navigation metadata.
+                    entry.record = {
+                        k: entry.record[k]
+                        for k in ("episode_id", "content_sha256", "archive_path", "problem_id")
+                    }
             for paper in source_papers(self.state, pid):
+                from math_research.core.integrity import verified_bytes
+
                 paths = []
-                source_body = None
+                paper_body: str | None = None
+                error = None
                 if paper.local_path:
                     path = (self.state / paper.local_path).resolve()
                     if not path.is_relative_to(self.state):
                         raise ResearchError("Source escapes research state.")
                     paths = [path]
-                    if path.is_file() and path.suffix.lower() in {".md", ".txt"}:
-                        source_body = path.read_text("utf-8-sig")
-                if paper.text_path:
-                    text_path = (self.state / paper.text_path).resolve()
-                    if not text_path.is_relative_to(self.state):
-                        raise ResearchError("Extracted source text escapes research state.")
-                    paths.append(text_path)
-                    if text_path.is_file():
-                        source_body = text_path.read_text("utf-8-sig")
-                entry = add("source", paper, pid, body=source_body, paths=paths)
-                if source_body is None:
+                    if paper.sha256:
+                        try:
+                            raw = verified_bytes(path, paper.sha256, label=paper.id)
+                            if path.suffix.lower() in {".md", ".txt"}:
+                                paper_body = raw.decode("utf-8-sig")
+                        except (IntegrityError, UnicodeError) as exc:
+                            error = str(exc)
+                entry = add("source", paper, pid, body=paper_body, paths=paths)
+                entry.integrity = (
+                    "FAILED"
+                    if error
+                    else "VERIFIED"
+                    if paper.sha256 and paths
+                    else "NOT_APPLICABLE"
+                )
+                if error:
+                    entry.full_content = ""
+                    entry.warnings.append("INTEGRITY_ERROR: " + error)
+                elif paper_body is None:
                     entry.warnings.append(
-                        "Source text is unavailable; inspect the original artifact"
+                        "Source text unavailable: extracted caches have no immutable digest"
                     )
-                if paths and entry.artifact_refs[0]["sha256"] != paper.sha256:
-                    entry.warnings.append("Pinned source SHA-256 mismatch")
             reviews = {r.candidate_id: r for r in list_reviews(self.state, pid)}
+            all_reviews.extend(reviews.values())
             for candidate in list_candidates(self.state, pid):
+                all_candidates.append(candidate)
                 if candidate.kind == "relation":
                     continue
                 state = states[candidate.candidate_id]
@@ -269,35 +313,17 @@ class Ledger:
                 input_episode = next(
                     (e for e in episodes if e.episode_id == candidate.episode_id), None
                 )
-                if input_episode:
-                    for pin in input_episode.input_versions:
-                        if pin.ref.problem_id != pid:
-                            continue
-                        role = None
-                        if (
-                            pin.ref.object_id in candidate.uses
-                            or pin.ref.qualified_id in candidate.uses
-                        ):
-                            role = (
-                                DependencyRole.DEFINITION
-                                if pin.ref.kind == "definition"
-                                else DependencyRole.LOGICAL_PREMISE
-                            )
-                        if pin.ref.object_id == candidate.target_id and candidate.kind in {
-                            "proof",
-                            "refutation",
-                        }:
-                            role = DependencyRole.PROOF_TARGET
-                        if role:
-                            input_edges.append(
-                                Dependency(
-                                    dependent=entry.ref,
-                                    target=pin.ref,
-                                    role=role,
-                                    expected_version=pin.version,
-                                    provenance="episode_input",
-                                )
-                            )
+                if input_episode is None or candidate.episode_id in failed_episodes:
+                    entry.integrity = "FAILED"
+                    entry.full_content = ""
+                    entry.record = {
+                        "id": entry.ref.object_id,
+                        "episode_id": candidate.episode_id,
+                        "candidate_id": candidate.candidate_id,
+                    }
+                    entry.warnings.append("INTEGRITY_ERROR: Episode provenance failed")
+                contexts.setdefault(entry.qualified_id, set()).add(candidate.episode_id)
+                candidate_inputs.append((entry, candidate, input_episode))
 
         for bundle in records(self.state, "formal_bundles", FormalBundle):
             if problem_id and bundle.problem_id != problem_id:
@@ -412,28 +438,34 @@ class Ledger:
                 entry = add("verification", receipt, receipt.target.ref.problem_id)
                 entry.authority, entry.verification = "NONE", receipt.outcome.status
 
+        resolver = ScopedIdentityResolver(
+            (e.ref for e in result.values()), all_candidates, all_reviews
+        )
+
         def resolve_local(source, target):
-            if ":" in target:
-                return ObjectRef.parse(target)
-            matches = [
-                e.ref
-                for e in result.values()
-                if e.ref.object_id == target and e.ref.problem_id == source.problem_id
-            ]
-            return (
-                matches[0]
-                if len(matches) == 1
+            episodes = contexts.get(source.qualified_id, set())
+            resolution = resolver.resolve(
+                target,
+                problem_id=source.problem_id,
+                episode_id=next(iter(episodes)) if len(episodes) == 1 else None,
+            )
+            fallback = (
+                ObjectRef.parse(target)
+                if ":" in target
                 else ObjectRef(problem_id=source.problem_id, kind="unresolved", object_id=target)
             )
+            return resolution.ref or fallback, resolution.reason
 
         edges = {}
         for source, target, role in pending:
             try:
+                target_ref, reason = resolve_local(source, target)
                 edge = Dependency(
                     dependent=source,
-                    target=resolve_local(source, target),
+                    target=target_ref,
                     role=role,
                     provenance="existing_record",
+                    resolution_reason=reason,
                 )
                 if edge.role == DependencyRole.LOGICAL_PREMISE and edge.target.kind == "definition":
                     edge = edge.model_copy(update={"role": DependencyRole.DEFINITION})
@@ -442,7 +474,41 @@ class Ledger:
                 result[source.qualified_id].warnings.append(
                     f"Unresolved legacy reference: {target}"
                 )
+                edge = Dependency(
+                    dependent=source,
+                    target=ObjectRef(
+                        problem_id=source.problem_id,
+                        kind="unresolved",
+                        object_id=sha256(target.encode())[:24],
+                    ),
+                    role=role,
+                    provenance="existing_record",
+                    resolution_reason="MALFORMED_REFERENCE",
+                )
+                edges[edge.key] = edge
+        from math_research.ledger.bindings import candidate_edges
+
+        for entry, candidate, candidate_episode in candidate_inputs:
+            input_edges.extend(
+                candidate_edges(
+                    candidate,
+                    resolver,
+                    dependent=entry.ref,
+                    input_pins=candidate_episode.input_versions if candidate_episode else (),
+                )
+            )
         for edge in [*input_edges, *records(self.state, "dependencies", Dependency)]:
+            source = resolver.resolve(edge.dependent.qualified_id).ref
+            target_resolution = resolver.resolve(edge.target.qualified_id)
+            edge = edge.model_copy(
+                update={
+                    "dependent": source or edge.dependent,
+                    "target": target_resolution.ref or edge.target,
+                    "resolution_reason": (edge.resolution_reason or target_resolution.reason)
+                    if target_resolution.ref is None
+                    else None,
+                }
+            )
             edges[edge.key] = edge
         for edge in edges.values():
             if edge.dependent.qualified_id in result:
@@ -450,25 +516,38 @@ class Ledger:
         return sorted(result.values(), key=lambda e: e.qualified_id)
 
     def get(self, ref: ObjectRef) -> ManifestEntry:
-        match = next((e for e in self.objects(ref.problem_id) if e.ref == ref), None)
+        entries = self.objects()
+        resolved = self._identity(entries).resolve(ref.qualified_id).require()
+        match = next((e for e in entries if e.ref == resolved), None)
         if match is None:
             raise ResearchError(f"Unknown qualified object: {ref.qualified_id}")
+        if match.integrity == "FAILED":
+            raise IntegrityError(f"Source unavailable for {ref.qualified_id}")
         return match
 
-    def resolve(self, object_id: str, *, problem_id=None, kind=None) -> ObjectRef:
+    def _identity(self, entries) -> ScopedIdentityResolver:
+        candidates, reviews = [], []
+        for problem in store.list_dossiers(self.state):
+            candidates.extend(list_candidates(self.state, problem.id))
+            reviews.extend(list_reviews(self.state, problem.id))
+        return ScopedIdentityResolver((e.ref for e in entries), candidates, reviews)
+
+    def explain(self, object_id: str, *, problem_id=None, episode_id=None) -> IdentityResolution:
+        return self._identity(self.objects()).resolve(
+            object_id, problem_id=problem_id, episode_id=episode_id
+        )
+
+    def resolve(self, object_id: str, *, problem_id=None, kind=None, episode_id=None) -> ObjectRef:
         if ":" in object_id:
             ref = ObjectRef.parse(object_id)
             if problem_id and ref.problem_id != problem_id or kind and ref.kind != kind:
                 raise ResearchError("Qualified reference conflicts with scope/kind.")
-            return self.get(ref).ref
-        found = [
-            e.ref
-            for e in self.objects(problem_id)
-            if e.ref.object_id == object_id and (kind is None or e.ref.kind == kind)
-        ]
-        if len(found) != 1:
-            raise ResearchError("Bare ID is absent or ambiguous; supply problem_id and kind.")
-        return found[0]
+        entries = [e for e in self.objects() if kind is None or e.ref.kind == kind]
+        return (
+            self._identity(entries)
+            .resolve(object_id, problem_id=problem_id, episode_id=episode_id)
+            .require()
+        )
 
     def source_version(self, problem_id=None) -> str:
         entries = {e.qualified_id: e for e in self.objects()}

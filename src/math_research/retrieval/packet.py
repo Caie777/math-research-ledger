@@ -22,7 +22,7 @@ from math_research.retrieval.index import IndexDoc, search_documents
 class PacketItem(BaseModel):
     ref: ObjectRef
     version: str
-    label: Literal["TRUSTED", "PROVISIONAL", "STALE", "FAILED", "HISTORICAL"]
+    label: Literal["TRUSTED", "PROVISIONAL", "STALE", "UNKNOWN", "FAILED", "HISTORICAL"]
     tier: Literal["MUST", "SHOULD", "MAY"]
     authority: str
     verification: str
@@ -31,6 +31,9 @@ class PacketItem(BaseModel):
     research_state: str
     usable_working_premise: bool
     trusted_formal_premise: bool
+    premise_eligibility: str
+    conditional_premise: bool
+    premise_reasons: list[str]
     provenance: list[str]
     dependencies: list[dict]
     artifact_refs: list[dict]
@@ -46,7 +49,8 @@ class ContextPacket(BaseModel):
     purpose: str
     protocol: str = (
         "Canonical is not verified. Checked is not accepted. Soft review is advisory. "
-        "STALE/HISTORICAL/FAILED are not positive premises. "
+        "UNKNOWN/STALE/HISTORICAL/FAILED are not positive premises. "
+        "label is a display summary; freshness, research_state and authority are separate axes. "
         "PROVISIONAL is a working assumption only. Retrieve omitted originals before relying "
         "on them. Return a Research Episode with IDs and source spans."
     )
@@ -85,6 +89,7 @@ def export_context_packet(
     if not 256 <= token_budget <= 200000 or not 1 <= max_dependency_nodes <= 256:
         raise ResearchError("Budget must be 256..200000 and dependency bound 1..256.")
     ledger = Ledger(state)
+    target = ledger.resolve(target.qualified_id)
     if purpose not in {"CONTINUE_RESEARCH", "RECOVER_PROOF", "TRACE_HISTORY", "FIND_FAILURES"}:
         raise ResearchError("Unsupported context purpose.")
     version = ledger.source_version(target.problem_id)
@@ -171,7 +176,9 @@ def export_context_packet(
         )
         label = (
             "STALE"
-            if v.freshness != "CURRENT"
+            if v.freshness == "STALE"
+            else "UNKNOWN"
+            if v.freshness == "UNKNOWN"
             else "FAILED"
             if entry.ref.kind == "failed_attempt" or entry.research_state == "INVALIDATED"
             else "HISTORICAL"
@@ -197,6 +204,9 @@ def export_context_packet(
             research_state=entry.research_state,
             usable_working_premise=v.usable_working_premise,
             trusted_formal_premise=v.trusted_formal_premise,
+            premise_eligibility=v.premise_eligibility,
+            conditional_premise=v.conditional_premise,
+            premise_reasons=v.premise_reasons,
             provenance=entry.provenance,
             dependencies=[d.model_dump(mode="json") for d in entry.dependencies],
             artifact_refs=entry.artifact_refs,
@@ -220,6 +230,12 @@ def export_context_packet(
         required_omitted_ids=sorted(missing),
         token_budget=token_budget,
     )
+    failed = {key for key, view in views.items() if view.object.integrity == "FAILED"}
+    for key in sorted(failed & candidates):
+        packet.excluded.append({"ref": key, "integrity": "FAILED", "reason": "INTEGRITY_ERROR"})
+        if key in required:
+            packet.required_omitted_ids.append(key)
+    ordered = [key for key in ordered if key not in failed]
     for key in ordered:
         if key not in required:
             continue

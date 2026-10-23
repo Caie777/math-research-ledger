@@ -23,15 +23,14 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 from math_research.core.atomicio import file_lock
 from math_research.core.errors import ResearchError
 from math_research.core.jsonl import atomic_append_jsonl, read_jsonl
-from math_research.core.refs import VersionPin
-from math_research.ledger.archive import source_path
+from math_research.core.refs import ObjectRef, VersionPin
 from math_research.ledger.decomposition import (
     checkpoint_heading,
     has_numbered_headings,
-    local_ids,
     mathematical_lines,
     parse_numbered_episode,
 )
+from math_research.ledger.identity import reference_tokens
 from math_research.ledger.records import claims, store
 from math_research.ledger.records.models import Approach, ClaimRecord, ClaimType
 from math_research.ledger.records.write_boundary import human_write
@@ -175,6 +174,7 @@ class Proposal(BaseModel):
     target_id: str | None = None
     relation: RelationKind | None = None
     uses: list[str] = Field(default_factory=list)
+    dependency_pins: list[VersionPin] = Field(default_factory=list)
     revises_proof_id: str | None = None
     action: Literal["NEW", "SAME_AS"] = "NEW"
     source_section: str
@@ -321,7 +321,7 @@ def structured_episode_metadata(content: str) -> EpisodeOutputMetadata:
     known = {s.local_id for s in sections}
 
     def refs(text: str) -> list[str]:
-        return list(dict.fromkeys([*local_ids(text), *_DOSSIER_OBJECT.findall(text)]))
+        return reference_tokens(text)
 
     for key, kinds in groups.items():
         actual = [s.local_id for s in sections if s.kind in kinds]
@@ -361,8 +361,14 @@ def structured_episode_metadata(content: str) -> EpisodeOutputMetadata:
             )
 
     def valid_link(link: EpisodeDependency) -> bool:
+        if ":" in link.target_id:
+            try:
+                ObjectRef.parse(link.target_id)
+            except ValueError:
+                return False
+            return link.source_id in known
         return link.source_id in known and bool(
-            link.target_id in known or _DOSSIER_OBJECT.fullmatch(link.target_id)
+            link.target_id in known or reference_tokens(link.target_id) == [link.target_id]
         )
 
     for key in ("explicit_dependencies", "relation_hints"):
@@ -381,7 +387,9 @@ def _parse_section(lines: list[str]) -> tuple[dict[str, str], str]:
     for line in lines:
         match = _FIELD.match(line)
         if match:
-            fields[match.group(1).lower()] = match.group(2).strip()
+            key = match.group(1).lower()
+            value = match.group(2).strip()
+            fields[key] = f"{fields[key]}, {value}" if key in fields else value
             offset += 1
         elif not line.strip() and offset == len(fields):
             offset += 1
@@ -473,16 +481,14 @@ def extract_candidates(ot_dir: Path, episode: ResearchEpisode) -> list[Proposal]
     """Deterministic, conservative parser; unknown prose remains in the archive."""
     if not episode.problem_id:
         raise ResearchError("Proposal extraction requires an explicit Problem scope.")
-    path = source_path(ot_dir, episode.archive_path)
-    raw = path.read_bytes()
-    if hashlib.sha256(raw).hexdigest() != episode.content_sha256:
-        raise ResearchError(
-            "Archived Episode changed; restore its original content before extraction."
-        )
-    content = raw.decode("utf-8-sig")
-    proposed = parse_candidate_proposals(
-        content, episode, store.list_claims(ot_dir, episode.problem_id)
-    )
+    from math_research.ledger.archive import _verified_bytes
+    from math_research.ledger.preview import preview_episode
+
+    raw = _verified_bytes(ot_dir, episode)
+    preview = preview_episode(ot_dir, episode.problem_id, episode.source_filename, raw)
+    if not preview["can_publish"]:
+        raise ResearchError("Episode lint ERROR; preview and correct before extraction.")
+    proposed = preview["candidates"]
     stage_candidates(ot_dir, episode.problem_id, proposed)
     ids = {candidate.candidate_id for candidate in proposed}
     return [c for c in list_candidates(ot_dir, episode.problem_id) if c.candidate_id in ids]
@@ -578,19 +584,22 @@ def stage_candidates(ot_dir: Path, problem_id: str, proposed: list[Proposal]) ->
     episodes = {e.episode_id: e for e in list_episodes(ot_dir, problem_id)}
     with file_lock(index):
         known = {item.candidate_id for item in list_candidates(ot_dir, problem_id)}
+        # Finalize identities/thread metadata before hashing authored local inputs.
+        from math_research.ledger.bindings import bind_local_inputs
+        from math_research.ledger.provisional import provisional_object_id
+
+        proposed = [
+            candidate.model_copy(
+                update={
+                    "object_id": provisional_object_id(candidate),
+                    "thread_ids": candidate.thread_ids or episodes[candidate.episode_id].thread_ids,
+                }
+            )
+            for candidate in proposed
+        ]
+        proposed = bind_local_inputs(ot_dir, proposed, episodes, known)
         for candidate in proposed:
             if candidate.candidate_id not in known:
-                from math_research.ledger.provisional import provisional_object_id
-
-                candidate = candidate.model_copy(
-                    update={"object_id": provisional_object_id(candidate)}
-                )
-                if not candidate.thread_ids and candidate.episode_id in episodes:
-                    candidate = candidate.model_copy(
-                        update={
-                            "thread_ids": episodes[candidate.episode_id].thread_ids,
-                        }
-                    )
                 atomic_append_jsonl(index, candidate)
                 known.add(candidate.candidate_id)
 
@@ -635,18 +644,13 @@ def _numbered_candidates(content: str, episode: ResearchEpisode) -> list[Proposa
         body = next((fields[key] for key in body_fields[section.kind] if fields.get(key)), "")
         if not body:
             body = section.raw_markdown.split("\n", 1)[-1].strip()
-        target_text = next(
-            (fields[key] for key in ("目标", "针对对象", "阻碍对象", "target") if fields.get(key)),
-            "",
+        target_text = "\n".join(
+            fields.get(key, "") for key in ("目标", "针对对象", "阻碍对象", "target", "旧对象")
         )
-        target_refs = [ref for ref in local_ids(target_text) if ref in known_local]
-        explicit_claims = (
-            _DOSSIER_OBJECT if section.kind == "COUNTEREXAMPLE" else _DOSSIER_CLAIM
-        ).findall(target_text)
-        target = target_refs[0] if target_refs else explicit_claims[0] if explicit_claims else None
+        target_refs = reference_tokens(target_text)
+        target = target_refs[0] if len(target_refs) == 1 else None
         uses_text = fields.get("使用的已有结果", fields.get("uses", ""))
-        uses = [ref for ref in local_ids(uses_text) if ref in known_local]
-        uses.extend(ref for ref in _DOSSIER_OBJECT.findall(uses_text) if ref not in uses)
+        uses = reference_tokens(uses_text)
         proposed.append(
             Proposal(
                 candidate_id=candidate_key(section.local_id),
@@ -874,12 +878,11 @@ def review_candidate(
         (e for e in list_episodes(ot_dir, problem_id) if e.episode_id == candidate.episode_id),
         None,
     )
-    if (
-        episode is None
-        or hashlib.sha256(source_path(ot_dir, episode.archive_path).read_bytes()).hexdigest()
-        != episode.content_sha256
-    ):
-        raise ResearchError("Archived Episode is missing or changed; review refused.")
+    if episode is None:
+        raise ResearchError("Archived Episode is missing; review refused.")
+    from math_research.ledger.archive import _verified_bytes
+
+    _verified_bytes(ot_dir, episode)
     index = _review_path(ot_dir, problem_id)
     with file_lock(index), _review_rollback(store.dossier_dir(ot_dir, problem_id), index):
         previous = next(
@@ -958,54 +961,27 @@ def review_candidate(
 
 
 def _resolve_local_references(ot_dir: Path, candidate: Proposal) -> Proposal:
-    """Resolve Episode-local names only through accepted review mappings."""
-    accepted = {
-        review.reviewed_candidate.local_id: review.mapped_id
-        for review in list_reviews(ot_dir, candidate.problem_id)
-        if review.decision == "accept"
-        and review.episode_id == candidate.episode_id
-        and review.reviewed_candidate
-        and review.reviewed_candidate.local_id
-        and review.mapped_id
+    """Shared identity resolution does not relax the human canonicalization gate."""
+    from math_research.ledger.identity import ScopedIdentityResolver, working_ref
+
+    resolver = ScopedIdentityResolver.from_state(ot_dir)
+    working = {
+        working_ref(c).qualified_id
+        for c in list_candidates(ot_dir, candidate.problem_id)
+        if c.kind != "relation"
     }
-    episode_locals = {
-        item.local_id
-        for item in list_candidates(ot_dir, candidate.problem_id, candidate.episode_id)
-        if item.local_id
-    }
-    # Human Review still requires accepted dependencies, but a subsequent Agent
-    # may have cited their stable working IDs rather than the original local IDs.
-    accepted_reviews = {
-        review.candidate_id: review.mapped_id
-        for review in list_reviews(ot_dir, candidate.problem_id)
-        if review.decision == "accept" and review.mapped_id
-    }
-    accepted.update(
-        {
-            item.object_id: accepted_reviews[item.candidate_id]
-            for item in list_candidates(ot_dir, candidate.problem_id)
-            if item.object_id and item.candidate_id in accepted_reviews
-        }
-    )
 
     def resolve(value: str | None) -> str | None:
-        if value and value.startswith("CANDIDATE-"):
-            reviewed = next(
-                (
-                    r
-                    for r in list_reviews(ot_dir, candidate.problem_id)
-                    if r.candidate_id == value and r.decision == "accept"
-                ),
-                None,
-            )
-            if reviewed and reviewed.mapped_id:
-                return reviewed.mapped_id
-            raise ResearchError(f"Accept candidate {value} before this candidate.")
-        if value and value in accepted:
-            return accepted[value]
-        if value and value in episode_locals:
-            raise ResearchError(f"Accept local object {value} before this candidate.")
-        return value
+        if value is None:
+            return None
+        ref = resolver.resolve(
+            value, problem_id=candidate.problem_id, episode_id=candidate.episode_id
+        ).require()
+        if ref.problem_id != candidate.problem_id:
+            raise ResearchError("Canonical review requires an explicit same-Problem target.")
+        if ref.qualified_id in working:
+            raise ResearchError(f"Accept candidate/local object {value} before this candidate.")
+        return ref.object_id
 
     return candidate.model_copy(
         update={

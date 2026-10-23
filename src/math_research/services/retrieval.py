@@ -63,6 +63,12 @@ def search_research(
             "authority": views[key].authority,
             "verification": views[key].verification,
             "freshness": views[key].freshness,
+            "integrity": views[key].object.integrity,
+            "usable_working_premise": views[key].usable_working_premise,
+            "trusted_formal_premise": views[key].trusted_formal_premise,
+            "premise_eligibility": views[key].premise_eligibility,
+            "conditional_premise": views[key].conditional_premise,
+            "premise_reasons": views[key].premise_reasons,
             "research_state": views[key].object.research_state,
             "provenance": views[key].object.provenance,
         }

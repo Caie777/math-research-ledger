@@ -1,8 +1,8 @@
 """Atomic file writes for the artifact store.
 
 A crash, full disk, or Ctrl-C during a plain ``write_text`` (or a truncate-then-
-write ``rewrite``) can leave a half-written, corrupt file — and the JSONL reader
-silently drops the corrupted tail, discarding records with no error. Routing the
+write ``rewrite``) can leave a half-written, corrupt file. Authoritative JSONL
+readers fail closed on corruption; preventing damage remains essential. Routing the
 store's whole-file writes through :func:`atomic_write_text` makes them durable:
 write to a temp file in the same directory, fsync, then ``os.replace`` — an atomic
 rename that either fully succeeds or leaves the prior file intact.

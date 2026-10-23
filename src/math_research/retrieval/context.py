@@ -761,6 +761,24 @@ class ResearchContextBuilder:
             if purpose == "FIND_FAILURES" and item.section == "failures":
                 item.priority += 80
 
+        from math_research.ledger.manifest import Ledger
+
+        failed_sources = {
+            identity
+            for e in Ledger(self.ot_dir).objects(pid)
+            if e.integrity == "FAILED"
+            for identity in (e.ref.object_id, e.record.get("candidate_id"))
+            if identity
+        }
+        integrity_required = set()
+        for ident in failed_sources:
+            if ident in selected:
+                if selected[ident].mandatory:
+                    integrity_required.add(ident)
+                del selected[ident]
+                excluded.append(
+                    ContextExclusion(object_id=ident, reason="INTEGRITY_ERROR: source omitted")
+                )
         target_state = states.get(target.node_id)
         dossier = store.require_dossier(self.ot_dir, pid)
         header = (
@@ -884,7 +902,7 @@ class ResearchContextBuilder:
             selected.values(),
             key=lambda i: ({"MUST": 0, "SHOULD": 1, "MAY": 2}[i.tier], -i.priority, i.object_id),
         )
-        omitted_mandatory: list[str] = []
+        omitted_mandatory: list[str] = sorted(integrity_required)
         remainder: list[ContextItem] = []
         required = [item for item in ordered if item.mandatory]
         for index, item in enumerate(ordered):
@@ -983,7 +1001,7 @@ class ResearchContextBuilder:
             and not any(i.mandatory and i.truncated for i in included),
             required_context_truncated=bool(omitted_mandatory)
             or any(i.mandatory and i.truncated for i in included),
-            required_record_ids=[item.object_id for item in required],
+            required_record_ids=sorted({item.object_id for item in required} | integrity_required),
             required_omitted_ids=omitted_mandatory,
         )
 

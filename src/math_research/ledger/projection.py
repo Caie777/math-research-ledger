@@ -1,12 +1,14 @@
 """Authority/currentness projection over typed records; no runtime or service imports."""
 
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel
 
-from math_research.core.errors import ResearchError
+from math_research.core.errors import IntegrityError, ResearchError
 from math_research.core.refs import ObjectRef
 from math_research.ledger.manifest import Ledger, ManifestEntry
+from math_research.ledger.premises import PremiseResolver
 
 
 class ObjectView(BaseModel):
@@ -17,6 +19,9 @@ class ObjectView(BaseModel):
     verification: str
     usable_working_premise: bool
     trusted_formal_premise: bool
+    premise_eligibility: Literal["ALLOWED", "CONDITIONAL", "BLOCKED"]
+    conditional_premise: bool
+    premise_reasons: list[str]
 
 
 def list_objects(state: Path, problem_id: str | None = None) -> list[ObjectView]:
@@ -28,6 +33,7 @@ def list_objects(state: Path, problem_id: str | None = None) -> list[ObjectView]
     entries = Ledger(state).objects()
     resolver = FreshnessResolver(entries)
     accepted, formal, invalid = accepted_targets(state, entries)
+    premises = PremiseResolver(entries, accepted=set(accepted))
     from math_research.verification.freshness import receipt_current
 
     checks = records(state, "verifications", VerificationReceipt)
@@ -54,14 +60,7 @@ def list_objects(state: Path, problem_id: str | None = None) -> list[ObjectView]
             fresh.reasons.append("Accepted verification artifact changed or unavailable")
         if entry.qualified_id in formal:
             verification = "PASSED"
-        working = (
-            fresh.freshness == Freshness.CURRENT
-            and entry.research_state
-            not in {"INVALIDATED", "REFUTED", "SUPERSEDED", "REVISED", "HISTORICAL"}
-            and entry.authority not in {"REJECTED/HISTORICAL", "ADVISORY", "NONE"}
-            and entry.ref.kind
-            not in {"gap", "failed_attempt", "episode", "source", "review_report", "verification"}
-        )
+        decision = premises.resolve(entry.ref, fresh=fresh)
         result.append(
             ObjectView(
                 object=entry,
@@ -69,16 +68,23 @@ def list_objects(state: Path, problem_id: str | None = None) -> list[ObjectView]
                 freshness_reasons=fresh.reasons,
                 authority="HUMAN_ACCEPTED" if accepted_here else entry.authority,
                 verification=verification,
-                usable_working_premise=working,
+                usable_working_premise=decision.usable_working_premise,
                 trusted_formal_premise=entry.qualified_id in formal
-                and fresh.freshness == Freshness.CURRENT,
+                and fresh.freshness == Freshness.CURRENT
+                and decision.premise_eligibility != "BLOCKED",
+                premise_eligibility=decision.premise_eligibility,
+                conditional_premise=decision.conditional_premise,
+                premise_reasons=decision.premise_reasons,
             )
         )
     return result
 
 
 def get_object(state: Path, ref: ObjectRef) -> ObjectView:
+    ref = Ledger(state).resolve(ref.qualified_id)
     value = next((v for v in list_objects(state, ref.problem_id) if v.object.ref == ref), None)
     if value is None:
         raise ResearchError(f"Unknown qualified object: {ref.qualified_id}")
+    if value.object.integrity == "FAILED":
+        raise IntegrityError(f"Source unavailable for {ref.qualified_id}")
     return value

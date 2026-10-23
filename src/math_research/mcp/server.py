@@ -12,7 +12,7 @@ from urllib.parse import unquote, urlparse
 from pydantic import ValidationError
 
 from math_research import __version__
-from math_research.core.errors import ResearchError
+from math_research.core.errors import IntegrityError, ResearchError
 from math_research.core.paths import state_at
 from math_research.mcp.adapter import DESCRIPTIONS, MAX_OUTPUT_BYTES, SCHEMAS, LedgerAdapter
 
@@ -202,6 +202,12 @@ def create_server(workspace: Path | None = None):
                         include_input=False, include_context=False, include_url=False
                     )[:8]
                 ],
+            )
+        except IntegrityError as exc:
+            return failure(
+                "INTEGRITY_ERROR",
+                str(exc),
+                "Inspect the original archive; do not update digests or repair automatically.",
             )
         except (ResearchError, ValueError) as exc:
             return failure(
