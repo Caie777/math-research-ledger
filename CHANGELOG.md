@@ -42,6 +42,8 @@
 
 - Test Python 3.11 and 3.12 on Linux and Windows CI; align the build backend minimum
   with PEP 639 license metadata and the package author with the plugin identity.
+- Include the build backend in development dependencies for non-isolated packaging
+  tests, and retain subprocess diagnostics when a Bundle build fails.
 - Add a user-first quickstart, clarify the MCP acceptance workflow boundary and input
   limits, and move historical engineering reports into a dated archive.
 - Keep DSH experimental and record deferred compatibility work separately from this release.

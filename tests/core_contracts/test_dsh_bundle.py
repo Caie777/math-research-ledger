@@ -83,12 +83,13 @@ def test_built_bundle_and_tarball_exclude_local_runtime_and_research(tmp_path):
         pytest.skip("npm is needed to validate the installable tarball")
     package = tmp_path / "package"
     env = {**os.environ, "TEMP": str(tmp_path), "TMP": str(tmp_path)}
-    subprocess.run(
+    built = subprocess.run(
         [sys.executable, str(ROOT / "scripts/build_dsh_bundle.py"), str(package)],
-        check=True,
         env=env,
         capture_output=True,
+        text=True,
     )
+    assert built.returncode == 0, built.stdout + built.stderr
     # Simulate a configured bundle: npm's allowlist must still exclude its private pointer.
     (package / ".runtime.json").write_text('{"python":"private-local-pointer"}')
     packed = subprocess.run(
