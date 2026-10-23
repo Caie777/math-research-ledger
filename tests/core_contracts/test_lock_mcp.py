@@ -12,11 +12,14 @@ import anyio  # noqa: E402
 import mcp.types as types  # noqa: E402
 
 from math_research.core import atomicio  # noqa: E402
+from math_research.ledger import checkpoint  # noqa: E402
 from math_research.mcp.server import create_server  # noqa: E402
 
 
 @pytest.mark.parametrize("failure", ["windows-denial", "contention"])
-def test_status_lock_failure_keeps_mcp_event_loop_responsive(research, monkeypatch, failure):
+def test_status_needs_no_writer_lock_and_keeps_mcp_event_loop_responsive(
+    research, monkeypatch, failure
+):
     state, _ = research
     server = create_server(state.parent)
     original = atomicio.os.open
@@ -32,12 +35,17 @@ def test_status_lock_failure_keeps_mcp_event_loop_responsive(research, monkeypat
 
     if failure == "contention":
         (state / ".checkpoint.lock").write_text("synthetic holder")
-        from math_research.ledger import checkpoint
-
         original_lock = checkpoint.file_lock
         monkeypatch.setattr(checkpoint, "file_lock", lambda path: original_lock(path, timeout=0.06))
     monkeypatch.setattr(atomicio, "_WINDOWS", True)
     monkeypatch.setattr(atomicio.os, "open", fail)
+    state_fingerprint = checkpoint._state_fingerprint
+
+    def slow_fingerprint(root):
+        time.sleep(0.04)
+        return state_fingerprint(root)
+
+    monkeypatch.setattr(checkpoint, "_state_fingerprint", slow_fingerprint)
 
     async def run():
         ticks = []
@@ -58,11 +66,8 @@ def test_status_lock_failure_keeps_mcp_event_loop_responsive(research, monkeypat
             )
             finished.set()
         assert time.monotonic() - start < 3
-        assert len(ticks) >= 3, "Lock waits blocked the MCP event loop"
+        assert len(ticks) >= 3, "Read fingerprint IO blocked the MCP event loop"
         reply = result.root
-        assert reply.isError
-        assert reply.structuredContent["error"]["code"] == "RESEARCH_ERROR"
-        message = reply.structuredContent["error"]["message"]
-        assert ("access denied" if failure == "windows-denial" else "Timed out") in message
+        assert not reply.isError and reply.structuredContent["problems"] == 1
 
     anyio.run(run)

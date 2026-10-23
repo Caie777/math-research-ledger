@@ -105,7 +105,12 @@ def test_duplicate_blocks_structured_publication_but_explicit_raw_only_is_safe(r
     before = hashes(state)
     with pytest.raises(ResearchError, match="DUPLICATE_LOCAL_ID"):
         publish(research, raw)
-    assert hashes(state) == before
+    after = hashes(state)
+    # A write attempt advances its coordination epoch, even on rollback. No
+    # research record changes; pure preview tests still compare every state byte.
+    assert set(after) - set(before) == {".checkpoint-generation"}
+    assert all(after[p] == h for p, h in before.items())
+    assert len((state / ".checkpoint-generation").read_bytes()) == 32
     result = ingest_episode(
         state, ref.problem_id, "raw.md", raw, provenance="test", archive_only=True
     )
@@ -246,7 +251,10 @@ def test_same_episode_binding_preview_and_duplicate_ingest(research):
     before = hashes(research[0])
     repeated = publish(research, raw)
     assert repeated["duplicate"]
-    assert hashes(research[0]) == before
+    after = hashes(research[0])
+    assert after.keys() == before.keys()
+    assert after[".checkpoint-generation"] != before[".checkpoint-generation"]
+    assert all(after[p] == h for p, h in before.items() if p != ".checkpoint-generation")
     candidates = [c for c in result["candidates"] if c["kind"] == "claim"]
     downstream = ObjectRef(
         problem_id=research[1].problem_id, kind="claim", object_id=candidates[1]["object_id"]

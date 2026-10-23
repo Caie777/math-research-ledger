@@ -29,11 +29,23 @@ Real Windows existing-workspace DSH status/search and post-restart session accep
 remain incomplete. macOS/Linux DSH Host acceptance is untested. This does not block
 the core/Codex release, and is not a claim that DSH installs work for every user.
 
-## 1.2.1 review backlog — not implemented or promised fixes
+## 1.2.1 development — not yet released
 
-1. **Read-path locking:** status and other checkpoint readers currently create/remove
-   a lock to avoid mixed index generations. Review consistency semantics before changing
-   this. Moving locks into `%TEMP%` is not an agreed design.
+The working-tree read-path fix replaces the six pure MCP tools' exclusive checkpoint
+lock with bounded whole-operation consistency checks. Episode preview also uses this
+read path. It requires readable state, not state-directory writes; acceptance requests
+remain writes. All concurrent checkpoint writers must use the new generation protocol;
+reload old cached installations before mixing readers and writers. See the
+[implementation and validation report](archive/2026-10/read-only-checkpoint-2026-10-23.md).
+
+This does not repair existing Windows security labels or establish real DSH Host
+acceptance. Formal package metadata remains 1.2.0 until a separately authorized release.
+
+## Remaining review backlog — not implemented or promised fixes
+
+1. **Read-path deployment:** released 1.2.0 readers still create/remove a checkpoint lock.
+   The development fix above needs release and real Host acceptance. It does not move
+   locks into `%TEMP%` or make write tools work on nonwritable state.
 2. **Windows sandbox compatibility:** investigate Low/Medium Integrity mismatch for
    existing Ledger state only after user approval and with narrowly scoped acceptance.
 3. **Workspace scope:** prefer authoritative Host/MCP roots over arbitrary model-supplied

@@ -160,7 +160,21 @@ def atomic_write_text(path: Path, data: str, *, encoding: str = "utf-8") -> None
             fh.write(data)
             fh.flush()
             os.fsync(fh.fileno())
-        os.replace(tmp, path)
+        # Windows read handles can briefly deny rename with ERROR_ACCESS_DENIED
+        # or sharing/lock violations. Optimistic readers do not hold the writer
+        # lock; allow their handles to close without weakening atomic publication.
+        for attempt in range(_WINDOWS_ACCESS_RETRIES + 1):
+            try:
+                os.replace(tmp, path)
+                break
+            except PermissionError as exc:
+                if (
+                    not _WINDOWS
+                    or getattr(exc, "winerror", None) not in {5, 32, 33}
+                    or attempt == _WINDOWS_ACCESS_RETRIES
+                ):
+                    raise
+                time.sleep(_LOCK_POLL_SECONDS)
     except BaseException:
         # Never leave the temp file behind on failure; the original is untouched.
         try:

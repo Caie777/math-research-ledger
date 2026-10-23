@@ -131,16 +131,21 @@ def test_ingest_provisional_idempotent_full_body_and_negative_history(research):
     assert any(e.authority == "REJECTED/HISTORICAL" for e in entries)
 
 
-def test_malformed_ingest_and_tampered_preview_do_not_write(research):
+def test_malformed_ingest_and_tampered_preview_do_not_write_research_records(research):
     state, ref = research
     before = snapshot(state)
     with pytest.raises(ResearchError):
         ingest_episode(state, ref.problem_id, "x.md", b"", provenance="test")
+    generation = (state / ".checkpoint-generation").read_bytes()
+    assert len(generation) == 32
     with pytest.raises(ResearchError):
         ingest_episode(
             state, ref.problem_id, "x.md", episode(ref), provenance="test", expected_sha256="0" * 64
         )
-    assert snapshot(state) == before
+    after = snapshot(state)
+    assert set(after) - set(before) == {".checkpoint-generation"}
+    assert all(after[p] == h for p, h in before.items())
+    assert (state / ".checkpoint-generation").read_bytes() != generation
 
 
 def test_utf8_bom_archive_preserves_exact_bytes(research):

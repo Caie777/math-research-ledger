@@ -16,6 +16,7 @@ For users: [README](../../../README.md), [known limitations](../../known-limitat
 - [p0-dependency-closure-2026-10-22](p0-dependency-closure-2026-10-22.md)
 - [p0-episode-integrity-2026-10-22](p0-episode-integrity-2026-10-22.md)
 - [release-cleanup-2026-10-23](release-cleanup-2026-10-23.md)
+- [read-only-checkpoint-2026-10-23](read-only-checkpoint-2026-10-23.md)
 - [rewrite-report](rewrite-report.md)
 - [vertical-slice-continuity-hardening-2026-10-22](vertical-slice-continuity-hardening-2026-10-22.md)
 - [vertical-slice-p1-run1-2026-10-22](vertical-slice-p1-run1-2026-10-22.md)

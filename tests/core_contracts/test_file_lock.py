@@ -251,23 +251,106 @@ def test_failed_atomic_replace_preserves_previous_bytes(tmp_path, monkeypatch):
     assert not list(tmp_path.glob("*.tmp"))
 
 
-def test_status_permissions_fail_promptly_without_mutating(research, monkeypatch, clock):
+@pytest.mark.parametrize("winerror", [5, 32, 33])
+def test_atomic_replace_retries_transient_windows_read_handles(
+    tmp_path, monkeypatch, clock, winerror
+):
+    path = tmp_path / "atomic.json"
+    path.write_bytes(b"original")
+    original = atomicio.os.replace
+    attempts = []
+
+    def replace(source, target):
+        attempts.append(1)
+        assert path.read_bytes() == b"original"
+        if len(attempts) < 3:
+            raise deny(winerror)
+        original(source, target)
+
+    monkeypatch.setattr(atomicio, "_WINDOWS", True)
+    monkeypatch.setattr(atomicio.os, "replace", replace)
+    atomicio.atomic_write_text(path, "replacement")
+    assert path.read_bytes() == b"replacement"
+    assert attempts == [1, 1, 1] and clock[1] == [0.02, 0.02]
+
+
+def test_atomic_replace_persistent_windows_denial_is_bounded(tmp_path, monkeypatch, clock):
+    path = tmp_path / "atomic.json"
+    path.write_bytes(b"original")
+    attempts = []
+
+    def replace(*args):
+        attempts.append(1)
+        raise deny(5)
+
+    monkeypatch.setattr(atomicio, "_WINDOWS", True)
+    monkeypatch.setattr(atomicio.os, "replace", replace)
+    with pytest.raises(PermissionError):
+        atomicio.atomic_write_text(path, "replacement")
+    assert path.read_bytes() == b"original"
+    assert len(attempts) == 4 and clock[1] == [0.02, 0.02, 0.02]
+    assert not list(tmp_path.glob("*.tmp"))
+
+
+@pytest.mark.parametrize("windows,winerror", [(False, 5), (True, 87)])
+def test_atomic_replace_does_not_retry_unrelated_errors(
+    tmp_path, monkeypatch, clock, windows, winerror
+):
+    path = tmp_path / "atomic.json"
+    path.write_bytes(b"original")
+    monkeypatch.setattr(atomicio, "_WINDOWS", windows)
+    monkeypatch.setattr(atomicio.os, "replace", lambda *args: (_ for _ in ()).throw(deny(winerror)))
+    with pytest.raises(PermissionError):
+        atomicio.atomic_write_text(path, "replacement")
+    assert not clock[1] and path.read_bytes() == b"original"
+
+
+@pytest.mark.skipif(os.name != "nt", reason="POSIX permits rename while a reader is open")
+def test_real_windows_read_handle_can_close_before_atomic_replace_retry(tmp_path, monkeypatch):
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    path = tmp_path / "atomic.json"
+    path.write_bytes(b"original")
+    attempted = threading.Event()
+    original = atomicio.os.replace
+
+    def replace(*args):
+        try:
+            return original(*args)
+        finally:
+            attempted.set()
+
+    monkeypatch.setattr(atomicio.os, "replace", replace)
+    reader = path.open("rb")
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        writer = pool.submit(atomicio.atomic_write_text, path, "replacement")
+        try:
+            assert attempted.wait(5)
+        finally:
+            reader.close()
+        writer.result(timeout=5)
+    assert path.read_bytes() == b"replacement"
+
+
+def test_status_needs_no_lock_write_permission_and_does_not_mutate(research, monkeypatch, clock):
     state, _ = research
     assert LedgerAdapter(state).call("research_status", {})["problems"] == 1
     before = {p.relative_to(state): p.read_bytes() for p in state.rglob("*") if p.is_file()}
     original = atomicio.os.open
 
+    attempted = []
+
     def fail(path, *args):
         if Path(path).name == ".checkpoint.lock":
+            attempted.append(path)
             raise deny(5)
         return original(path, *args)
 
     monkeypatch.setattr(atomicio, "_WINDOWS", True)
     monkeypatch.setattr(atomicio.os, "open", fail)
-    with pytest.raises(ResearchError, match="access denied"):
-        LedgerAdapter(state).call("research_status", {})
-    assert clock[0][0] <= 0.06
-    assert len(clock[1]) == 3
+    assert LedgerAdapter(state).call("research_status", {})["problems"] == 1
+    assert not attempted and clock[0][0] == 0 and not clock[1]
     assert before == {p.relative_to(state): p.read_bytes() for p in state.rglob("*") if p.is_file()}
 
 
@@ -290,7 +373,8 @@ for _ in range(15):
         while any(job.poll() is None for job in jobs):
             assert time.monotonic() < deadline
             # Windows readers must close the file before another process replaces
-            # it. Production checkpoint readers likewise participate in the lock.
+            # it. This counter tests the unchanged explicit lock contract;
+            # optimistic MCP reads separately fence publication generations.
             with atomicio.file_lock(path):
                 assert 0 <= json.loads(path.read_text())["count"] <= 60
             time.sleep(0.001)

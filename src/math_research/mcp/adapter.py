@@ -214,12 +214,16 @@ class LedgerAdapter:
         self.state = state
 
     def call(self, name: str, arguments: dict) -> dict:
-        from math_research.ledger.checkpoint import checkpoint_read
+        from math_research.ledger.checkpoint import checkpoint_read, consistent_checkpoint_read
 
-        if name in {"research_ingest_episode", "research_save_note"}:
+        preview = name == "research_ingest_episode" and arguments.get("dry_run") is True
+        if name == "research_save_note" or name == "research_ingest_episode" and not preview:
             return self._call(name, arguments)
-        with checkpoint_read(self.state):
-            return self._call(name, arguments)
+        if name == "research_request_acceptance":
+            # This persists a request. Never replay it as an optimistic read.
+            with checkpoint_read(self.state):
+                return self._call(name, arguments)
+        return consistent_checkpoint_read(self.state, lambda: self._call(name, arguments))
 
     def _call(self, name: str, arguments: dict) -> dict:
         schema = SCHEMAS.get(name)
