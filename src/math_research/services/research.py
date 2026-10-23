@@ -27,7 +27,14 @@ def initialize(state: Path) -> dict:
     return {"created": [str(p) for p in init_workspace(state.parent)]}
 
 
-def status(state: Path, problem_id: str | None = None, *, offset: int = 0, limit: int = 20) -> dict:
+def status(
+    state: Path,
+    problem_id: str | None = None,
+    *,
+    offset: int = 0,
+    limit: int = 20,
+    since: dict[str, str] | None = None,
+) -> dict:
     """Paginated orientation for a human or external harness, without full bodies."""
     from math_research.core.config import workspace_config
 
@@ -37,7 +44,18 @@ def status(state: Path, problem_id: str | None = None, *, offset: int = 0, limit
         store.require_dossier(state, problem_id)
         problems = [p for p in problems if p.id == problem_id]
     views = list_objects(state, problem_id)
+    from math_research.ledger.continuation import continuation_state
+
+    if since is not None and problem_id is None:
+        from math_research.core.errors import ResearchError
+
+        raise ResearchError("Select an explicit Problem before comparing continuation state.")
     return {
+        "explicit_problem_id": problem_id,
+        "selection_required": problem_id is None,
+        "continuation": continuation_state(state, problem_id, views, since=since)
+        if problem_id
+        else None,
         "state_dir": str(state),
         "workspace_root": str(state.parent),
         "workspace_metadata": metadata.model_dump(mode="json") if metadata else None,

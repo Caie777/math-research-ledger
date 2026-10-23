@@ -8,10 +8,11 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from math_research.core.errors import ResearchError
 from math_research.ledger.manifest import Ledger
+from math_research.ledger.publication import publication_navigation
 from math_research.ledger.records.write_boundary import automated_scope
 from math_research.services.acceptance import request_acceptance
 from math_research.services.ingest import ingest_episode, preview_episode, save_note
-from math_research.services.research import get_object, status
+from math_research.services.research import get_object, list_objects, status
 from math_research.services.retrieval import export_context_packet, search_research
 from math_research.services.review import prepare_review
 from math_research.services.stale import stale_report
@@ -37,6 +38,14 @@ class PageArgs(Arguments):
     limit: int = Field(default=20, ge=1, le=50)
 
 
+class StatusArgs(PageArgs):
+    since: dict[str, Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]] | None = Field(
+        default=None,
+        max_length=32,
+        description="Prior continuation_snapshot for this explicit Problem; no inferred history.",
+    )
+
+
 class SearchArgs(Arguments):
     query: str = Field(min_length=1, max_length=4000)
     problem_id: ProblemId | None = None
@@ -48,13 +57,33 @@ class RefArgs(Arguments):
 
 
 class ObjectArgs(RefArgs):
-    offset: int = Field(default=0, ge=0)
-    length: int = Field(default=4000, ge=1, le=8000)
+    offset: int = Field(
+        default=0, ge=0, description="Character offset, default 0; follow next_offset."
+    )
+    length: int = Field(
+        default=4000,
+        ge=1,
+        le=8000,
+        description="Characters per page; default 4000, maximum 8000. "
+        "Use next_offset for another page.",
+    )
+    produced_offset: int = Field(
+        default=0,
+        ge=0,
+        description="Episode publication navigation offset, independent of text offset; "
+        "follow next_produced_offset/next_relation_offset. Six entries per page.",
+    )
 
 
 class ContextArgs(RefArgs):
     query: str = Field(default="", max_length=4000)
-    token_budget: int = Field(default=8000, ge=256, le=16000)
+    token_budget: int = Field(
+        default=8000,
+        ge=256,
+        le=16000,
+        description="Estimated tokens for entire packet: 256..16000, recommended/default 8000. "
+        "Do not exceed 16000; retrieve omitted originals with paginated get_object.",
+    )
     purpose: Literal["CONTINUE_RESEARCH", "RECOVER_PROOF", "TRACE_HISTORY", "FIND_FAILURES"] = (
         "CONTINUE_RESEARCH"
     )
@@ -81,7 +110,7 @@ class NoteArgs(Arguments):
 
 
 SCHEMAS: dict[str, type[Arguments]] = {
-    "research_status": PageArgs,
+    "research_status": StatusArgs,
     "research_search": SearchArgs,
     "research_get_object": ObjectArgs,
     "research_context_packet": ContextArgs,
@@ -97,23 +126,29 @@ DESCRIPTIONS = {
         "Call first when continuing long-running research or asked where an existing Problem "
         "stands. Returns paginated Problem/object references and authority/check/freshness "
         "summaries. Follow with research_context_packet before substantial work. Do not use "
-        "as full research context or as a substitute for checking original statements."
+        "omitted problem_id as an implicit .current selection; choose a Problem explicitly. "
+        "Do not use this as full research context or as a substitute for checking originals."
     ),
     "research_search": (
         "Find prior results, gaps and failed routes by keywords before doing overlapping work. "
         "Returns ranked scoped hits with provenance and trust labels. Do not treat a search "
-        "excerpt as an accepted premise; load the object/context before relying on it."
+        "excerpt as an accepted premise; load the object/context before relying on it. "
+        "A whole qualified ref or unique object/Episode/candidate ID uses exact navigation first."
     ),
     "research_get_object": (
         "Read an existing qualified research object or continue an omitted body. Returns a "
         "bounded text window, version, provenance, authority and freshness. Page with offset "
-        "and length. Do not use for arbitrary filesystem paths or whole-Problem context."
+        "and length: offset >=0 (default 0), length 1..8000 characters (default 4000). "
+        "Follow next_offset/remaining, never enlarge length past 8000. Episode publication "
+        "navigation uses produced_offset separately. Do not use for arbitrary filesystem paths "
+        "or whole-Problem context."
     ),
     "research_context_packet": (
         "Load bounded current research context for an existing problem/claim/gap before "
         "starting or resuming substantial research. Returns provenance/trust/freshness labels "
         "and explicit missing/truncated mandatory material. Normally call once near the start "
-        "of a research run, not every turn. Do not assume omitted material was checked."
+        "of a research run, not every turn. token_budget 256..16000, default/recommended 8000; "
+        "read omitted originals with paginated get_object. Never assume omissions were checked."
     ),
     "research_review_packet": (
         "Prepare an existing exact Claim/Gap for independent soft review. Returns version-pinned "
@@ -221,9 +256,24 @@ class LedgerAdapter:
                     "content": text[args.offset : args.offset + args.length],
                     "offset": args.offset,
                     "total_characters": len(text),
+                    "next_offset": args.offset + len(text[args.offset : args.offset + args.length])
+                    if args.offset + args.length < len(text)
+                    else None,
+                    "remaining": max(0, len(text) - args.offset - args.length),
+                    "max_window": 8000,
                     "truncated": args.offset > 0 or args.offset + args.length < len(text),
                 }
                 if entry.ref.kind == "episode":
+                    assert entry.ref.problem_id is not None
+                    result.update(
+                        publication_navigation(
+                            self.state,
+                            entry.ref.problem_id,
+                            entry.ref.object_id,
+                            list_objects(self.state, entry.ref.problem_id),
+                            offset=args.produced_offset,
+                        )
+                    )
                     delta = entry.record.get("state_delta", [])
                     start = args.offset
                     result["checkpoint"] = {

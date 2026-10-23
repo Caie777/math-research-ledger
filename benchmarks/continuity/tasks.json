@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "frozen_on": "2026-10-22",
+  "tasks": [
+    {"id":"restore-en","event":"local_reasoning","query":"What is the selected main target and latest checkpoint?"},
+    {"id":"restore-zh","event":"local_reasoning","query":"当前明确选择的主目标和未解决缺口是什么？"},
+    {"id":"local-work","event":"local_reasoning","query":"Continue local symbolic reasoning without any state change."},
+    {"id":"current-unverified","event":"premise_reuse","query":"Check the CURRENT unverified chamber observation.","read_role":"current"},
+    {"id":"unknown","event":"premise_reuse","query":"Check the historical input before reuse.","read_role":"unknown"},
+    {"id":"stale","event":"premise_reuse","query":"复用旧前提之前检查版本漂移。","read_role":"stale"},
+    {"id":"refuted","event":"possible_conflict","query":"Has this synthetic statement been refuted?","read_role":"refuted"},
+    {"id":"rejected","event":"premise_reuse","query":"检查已拒绝的径向草稿。","read_role":"rejected"},
+    {"id":"conditional","event":"premise_reuse","query":"Use this only as a conditional hypothesis.","read_role":"conditional"},
+    {"id":"accepted-drift","event":"premise_reuse","query":"Recheck yesterday's HUMAN_ACCEPTED working premise.","read_role":"accepted_drift","mutate_before":"definition_drift"},
+    {"id":"integrity-failed","event":"premise_reuse","query":"检查归档来源是否仍完整。","read_role":"corrupt"},
+    {"id":"failed-en","event":"duplicate_risk","query":"radial chamber failed route boundary obstruction"},
+    {"id":"failed-zh","event":"historical_failures","query":"径向分室路线以前失败了吗，边界障碍是什么？"},
+    {"id":"counterexample","event":"route_transition","query":"radial chamber counterexample witness"},
+    {"id":"refutation","event":"before_expensive_work","query":"径向反驳 radial refutation"},
+    {"id":"scope-collision","event":"route_transition","query":"Shared chamber wording"},
+    {"id":"no-match","event":"duplicate_risk","query":"zzqv_unmatched_938172"},
+    {"id":"checkpoint","event":"checkpoint","query":"A meaningful synthetic increment is ready for preview and single ingestion."}
+  ]
+}

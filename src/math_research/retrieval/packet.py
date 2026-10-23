@@ -3,12 +3,21 @@
 from pathlib import Path
 from typing import Literal, cast
 
-from pydantic import BaseModel, Field
+from pydantic import (
+    BaseModel,
+    Field,
+    SerializerFunctionWrapHandler,
+    computed_field,
+    model_serializer,
+)
 
 from math_research.core.errors import ResearchError
 from math_research.core.refs import ObjectRef
+from math_research.ledger.episodes import list_candidates, list_reviews
+from math_research.ledger.identity import ScopedIdentityResolver
 from math_research.ledger.manifest import Ledger
 from math_research.ledger.projection import list_objects
+from math_research.ledger.records import store
 from math_research.ledger.target import ResearchTarget
 from math_research.retrieval.context import (
     QueryPurpose,
@@ -16,6 +25,7 @@ from math_research.retrieval.context import (
     _excerpt,
     estimate_tokens,
 )
+from math_research.retrieval.continuation_selection import local_checkpoint_material
 from math_research.retrieval.index import IndexDoc, search_documents
 
 
@@ -40,6 +50,17 @@ class PacketItem(BaseModel):
     content: str = ""
     full_text: bool = False
     truncated: bool = True
+    selection_reason: str | None = None
+    navigation: dict | None = None
+
+    @model_serializer(mode="wrap")
+    def serialize_item(self, handler: SerializerFunctionWrapHandler) -> dict:
+        # Keep general packets unchanged without requiring newer Field(exclude_if=).
+        data = handler(self)
+        for name in ("selection_reason", "navigation"):
+            if data[name] is None:
+                data.pop(name)
+        return data
 
 
 class ContextPacket(BaseModel):
@@ -59,10 +80,26 @@ class ContextPacket(BaseModel):
     required_omitted_ids: list[str] = Field(default_factory=list)
     excluded: list[dict] = Field(default_factory=list)
     complete: bool = False
+    semantic_scope: str = "computed_required_set_only"
+    omitted_categories: list[str] = Field(
+        default_factory=lambda: [
+            "full_research_history",
+            "unselected_routes",
+            "unrequested_objects",
+        ]
+    )
+    continuation_coverage: str = (
+        "Explicit target and computed closure; not complete mathematical state."
+    )
     required_context_truncated: bool = True
     token_budget: int
     token_estimate: int = 0
     estimator: str = "ceil(UTF-8 bytes / 3), entire serialized JSON"
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def required_set_complete(self) -> bool:
+        return self.complete
 
 
 def packet_tokens(packet: ContextPacket) -> int:
@@ -105,7 +142,8 @@ def export_context_packet(
     if not include_provisional and root.authority == "PROVISIONAL":
         raise ResearchError("Target requires include_provisional=true.")
     base = None
-    if target.kind in {"claim", "gap"}:
+    local = purpose == "CONTINUE_RESEARCH"
+    if target.kind in {"claim", "gap"} and not local:
         if target.problem_id is None:
             raise ResearchError("Claim context requires a Problem scope.")
         base = ResearchContextBuilder(state).build(
@@ -118,6 +156,16 @@ def export_context_packet(
     required: set[str] = set()
     missing: set[str] = set()
     queue = [target.qualified_id]
+    if local and target.problem_id and target.kind == "gap":
+        primary = store.require_dossier(state, target.problem_id).primary_claim_id
+        resolver = ScopedIdentityResolver(
+            (v.object.ref for v in views.values()),
+            list_candidates(state, target.problem_id),
+            list_reviews(state, target.problem_id),
+        )
+        primary_ref = resolver.resolve(primary, problem_id=target.problem_id) if primary else None
+        if primary_ref and primary_ref.ref:
+            queue.append(primary_ref.ref.qualified_id)
     while queue and len(required) < max_dependency_nodes:
         key = queue.pop(0)
         if key in required:
@@ -145,20 +193,31 @@ def export_context_packet(
             priorities[key] = selected_item.priority
             if selected_item.mandatory:
                 required.add(key)
-    docs = [
-        IndexDoc(
-            artifact_id=k,
-            artifact_type=v.object.ref.kind,
-            title=v.object.record.get("title", v.object.record.get("term", "")),
-            text=v.object.full_content,
-        )
-        for k, v in views.items()
-    ]
+    docs = (
+        []
+        if local
+        else [
+            IndexDoc(
+                artifact_id=k,
+                artifact_type=v.object.ref.kind,
+                title=v.object.record.get("title", v.object.record.get("term", "")),
+                text=v.object.full_content,
+            )
+            for k, v in views.items()
+        ]
+    )
     scores = {
         doc.artifact_id: score
         for doc, score in search_documents(docs, query or root.object.full_content[:1000], k=100)
     }
     candidates = required | priorities.keys() | scores.keys()
+    selection_reasons: dict[str, str] = {}
+    checkpoint_excerpts: dict[str, str] = {}
+    if local:
+        selection_reasons, checkpoint_excerpts = local_checkpoint_material(state, target, views)
+        candidates = required | selection_reasons.keys()
+        priorities = {key: 50 for key in selection_reasons}
+        scores = {}  # No unlinked lexical history, even when there is spare budget.
     # Failed routes explicitly attached to the target remain negative knowledge.
     for key, view in views.items():
         if view.object.ref.kind == "failed_attempt" and target.object_id in view.object.record.get(
@@ -194,6 +253,8 @@ def export_context_packet(
             label=label,
             tier="MUST"
             if key in required
+            else "SHOULD"
+            if local
             else "MAY"
             if historical or entry.ref.kind in {"episode", "source"}
             else "SHOULD",
@@ -210,6 +271,21 @@ def export_context_packet(
             provenance=entry.provenance,
             dependencies=[d.model_dump(mode="json") for d in entry.dependencies],
             artifact_refs=entry.artifact_refs,
+            selection_reason="required_closure"
+            if local and key in required
+            else selection_reasons.get(key),
+            navigation={
+                "source_characters": len(entry.full_content),
+                "exact_read_reason": "Read original before mathematical reuse; navigation only.",
+                "source_span": {
+                    k: entry.record[k]
+                    for k in ("episode_id", "start_line", "end_line")
+                    if k in entry.record
+                },
+                "body_policy": "stored_summary_or_excerpt_not_complete_proof",
+            }
+            if local and key not in required
+            else None,
         )
 
     ordered = sorted(
@@ -265,13 +341,18 @@ def export_context_packet(
                 packet.items.pop()
                 continue
         text = v.object.full_content
+        if local and key not in required:
+            stored_summary = v.object.record.get("summary", "")
+            text = checkpoint_excerpts.get(key, stored_summary[:600])
+            if not text and v.object.ref.kind not in {"proof", "episode", "source"}:
+                text = _excerpt(v.object.full_content, 400, query)
         # Raw episodes are navigation excerpts, never a wholesale harness transcript.
         if item.ref.kind in {"episode", "source"}:
             text = _excerpt(text, 1200, query)
         item.content, item.full_text, item.truncated = (
             text,
-            text == v.object.full_content,
-            text != v.object.full_content,
+            text == v.object.full_content and not (local and key not in required),
+            text != v.object.full_content or local and key not in required,
         )
         if packet_tokens(packet) > token_budget:
             item.full_text, item.truncated = False, True

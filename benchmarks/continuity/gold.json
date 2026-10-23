@@ -1,0 +1,26 @@
+{
+  "schema_version":1,
+  "frozen_on":"2026-10-22",
+  "required_roles":["main","definition","accepted_drift","dynamic_definition"],
+  "unsafe_roles":["unknown","stale","refuted","rejected","corrupt","accepted_drift"],
+  "tasks":{
+    "restore-en":{"latest_role":"checkpoint_source"},
+    "restore-zh":{"gap_roles":["gap_one","gap_two"]},
+    "local-work":{},
+    "current-unverified":{"verification":"NOT_CHECKED","trusted_formal":false},
+    "unknown":{"forbidden_positive_role":"unknown"},
+    "stale":{"forbidden_positive_role":"stale"},
+    "refuted":{"forbidden_positive_role":"refuted"},
+    "rejected":{"forbidden_positive_role":"rejected"},
+    "conditional":{"conditional":true,"forbidden_positive_role":"conditional"},
+    "accepted-drift":{"forbidden_positive_role":"accepted_drift"},
+    "integrity-failed":{"forbidden_positive_role":"corrupt"},
+    "failed-en":{"key_roles":["failed_route"],"negative_roles":["failed_route"]},
+    "failed-zh":{"key_roles":["failed_route"],"negative_roles":["failed_route"]},
+    "counterexample":{"key_roles":["counterexample"],"negative_roles":["counterexample"]},
+    "refutation":{"key_roles":["refutation"],"negative_roles":["refutation"]},
+    "scope-collision":{"key_roles":["local_p1"],"forbidden_roles":["local_p2","irrelevant_source"]},
+    "no-match":{"expect_no_hits":true},
+    "checkpoint":{"canonical_records_created":0}
+  }
+}

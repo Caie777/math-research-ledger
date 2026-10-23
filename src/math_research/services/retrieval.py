@@ -1,8 +1,11 @@
 """Single retrieval entry point for CLI and external adapters."""
 
+import re
 from pathlib import Path
 
 from math_research.core.errors import ResearchError
+from math_research.ledger.episodes import list_candidates, list_reviews
+from math_research.ledger.identity import ScopedIdentityResolver
 from math_research.ledger.manifest import Ledger
 from math_research.ledger.records import store
 from math_research.retrieval.index import IndexDoc, search_documents
@@ -19,6 +22,18 @@ def search_research(
     ledger = Ledger(state)
     before = ledger.source_version(problem_id)
     views = {v.object.qualified_id: v for v in list_objects(state, problem_id)}
+    exact = None
+    identifier = query.strip()
+    if re.fullmatch(r"[A-Za-z][A-Za-z0-9_.]*-[A-Za-z0-9_.-]+", identifier) or ":" in identifier:
+        candidates, reviews = [], []
+        for scope in [problem_id] if problem_id else [p.id for p in store.list_dossiers(state)]:
+            candidates.extend(list_candidates(state, scope))
+            reviews.extend(list_reviews(state, scope))
+        resolution = ScopedIdentityResolver(
+            (v.object.ref for v in views.values()), candidates, reviews
+        ).resolve(identifier, problem_id=problem_id)
+        if resolution.ref and resolution.ref.qualified_id in views:
+            exact = resolution.ref.qualified_id
     docs = [
         IndexDoc(
             artifact_id=k,
@@ -28,13 +43,13 @@ def search_research(
         )
         for k, v in views.items()
     ]
-    lexical = search_documents(docs, query, k=100)
+    lexical = [] if exact else search_documents(docs, query, k=100)
     scores = {doc.artifact_id: 1 / (60 + rank) for rank, (doc, _) in enumerate(lexical, 1)}
     reasons = {key: ["BM25"] for key in scores}
     scopes = [problem_id] if problem_id else [p.id for p in store.list_dossiers(state)]
     kinds = {"failed": "failed_attempt", "provisional": None, "paper": "source"}
     # Reuse scoped intent/currentness/relationship navigation, fused with unified lexical hits.
-    for scope in scopes:
+    for scope in [] if exact else scopes:
         navigation = ResearchRecall(state, scope).find_files(query=query, limit=100)
         for rank, hit in enumerate(navigation.files, 1):
             raw_kind = hit.kind.removeprefix("dossier:")
@@ -50,6 +65,8 @@ def search_research(
                 key = matches[0]
                 scores[key] = scores.get(key, 0) + 1 / (60 + rank)
                 reasons.setdefault(key, []).extend(hit.why_relevant)
+    if exact:
+        scores[exact], reasons[exact] = 1.0, ["EXACT_IDENTITY"]
     documents = {d.artifact_id: d for d in docs}
     ranked = sorted(scores, key=lambda key: (-scores[key], key))[:limit]
     hits = [
@@ -76,4 +93,8 @@ def search_research(
     ]
     if ledger.source_version(problem_id) != before:
         raise ResearchError("Research state changed during search; retry.")
-    return {"source_version": before, "hits": hits}
+    return {
+        "source_version": before,
+        "retrieval_mode": "EXACT_IDENTITY" if exact else "LEXICAL_RECALL",
+        "hits": hits,
+    }
