@@ -11,6 +11,7 @@ For users: [README](../../../README.md), [known limitations](../../known-limitat
 - [core-product-audit-2026-10-22](core-product-audit-2026-10-22.md)
 - [dsh-adaptation-handoff-2026-10-22](dsh-adaptation-handoff-2026-10-22.md)
 - [dsh-plugin-report](dsh-plugin-report.md)
+- [dsh-host-acceptance-2026-10-23](dsh-host-acceptance-2026-10-23.md)
 - [finalization-report](finalization-report.md)
 - [p0-continuity-evaluation-2026-10-22](p0-continuity-evaluation-2026-10-22.md)
 - [p0-dependency-closure-2026-10-22](p0-dependency-closure-2026-10-22.md)

@@ -1,24 +1,25 @@
 # Changelog
 
-## 1.2.1 (local candidate, not released)
+## 1.2.1 — 2026-10-23
 
-### Read-only checkpoint consistency
+### Added / Changed
 
-- Pure MCP reads no longer require creating `.checkpoint.lock`; optimistic generation/content fences validate complete reads with bounded replay. Interrupted journals remain fail closed.
-- Old writers must not be mixed concurrently with new readers: the generation protocol assumes upgraded writers.
+- Pure MCP reads no longer need a writable state-directory lock. Optimistic checkpoint
+  consistency uses generation/content fencing and bounded replay; interrupted journals fail closed.
+- MCP sessions pin one workspace at startup. Tool-level `workspace` asserts that pin,
+  rather than selecting another workspace.
+- DSH uses a configuration-only Bundle with its native MCP client and an external
+  persistent Python runtime. Python 3.12 is the recommended deployment path.
 
-### Workspace scope
+### Compatibility
 
-- Bind each MCP server to one workspace at startup. Tool `workspace` becomes a compatibility assertion; arbitrary cross-workspace selection is rejected.
+- Deployments relying on arbitrary tool-provided workspace paths must use startup
+  `--workspace` / `MRL_WORKSPACE`; MCP roots do not grant scope.
+- All concurrent Ledger writers should run the 1.2.1+ generation protocol.
 
-### DSH integration
+### Validation
 
-- Replace JS transport/runtime-pointer packaging with a configuration-only Bundle using DSH native `dsh-mcp-client`. Keep Python in an external persistent runtime; Python 3.12 is recommended.
-- Prepare explicit startup pins without installing DSH plugins or modifying Profiles. Real Desktop/Host acceptance remains pending.
-
-### Behavior change
-
-- Deployments previously relying on tool-provided workspace paths or incidental process cwd must provide an explicit startup `--workspace` or `MRL_WORKSPACE`. MCP roots do not grant scope.
+- Windows Codex and DSH real Host read-only acceptance passed; DSH synthetic write passed.
 
 ## 1.2.0
 

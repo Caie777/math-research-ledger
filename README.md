@@ -1,7 +1,7 @@
 # MathResearch Ledger
 
-Persistent research memory, context, dependency tracking and verification for
-long-horizon mathematical research agents.
+Durable structured memory and verification infrastructure for long-horizon
+mathematical research across external AI coding and research harnesses.
 
 MathResearch Ledger is not another research-agent runtime.
 External agents do the research; Ledger preserves durable research state.
@@ -72,7 +72,7 @@ remain available; the Python import namespace is `math_research`.
 **Free research by default; memory intervention by exception.**
 
 1. Select the existing Problem explicitly with `research_status(problem_id="PROBLEM-0001")`;
-   the development MCP server must already be pinned at startup. Inspect the primary target,
+   the MCP server must already be pinned at startup. Inspect the primary target,
    gaps, risks, latest checkpoint and advisory handoff.
 2. Read the exact target with `research_get_object`; restore context once with
    `research_context_packet(ref="<qualified target>", purpose="CONTINUE_RESEARCH", token_budget=8000)`.
@@ -129,18 +129,19 @@ Git-local exclusions. Historical provenance is not rewritten by tool upgrades.
 
 ## Integrations and limitations
 
-- **Core Ledger, CLI, nine-tool MCP and Codex:** covered by automated tests and recorded
-  integration checks. [Codex installation](docs/codex-mcp.md) includes native opt-in and
-  project scoping. GitHub publication does not imply a public Plugin Directory listing.
-- **DeepSeek Harness: pre-release Host acceptance pending.** The recommended
-  [configuration-only Bundle](integrations/deepseek-harness/README.md) uses DSH's native
-  MCP client and an external Python runtime (3.12 recommended), pinned at preparation.
-  Real Desktop installation and user-session acceptance still need to follow this local
-  1.2.1 candidate. No ACL, security label, authentication or Full Access changes occur.
+- **Codex:** use a project-local direct MCP server with a persistent runtime and startup
+  workspace pin; retain the plugin skill and disable its bundled MCP to avoid duplicates.
+  [Installation and configuration](docs/codex-mcp.md). Windows fresh-session acceptance
+  passed with one set of nine tools, zero-write reads and cross-workspace rejection.
+- **DeepSeek Harness:** the [configuration-only Bundle](integrations/deepseek-harness/README.md)
+  uses DSH's native MCP client and an external Python runtime (3.12 recommended).
+  Windows Desktop 0.2.1-rc.2 Host acceptance passed, including synthetic writes,
+  real-workspace read-only access and native Plugins OFF/ON.
 
-[Known limitations and deferred 1.2.1 review](docs/known-limitations.md) distinguishes
-current support from planned investigation. This release adds no agent loop, model
-router or separate research database.
+[Known limitations](docs/known-limitations.md): DSH macOS/Linux and formal writes to a
+real research corpus have not been separately validated. Each MCP session has one pinned
+workspace. The plugin does not change permissions or Full Access. GitHub publication
+does not imply a public Plugin Directory listing.
 
 ## Development
 

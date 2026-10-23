@@ -1,6 +1,6 @@
 # MathResearch Ledger
 
-为长期数学研究 Agent 提供持久研究状态、上下文、依赖追踪与验证层。
+为外部 AI 编程与研究 Harness 中的长期数学研究提供持久结构化记忆和验证基础设施。
 
 MathResearch Ledger 不是另一个研究 Agent runtime。外部 Agent 负责研究；Ledger 保留可跨会话
 恢复的研究状态。用 Codex 或其他 Harness 推理、阅读和实验，下次会话继续使用同一份研究记录。
@@ -49,7 +49,7 @@ workspace 必须在工具仓库之外，由用户显式初始化。init 创建�
 **Free research by default; memory intervention by exception.**
 默认自由研究，只有记忆可能影响决策时才介入。
 
-1. 显式调用 `research_status(problem_id="PROBLEM-0001")`；开发版 MCP 须预先在启动时绑定 workspace。
+1. 显式调用 `research_status(problem_id="PROBLEM-0001")`；MCP 须预先在启动时绑定 workspace。
    检查 primary target、gaps、风险、checkpoint 和 advisory handoff。
 2. 用 `research_get_object` 精确读目标，再调用
    `research_context_packet(ref="<qualified target>", purpose="CONTINUE_RESEARCH", token_budget=8000)`。
@@ -96,13 +96,14 @@ Harness 拥有 workspace，用户拥有普通文件，Ledger 只拥有 `.math-re
 
 ## 集成与限制
 
-- **Core Ledger、CLI、九个 MCP 工具、Codex：**有自动化测试与已记录的集成验证。
-  [Codex 指南](docs/codex-mcp.md) 说明原生启停和项目范围；GitHub 发布不代表已上架公开插件目录。
-- **DeepSeek Harness：发布前真实 Host 验收待完成。**推荐使用
-  [configuration-only Bundle](integrations/deepseek-harness/README.md)，由 DSH 原生 MCP client
-  连接外部 Python runtime（推荐 3.12），在准备时固定 workspace。本地 1.2.1 candidate
-  完成后仍需真实 Desktop 安装和用户会话验收；不会修改 ACL、完整性标签、认证或 Full Access。
+- **Codex：**推荐项目级 direct MCP，使用持久 runtime 和启动时 workspace pin；保留插件 skill，
+  关闭 bundled MCP，避免重复工具。见 [Codex 指南](docs/codex-mcp.md)。Windows 新会话验收
+  已通过：仅一套九个工具、真实工作区零写入读取、跨工作区拒绝。
+- **DeepSeek Harness：**推荐 [configuration-only Bundle](integrations/deepseek-harness/README.md)，
+  由 DSH 原生 MCP client 连接外部 Python runtime（推荐 3.12）。Windows Desktop 0.2.1-rc.2
+  真实 Host 验收已通过，包括 synthetic 写入、真实工作区只读及原生 Plugins OFF/ON。
 
-[已知限制与 1.2.1 待审事项](docs/known-limitations.md) 明确当前边界。本版不新增 Agent loop、
-模型路由或第二套研究数据库。开发命令见 [English README](README.md)；
+[已知限制](docs/known-limitations.md)：DSH macOS/Linux、真实研究 corpus 的正式写入尚未专门验收；
+每个 MCP 会话仅绑定一个工作区。插件不修改权限或 Full Access，GitHub 发布不代表已上架公开插件目录。
+开发命令见 [English README](README.md)；
 [历史工程报告](docs/archive/2026-10/README.md) 已与长期用户文档分开。

@@ -87,7 +87,7 @@ with exact source digest and line spans. Next Research Directions are excluded f
 candidate/dependency generation and stay advisory. A delta never grants authority or
 mutates a canonical target by itself. Raw Episode bytes remain complete. Checkpoint
 publication serializes both indexes behind the writer lock and a durable rollback
-journal; failed publication retains raw bytes. In 1.2.1 development, pure MCP reads
+journal; failed publication retains raw bytes. Pure MCP reads
 instead validate the entire materialized operation against persisted metadata/object
 versions and a writer generation marker, with bounded replay on change. Readers never
 create state or a lock; observed pending journals fail closed. The marker advances even
@@ -98,7 +98,7 @@ Interrupted metadata needs trusted-human
 
 MCP exposes nine top-level `research_*` tools: status, search, object windows, context/review packets, stale reports, provisional Episode/note ingestion and pending acceptance requests. `tools/list` provides descriptions and strict schemas; there is no generic dispatcher. External references are strings, resolved to internal ObjectRef values without guessing ambiguous IDs. Episode/note writes reuse the existing archive/Proposal Store, content deduplication, locks and atomic IO. Output, including both SDK representations, is bounded to 64 KiB; review inputs are never silently truncated. Errors include a code and recovery action. There is no compiler, filesystem, shell or human accept. See [Codex integration and validation](codex-mcp.md).
 
-In 1.2.1 development, MCP captures a single canonical workspace from startup flag,
+MCP captures a single canonical workspace from startup flag,
 environment or cwd discovery. Tool `workspace` is only an exact-root compatibility
 assertion; it cannot expand scope. MCP roots are not used for authorization in this
 version. CLI selection remains independent. No authorization database or filesystem

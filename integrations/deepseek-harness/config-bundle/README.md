@@ -1,22 +1,24 @@
 # MathResearch Ledger for DeepSeek Harness
 
-This configuration-only Bundle uses DSH 0.2.1-rc.2's built-in
-`@deepseek-ai/dsh-mcp-client`. There is no JS wrapper, dependency glue or private
-Python runtime inside the Bundle. Python 3.12 is recommended; the persistent runtime
-is external. The workspace is pinned during preparation, not selected by tool arguments.
+This configuration-only Bundle uses DSH's built-in `@deepseek-ai/dsh-mcp-client`
+and an external persistent Python runtime (3.12 recommended). The server pins one
+workspace at startup and exposes nine tools. DSH's native Plugins page controls OFF/ON.
 
-From a checkout/sdist, use `scripts/prepare_dsh_config_bundle.py` with an existing
-workspace and a local MathResearch Ledger wheel. See the integration README for commands.
-The script installs the wheel non-editably and renders paths; it never initializes
-research state, edits DSH Profiles or invokes DSH. LICENSE is copied from the source root.
-`--no-install --python PATH` explicitly reuses an already prepared interpreter.
-Wheel, runtime and Bundle versions must agree; mismatch is an error.
+This package is an **unrendered template**. Download the matching Python wheel and
+source archive from https://github.com/Caie777/math-research-ledger/releases.
+From the extracted source root, run:
 
-Run the printed installation/upgrade commands from ordinary PowerShell, using the
-Desktop-installed dsh command. Do not run DSH plugin installation from a sandboxed DSH
-shell. Keep both the rendered directory and external runtime in place. The native
-Plugins page controls ON/OFF; disabling/removing the Bundle does not delete research data.
+```powershell
+python scripts/prepare_dsh_config_bundle.py --workspace '<research-workspace>' --wheel '<local-wheel>'
+```
 
-Real DSH Desktop installation and Host acceptance remain pending after this code handoff.
-Successful rendering or MCP stdio smoke is not Desktop acceptance. The plugin does not
-change permissions, security labels, authentication or Full Access settings.
+The script installs the wheel non-editably into an external runtime, validates
+versions, and renders local paths. Run its printed DSH installation commands from
+ordinary PowerShell. Keep the rendered Bundle and runtime at stable locations.
+Rendered configuration is private; do not publish it. See
+`integrations/deepseek-harness/README.md` in the source archive for options and uninstall.
+
+Windows Desktop DSH 0.2.1-rc.2 / Python 3.12.10 Host acceptance passed, including
+synthetic writes, real-workspace read-only access and OFF/ON. DSH macOS/Linux and
+formal real-corpus writes are untested. Installation does not initialize research
+state or change permissions, security labels, authentication or Full Access.
