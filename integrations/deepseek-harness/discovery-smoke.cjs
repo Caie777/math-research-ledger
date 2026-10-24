@@ -17,7 +17,7 @@ const { pathToFileURL } = require('node:url');
   try {
     const tools = runtime.ctx.tools;
     const names = tools.schemas().map(x => x.name).filter(x => x.startsWith('mcp__math-research-ledger__'));
-    if (names.length !== 9) throw new Error(`Expected 9 Ledger tools; found ${names.length}`);
+    if (names.length !== 11) throw new Error(`Expected 11 Ledger tools; found ${names.length}`);
     let seq = 0;
     const call = async (tool, args) => {
       const result = await tools.execute({ callId: `ledger-probe-${++seq}`,

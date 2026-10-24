@@ -143,8 +143,8 @@ def test_malformed_ingest_and_tampered_preview_do_not_write_research_records(res
             state, ref.problem_id, "x.md", episode(ref), provenance="test", expected_sha256="0" * 64
         )
     after = snapshot(state)
-    assert set(after) - set(before) == {".checkpoint-generation"}
-    assert all(after[p] == h for p, h in before.items())
+    assert after.pop(".checkpoint-generation") != before.pop(".checkpoint-generation")
+    assert after == before
     assert (state / ".checkpoint-generation").read_bytes() != generation
 
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.2 development — unreleased
+
+- Add explicit Problem create/update MCP tools (eleven total); retain the original
+  nine schemas. Preview without writes; allocate IDs under the checkpoint writer.
+- Separate active/paused/closed project lifecycle and metadata from explicit semantic
+  statement/target revision. Preserve legacy mathematical pins during metadata edits.
+- Reuse existing version history and dependency freshness; closure never grants
+  verification or human acceptance. Package/plugin metadata remains 1.2.1 for now.
+
 ## 1.2.1 — 2026-10-23
 
 ### Added / Changed

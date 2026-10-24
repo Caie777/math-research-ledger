@@ -7,6 +7,13 @@ Inspect `research_status` when continuing research. Obtain `research_context_pac
 before substantial work on an existing Problem, Claim or Gap. Inspect exact objects
 when required context is missing; search relevance is not evidence or a trusted premise.
 
+For an explicitly requested new research line, preview `research_create_problem` with
+title, statement and primary_target text, then create when authorized. Never invent an
+unknown Problem ID in an Episode. Use `research_update_problem` to pause, close or
+reopen an explicit Problem. Changes to statement/primary_target require
+`revision_kind="semantic"`; preview first. Closed/resolved is project lifecycle,
+not verification or acceptance. Do not turn lifecycle changes into Claim authority.
+
 Omit `workspace` normally: the server session is pinned at startup. The optional
 compatibility field can only assert the same resolved root; it cannot select another
 Ledger. On NO_WORKSPACE, ask the operator to configure startup `--workspace` or

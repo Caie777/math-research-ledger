@@ -202,6 +202,18 @@ class ProblemRecord(BaseModel):
     # only through this designation — see ``dossier.scope``. Optional and additive:
     # existing dossiers load unchanged.
     primary_claim_id: str | None = None
+    # Project lifecycle is independent of the legacy mathematical status above.
+    lifecycle_status: Literal["active", "paused", "closed"] = "active"
+    summary: str = ""
+    primary_target: str = ""
+    source_refs: list[str] = Field(default_factory=list)
+    metadata: dict[str, str] = Field(default_factory=dict)
+    closure_kind: Literal["resolved", "abandoned", "superseded", "other"] | None = None
+    closure_reason: str = ""
+    resolution_refs: list[str] = Field(default_factory=list)
+    # Preserve legacy content hashes when only the displayed title changes.
+    version_title: str | None = None
+    statement_authority: Literal["PROVISIONAL"] | None = None
 
 
 class Definition(BaseModel):

@@ -8,7 +8,12 @@ External agents do the research; Ledger preserves durable research state.
 Use Codex or another harness for reasoning, reading and experiments, then carry the
 same research workspace into the next session without reconstructing it from chat.
 
-[中文说明](README.zh-CN.md) · [1.2.1 changelog](CHANGELOG.md)
+[中文说明](README.zh-CN.md) · [Changelog](CHANGELOG.md)
+
+**1.2.2 development:** this checkout adds [Problem lifecycle](docs/problem-lifecycle.md)
+and exposes eleven tools. Published 1.2.1 has nine; formal version metadata remains
+1.2.1 until a separate release. The new tools have synthetic stdio coverage; real Host
+acceptance recorded for 1.2.1 does not cover them.
 
 ## Why keep a research ledger?
 
@@ -30,7 +35,7 @@ with their sources, versions and checkpoint history.
 
 ```text
 External research agent (Codex / other harness)
-                       │ nine MCP tools
+                       │ eleven MCP tools
                MathResearch Ledger
              state · context · evidence
                        │
@@ -89,10 +94,12 @@ Search hits are candidates, not trusted premises. Inspect exact objects, input v
 provenance and evidence before relying on them. Preserve failed routes and full proofs;
 do not persist every chat turn or rebuild context after every local deduction.
 
-## Nine MCP tools
+## Eleven MCP tools
 
 | Tool | Use |
 |---|---|
+| `research_create_problem` | Preview/register a new active Problem |
+| `research_update_problem` | Preview metadata, lifecycle or explicit semantic revision |
 | `research_status` | Restore Problem state, continuation navigation and counts |
 | `research_search` | Find bounded relevance candidates or an exact identity |
 | `research_get_object` | Read exact objects, provenance and paginated originals |
@@ -131,7 +138,7 @@ Git-local exclusions. Historical provenance is not rewritten by tool upgrades.
 
 - **Codex:** use a project-local direct MCP server with a persistent runtime and startup
   workspace pin; retain the plugin skill and disable its bundled MCP to avoid duplicates.
-  [Installation and configuration](docs/codex-mcp.md). Windows fresh-session acceptance
+  [Installation and configuration](docs/codex-mcp.md). Released 1.2.1 Windows fresh-session acceptance
   passed with one set of nine tools, zero-write reads and cross-workspace rejection.
 - **DeepSeek Harness:** the [configuration-only Bundle](integrations/deepseek-harness/README.md)
   uses DSH's native MCP client and an external Python runtime (3.12 recommended).

@@ -195,6 +195,8 @@ def continuation_state(
         "problem_id": problem_id,
         "selection_source": "explicit_problem_id",
         "problem_status": problem.status,
+        "lifecycle_status": problem.lifecycle_status,
+        "primary_target_statement": problem.primary_target,
         "primary_target": navigation(main_view) if main_view else None,
         "primary_target_diagnostic": main.reason
         if main and main.ref is None

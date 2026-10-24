@@ -172,6 +172,8 @@ def test_sdk_initialization_schemas_and_every_tool(research):
                         "research_ingest_episode",
                         "research_save_note",
                         "research_request_acceptance",
+                        "research_create_problem",
+                        "research_update_problem",
                     }
                 )
                 assert tool.inputSchema == SCHEMAS[tool.name].model_json_schema()
@@ -200,8 +202,18 @@ def test_sdk_initialization_schemas_and_every_tool(research):
                     "ref": ref.qualified_id,
                     "verification_id": receipt.id,
                 },
+                "research_create_problem": {
+                    "title": "Synthetic new research line",
+                    "statement": "Synthetic only.",
+                    "primary_target": "Synthetic target.",
+                },
+                "research_update_problem": {
+                    "problem_id": ref.problem_id,
+                    "lifecycle_status": "paused",
+                },
             }
             responses = {}
+            assert len(tools) == 11
             for name, args in calls.items():
                 reply = await client.call_tool(name, args)
                 assert not reply.isError, (name, reply)
@@ -211,6 +223,8 @@ def test_sdk_initialization_schemas_and_every_tool(research):
             assert responses["research_get_object"]["truncated"]
             assert responses["research_context_packet"]["token_estimate"] <= 3000
             assert responses["research_search"]["hits"]
+            assert responses["research_create_problem"]["problem_id"] == "PROBLEM-0002"
+            assert responses["research_update_problem"]["lifecycle_change"]["to"] == "paused"
             for name in ("research_ingest_episode", "research_save_note"):
                 repeated = await client.call_tool(name, calls[name])
                 assert repeated.structuredContent["duplicate"]

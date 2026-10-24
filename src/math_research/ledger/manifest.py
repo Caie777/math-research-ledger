@@ -115,6 +115,29 @@ class Ledger:
 
         def add(kind, record, pid, states=None, *, ident=None, body=None, paths=()):
             data = record.model_dump(mode="json")
+            version_data = data
+            if kind == "problem":
+                version_data = {
+                    k: v
+                    for k, v in data.items()
+                    if k
+                    not in {
+                        "lifecycle_status",
+                        "summary",
+                        "source_refs",
+                        "metadata",
+                        "closure_kind",
+                        "closure_reason",
+                        "resolution_refs",
+                        "version_title",
+                        "statement_authority",
+                        "primary_target",
+                    }
+                }
+                if record.version_title is not None:
+                    version_data["title"] = record.version_title
+                if record.primary_target:
+                    version_data["primary_target"] = record.primary_target
             if "dependency_pins" in data and not data["dependency_pins"]:
                 data.pop("dependency_pins")
             if kind == "episode":
@@ -145,7 +168,7 @@ class Ledger:
             entry = ManifestEntry(
                 ref=ref,
                 content_hash=record_content_hash(
-                    data, body, [self._artifact_identity(a) for a in artifacts]
+                    version_data, body, [self._artifact_identity(a) for a in artifacts]
                 ),
                 research_state=state.research_state if state else "CURRENT",
                 authority=state.authority if state else "CANONICAL",
@@ -162,6 +185,30 @@ class Ledger:
                 warnings=[*warnings, *(state.warnings if state else [])],
             )
             result[ref.qualified_id] = entry
+            if kind == "problem":
+                entry.provenance.extend(data["source_refs"])
+                if data["primary_target"]:
+                    entry.full_content += "\n\n## Primary target\n\n" + data["primary_target"]
+                if data["version_title"] is not None or data["statement_authority"]:
+                    metadata = {
+                        k: data[k]
+                        for k in (
+                            "title",
+                            "lifecycle_status",
+                            "summary",
+                            "closure_kind",
+                            "closure_reason",
+                            "resolution_refs",
+                            "source_refs",
+                            "metadata",
+                        )
+                    }
+                    entry.full_content += (
+                        "\n\n## Project metadata (not mathematical authority)\n\n"
+                        + json.dumps(metadata, ensure_ascii=False, sort_keys=True)
+                    )
+                if data["statement_authority"] == "PROVISIONAL":
+                    entry.authority, entry.review = "PROVISIONAL", "PENDING"
             for dep in state.dependencies if state else data.get("depends_on", []):
                 pending.append((ref, dep, DependencyRole.LOGICAL_PREMISE))
             for dep in data.get("source_artifacts", []):

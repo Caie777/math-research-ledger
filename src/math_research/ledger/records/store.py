@@ -61,7 +61,20 @@ from math_research.ledger.records.write_boundary import human_write, is_automate
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
-_SUBDIRS = ("experiments", "proof_attempts", "counterexample_search", "evidence")
+DOSSIER_SUBDIRS = ("experiments", "proof_attempts", "counterexample_search", "evidence")
+DOSSIER_FILES = (
+    "problem.yaml",
+    "statement.md",
+    "definitions.yaml",
+    "assumptions.yaml",
+    "known_results.yaml",
+    "related_papers.jsonl",
+    "approaches.jsonl",
+    "failed_attempts.jsonl",
+    "claims.jsonl",
+    "report.md",
+    *(f"{sub}/.gitkeep" for sub in DOSSIER_SUBDIRS),
+)
 
 
 # --- Paths --------------------------------------------------------------------
@@ -91,7 +104,7 @@ def set_active_problem(ot_dir: Path, problem_id: str) -> None:
     """Record ``problem_id`` as the workspace's current problem."""
     root = problems_root(ot_dir)
     root.mkdir(parents=True, exist_ok=True)
-    _active_problem_path(ot_dir).write_text(problem_id.strip().upper() + "\n", encoding="utf-8")
+    atomic_write_text(_active_problem_path(ot_dir), problem_id.strip().upper() + "\n")
 
 
 def get_active_problem(ot_dir: Path) -> str | None:
@@ -212,10 +225,15 @@ def resolve_dossier_id(ot_dir: Path, raw: str) -> str | None:
 
 
 def _next_problem_id(ot_dir: Path) -> str:
-    return next_sequential_id("PROBLEM", len(list_dossiers(ot_dir)))
+    root = problems_root(ot_dir)
+    numbers = (
+        [int(p.name[8:]) for p in root.iterdir() if re.fullmatch(r"PROBLEM-\d+", p.name)]
+        if root.exists()
+        else []
+    )
+    return next_sequential_id("PROBLEM", max(numbers, default=0))
 
 
-@human_write
 def create_dossier(
     ot_dir: Path,
     statement: str,
@@ -223,39 +241,48 @@ def create_dossier(
     title: str = "",
     domain: str = "",
     tags: list[str] | None = None,
+    primary_target: str = "",
+    summary: str = "",
+    source_refs: list[str] | None = None,
+    metadata: dict[str, str] | None = None,
+    provisional: bool = False,
+    activate: bool = True,
 ) -> ProblemRecord:
-    """Create a new dossier directory with its full scaffold."""
+    """Register a Problem, never Claim facts or a verification/acceptance receipt."""
+    from math_research.ledger.checkpoint import checkpoint_transaction
+
     statement = statement.strip()
     if not statement:
         raise ResearchError("A problem needs a non-empty statement.")
-    problem_id = _next_problem_id(ot_dir)
     if not title:
         title = statement if len(statement) <= 80 else statement[:77] + "…"
-    dossier = ProblemRecord(id=problem_id, title=title, domain=domain, tags=tags or [])
-
-    base = dossier_dir(ot_dir, problem_id)
-    base.mkdir(parents=True, exist_ok=True)
-    for sub in _SUBDIRS:
-        (base / sub).mkdir(exist_ok=True)
-        (base / sub / ".gitkeep").touch()
-
-    _write_yaml(_problem_yaml(ot_dir, problem_id), dossier)
-    (base / "statement.md").write_text(f"# {problem_id}\n\n{statement}\n", encoding="utf-8")
-    # Seed empty ledgers so the layout is self-documenting.
-    _write_yaml_list(base / "definitions.yaml", [])
-    _write_yaml_list(base / "assumptions.yaml", [])
-    _write_yaml_list(base / "known_results.yaml", [])
-    (base / "related_papers.jsonl").touch()
-    (base / "approaches.jsonl").touch()
-    (base / "failed_attempts.jsonl").touch()
-    (base / "claims.jsonl").touch()
-    (base / "report.md").write_text(
-        f"# {problem_id} — Research Record\n",
-        encoding="utf-8",
-    )
-    # A freshly created dossier becomes the active problem so subsequent commands
-    # can omit the id (the most common case is working on the one just created).
-    set_active_problem(ot_dir, problem_id)
+    with checkpoint_transaction(ot_dir, None, problem_record=True) as problem_id:
+        dossier = ProblemRecord(
+            id=problem_id,
+            title=title,
+            domain=domain,
+            tags=tags or [],
+            primary_target=primary_target,
+            summary=summary,
+            source_refs=source_refs or [],
+            metadata=metadata or {},
+            statement_authority="PROVISIONAL" if provisional or is_automated() else None,
+        )
+        base = dossier_dir(ot_dir, problem_id)
+        base.mkdir(parents=True, exist_ok=False)
+        for name in DOSSIER_FILES:
+            body = "[]\n" if name.endswith(".yaml") else ""
+            if name == "problem.yaml":
+                body = yaml.safe_dump(
+                    dossier.model_dump(mode="json"), sort_keys=False, allow_unicode=True
+                )
+            elif name == "statement.md":
+                body = f"# {problem_id}\n\n{statement}\n"
+            elif name == "report.md":
+                body = f"# {problem_id} — Research Record\n"
+            atomic_write_text(base / name, body)
+        if activate:
+            set_active_problem(ot_dir, problem_id)
     return dossier
 
 

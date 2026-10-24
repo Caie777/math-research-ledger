@@ -69,7 +69,13 @@ def status(
         "problems": len(problems),
         "objects": len(views),
         "problem_summaries": [
-            {"id": p.id, "title": p.title[:400], "ref": f"{p.id}:problem:{p.id}"}
+            {
+                "id": p.id,
+                "title": p.title[:400],
+                "ref": f"{p.id}:problem:{p.id}",
+                "lifecycle_status": p.lifecycle_status,
+                "primary_target": p.primary_target[:2000],
+            }
             for p in problems[offset : offset + limit]
         ],
         "object_summaries": [
@@ -89,8 +95,8 @@ def status(
     }
 
 
-def create_problem(state: Path, title: str, statement: str = ""):
-    return store.create_dossier(state, statement or title, title=title)
+def create_problem(state: Path, title: str, statement: str = "", **details):
+    return store.create_dossier(state, statement or title, title=title, **details)
 
 
 def add_claim(state: Path, problem_id: str, statement: str):

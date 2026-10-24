@@ -1,4 +1,7 @@
-"""Keep automated research out of the formal Problem Record and human review log.
+"""Keep automated research out of canonical mathematical facts and human reviews.
+
+Explicit Problem registration/lifecycle is a separate project-scope capability;
+its semantic statements remain provisional. It cannot write Claim facts or receipts.
 
 The context is execution provenance, not an approval token. Human acceptance is
 the existing review_candidate service, invoked outside an automated run.

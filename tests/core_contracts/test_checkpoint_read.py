@@ -125,6 +125,7 @@ def test_read_only_guard_really_denies_writes(research, deny_state_writes):
 
 def test_stable_state_runs_operation_once_without_lock(research, monkeypatch):
     state, _ = research
+    generation = (state / checkpoint.GENERATION).read_bytes()
     calls = []
     monkeypatch.setattr(checkpoint, "file_lock", lambda *a: pytest.fail("Read took a lock"))
     assert (
@@ -132,7 +133,7 @@ def test_stable_state_runs_operation_once_without_lock(research, monkeypatch):
         == "stable"
     )
     assert calls == [1]
-    assert not (state / checkpoint.GENERATION).exists()
+    assert (state / checkpoint.GENERATION).read_bytes() == generation
 
 
 def test_changes_exhaust_budget_and_sleep_between_retries(research, monkeypatch):

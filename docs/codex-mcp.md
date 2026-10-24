@@ -2,16 +2,19 @@
 
 Use a **project-local direct MCP server** with a persistent Python runtime and an
 explicit startup workspace pin. The plugin skill can remain enabled; disable its
-bundled MCP so the session exposes only one set of nine research tools.
+bundled MCP so the session exposes only one set of eleven research tools (development checkout).
 
 Windows fresh-session acceptance passed with Python 3.12.10 / MathResearch Ledger
 1.2.1: one tool set, real-workspace zero-write reads and cross-workspace rejection.
-See the [Host record](archive/2026-10/dsh-host-acceptance-2026-10-23.md).
+That released nine-tool acceptance does not cover the new lifecycle tools.
+See the [Problem lifecycle contract](problem-lifecycle.md) and the [Host record](archive/2026-10/dsh-host-acceptance-2026-10-23.md).
 
 ## Install the runtime and local plugin
 
-Install Python 3.12, create a venv at a stable location outside the research workspace,
-and install the release wheel with MCP dependencies:
+Install Python 3.12 and create a venv at a stable location outside the research workspace.
+For the unreleased lifecycle tools, build a local wheel from this checkout with
+`python -m build --wheel`; the published 1.2.1 wheel still exposes nine tools.
+Install the chosen wheel with MCP dependencies:
 
 ```powershell
 py -3.12 -m venv '<persistent-runtime>'
@@ -77,7 +80,7 @@ Replace every angle-bracket placeholder with your own absolute path; they are no
 Codex variables. On macOS/Linux use the venv's `bin/math-research-ledger-mcp`.
 Keep private paths in local configuration. Trusted project settings override user
 defaults; recheck both after installing/updating the plugin. Start a fresh session
-after changing runtime or configuration and verify exactly nine Ledger tools.
+after changing runtime or configuration and verify exactly eleven Ledger tools for this development checkout.
 
 This uses official [project MCP configuration](https://learn.chatgpt.com/docs/extend/mcp)
 and [plugin MCP policy](https://learn.chatgpt.com/docs/config-file/config-reference).

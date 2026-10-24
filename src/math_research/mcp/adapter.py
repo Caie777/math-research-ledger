@@ -12,6 +12,12 @@ from math_research.ledger.publication import publication_navigation
 from math_research.ledger.records.write_boundary import automated_scope
 from math_research.services.acceptance import request_acceptance
 from math_research.services.ingest import ingest_episode, preview_episode, save_note
+from math_research.services.problems import (
+    CreateProblemInput,
+    UpdateProblemInput,
+    create_problem,
+    update_problem,
+)
 from math_research.services.research import get_object, list_objects, status
 from math_research.services.retrieval import export_context_packet, search_research
 from math_research.services.review import prepare_review
@@ -109,6 +115,14 @@ class NoteArgs(Arguments):
     provenance: str = Field(min_length=1, max_length=1000)
 
 
+class CreateProblemArgs(Arguments, CreateProblemInput):
+    pass
+
+
+class UpdateProblemArgs(Arguments, UpdateProblemInput):
+    pass
+
+
 SCHEMAS: dict[str, type[Arguments]] = {
     "research_status": StatusArgs,
     "research_search": SearchArgs,
@@ -119,9 +133,24 @@ SCHEMAS: dict[str, type[Arguments]] = {
     "research_ingest_episode": EpisodeArgs,
     "research_save_note": NoteArgs,
     "research_request_acceptance": RequestArgs,
+    "research_create_problem": CreateProblemArgs,
+    "research_update_problem": UpdateProblemArgs,
 }
 
 DESCRIPTIONS = {
+    "research_create_problem": (
+        "Explicitly register a new active Problem with title, statement and primary_target "
+        "mathematical text. Use dry_run=true first; preview IDs are not reserved. Each real "
+        "call allocates a new ID, even with the same title. Does not initialize missing "
+        "workspaces, create Claims or grant verification/acceptance."
+    ),
+    "research_update_problem": (
+        "Update an explicit Problem's metadata or active/paused/closed lifecycle. Closing "
+        "requires closure_kind and closure_reason; resolution_refs are advisory object links. "
+        "statement/primary_target require revision_kind='semantic'; metadata never changes "
+        "mathematical versions. Preview with dry_run=true; optionally pin expected_version. "
+        "Does not verify, accept or promote any Claim; no deletion."
+    ),
     "research_status": (
         "Call first when continuing long-running research or asked where an existing Problem "
         "stands. Returns paginated Problem/object references and authority/check/freshness "
@@ -217,6 +246,9 @@ class LedgerAdapter:
         from math_research.ledger.checkpoint import checkpoint_read, consistent_checkpoint_read
 
         preview = name == "research_ingest_episode" and arguments.get("dry_run") is True
+        if name in {"research_create_problem", "research_update_problem"}:
+            # The shared Problem service owns both pure preview and journaled mutation.
+            return self._call(name, arguments)
         if name == "research_save_note" or name == "research_ingest_episode" and not preview:
             return self._call(name, arguments)
         if name == "research_request_acceptance":
@@ -232,7 +264,13 @@ class LedgerAdapter:
         args = schema.model_validate(arguments)
         with automated_scope():
             ref = Ledger(self.state).resolve(args.ref) if isinstance(args, RefArgs) else None
-            if name == "research_status":
+            if isinstance(args, CreateProblemArgs):
+                result = create_problem(self.state, **args.model_dump(exclude={"workspace"}))
+            elif isinstance(args, UpdateProblemArgs):
+                result = update_problem(
+                    self.state, **args.model_dump(exclude={"workspace"}, exclude_unset=True)
+                )
+            elif name == "research_status":
                 result = status(self.state, **args.model_dump(exclude={"workspace"}))
             elif isinstance(args, SearchArgs):
                 result = search_research(self.state, **args.model_dump(exclude={"workspace"}))

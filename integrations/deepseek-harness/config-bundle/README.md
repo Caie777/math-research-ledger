@@ -2,7 +2,7 @@
 
 This configuration-only Bundle uses DSH's built-in `@deepseek-ai/dsh-mcp-client`
 and an external persistent Python runtime (3.12 recommended). The server pins one
-workspace at startup and exposes nine tools. DSH's native Plugins page controls OFF/ON.
+workspace at startup and exposes eleven tools in the development checkout. DSH's native Plugins page controls OFF/ON.
 
 This package is an **unrendered template**. Download the matching Python wheel and
 source archive from https://github.com/Caie777/math-research-ledger/releases.
@@ -18,7 +18,10 @@ ordinary PowerShell. Keep the rendered Bundle and runtime at stable locations.
 Rendered configuration is private; do not publish it. See
 `integrations/deepseek-harness/README.md` in the source archive for options and uninstall.
 
-Windows Desktop DSH 0.2.1-rc.2 / Python 3.12.10 Host acceptance passed, including
+The published 1.2.1 release has nine tools. Its Windows Desktop DSH 0.2.1-rc.2 / Python 3.12.10 Host acceptance passed, including
 synthetic writes, real-workspace read-only access and OFF/ON. DSH macOS/Linux and
 formal real-corpus writes are untested. Installation does not initialize research
 state or change permissions, security labels, authentication or Full Access.
+
+The two new Problem lifecycle tools require a wheel built from the development
+checkout and have synthetic stdio coverage; real Host acceptance is not claimed.

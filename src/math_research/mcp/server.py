@@ -38,6 +38,9 @@ Soft review is advisory. Checked != accepted; canonical != verified. Human accep
 is absent from this MCP surface: a workflow boundary, not authentication or sandboxing
 against arbitrary local code or filesystem access. Stale is derived current state; preserve
 historical receipts. Missing workspace requires explicit human initialization, never auto-init.
+Register new research lines only with research_create_problem, not unknown Episode IDs.
+Problem active/paused/closed is project lifecycle, never verification or human acceptance.
+Changing statement/primary_target requires explicit revision_kind=semantic; preview first.
 """
 
 
@@ -131,7 +134,13 @@ def create_server(workspace: Path | None = None):
 
     @server.list_tools()
     async def list_tools():
-        writes = {"research_ingest_episode", "research_save_note", "research_request_acceptance"}
+        writes = {
+            "research_ingest_episode",
+            "research_save_note",
+            "research_request_acceptance",
+            "research_create_problem",
+            "research_update_problem",
+        }
         return [
             types.Tool(
                 name=name,
@@ -140,7 +149,7 @@ def create_server(workspace: Path | None = None):
                 annotations=types.ToolAnnotations(
                     readOnlyHint=name not in writes,
                     destructiveHint=False,
-                    idempotentHint=True,
+                    idempotentHint=name != "research_create_problem",
                     openWorldHint=False,
                 ),
             )

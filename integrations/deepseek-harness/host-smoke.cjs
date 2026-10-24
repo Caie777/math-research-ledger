@@ -38,8 +38,8 @@ syncBuiltinESMExports();
     .filter(n => n.startsWith('mcp__math-research-ledger__')).sort();
   try {
     const report = { profile: path.basename(profileDir), model_called: false, tools_before: names() };
-    if (report.tools_before.length !== 9) {
-      throw new Error(`Initial ON expected 9 tools, found ${report.tools_before.length}`);
+    if (report.tools_before.length !== 11) {
+      throw new Error(`Initial ON expected 11 tools, found ${report.tools_before.length}`);
     }
     if (cycle === '--cycle') {
       report.off = await runtime.ctx.pluginManager.setBundleEnabled('dsh-math-research-ledger', false);
@@ -48,7 +48,7 @@ syncBuiltinESMExports();
       report.on = await runtime.ctx.pluginManager.setBundleEnabled('dsh-math-research-ledger', true);
     }
     report.tools = names();
-    if (report.tools.length !== 9) throw new Error(`Expected 9 tools, found ${report.tools.length}`);
+    if (report.tools.length !== 11) throw new Error(`Expected 11 tools, found ${report.tools.length}`);
     const call = async (tool, args) => {
       const value = await runtime.ctx.tools.execute({ callId: `ledger-readonly-${tool}`,
         name: `mcp__math-research-ledger__${tool}`, arguments: { workspace, ...args },

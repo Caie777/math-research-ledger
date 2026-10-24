@@ -27,3 +27,7 @@ For installation, see [Codex](codex-mcp.md) or
 [DeepSeek Harness](../integrations/deepseek-harness/README.md). The
 [Host acceptance record](archive/2026-10/dsh-host-acceptance-2026-10-23.md) identifies
 the tested candidate and the source of the real-session evidence.
+
+The 1.2.2 development checkout adds two [Problem lifecycle tools](problem-lifecycle.md),
+for eleven total. Formal version metadata remains 1.2.1; published 1.2.1 has nine.
+These two tools have synthetic stdio coverage, without new real Host acceptance.

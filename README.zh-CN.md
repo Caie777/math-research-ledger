@@ -5,7 +5,11 @@
 MathResearch Ledger 不是另一个研究 Agent runtime。外部 Agent 负责研究；Ledger 保留可跨会话
 恢复的研究状态。用 Codex 或其他 Harness 推理、阅读和实验，下次会话继续使用同一份研究记录。
 
-[English](README.md) · [1.2.1 更新记录](CHANGELOG.md)
+[English](README.md) · [更新记录](CHANGELOG.md)
+
+**1.2.2 development：**当前源码新增 [Problem lifecycle](docs/problem-lifecycle.md)，
+共十一个工具。已发布 1.2.1 为九个工具；正式版本元数据暂保持 1.2.1，等待单独发布任务。
+新工具已有 synthetic stdio 验证；1.2.1 的真实 Host 验收不覆盖这两个工具。
 
 ## 为什么需要研究 Ledger？
 
@@ -63,10 +67,12 @@ workspace 必须在工具仓库之外，由用户显式初始化。init 创建�
 示例 ID 必须替换成真实对象的 ID/ref。相关性不等于可信前提；使用前核对对象、版本、来源和验证证据。
 保留完整证明与失败路线，不逐轮记录聊天，也不每步重建 context。
 
-## 九个 MCP 工具
+## 十一个 MCP 工具
 
 | 工具 | 职责 |
 |---|---|
+| `research_create_problem` | 预检或创建 active Problem |
+| `research_update_problem` | 预检或更新元数据、生命周期、显式语义修订 |
 | `research_status` | Problem 状态、续研导航与计数 |
 | `research_search` | 有界相关性检索或精确身份定位 |
 | `research_get_object` | 精确对象、来源与原文分页 |
@@ -97,7 +103,7 @@ Harness 拥有 workspace，用户拥有普通文件，Ledger 只拥有 `.math-re
 ## 集成与限制
 
 - **Codex：**推荐项目级 direct MCP，使用持久 runtime 和启动时 workspace pin；保留插件 skill，
-  关闭 bundled MCP，避免重复工具。见 [Codex 指南](docs/codex-mcp.md)。Windows 新会话验收
+  关闭 bundled MCP，避免重复工具。见 [Codex 指南](docs/codex-mcp.md)。已发布 1.2.1 的 Windows 新会话验收
   已通过：仅一套九个工具、真实工作区零写入读取、跨工作区拒绝。
 - **DeepSeek Harness：**推荐 [configuration-only Bundle](integrations/deepseek-harness/README.md)，
   由 DSH 原生 MCP client 连接外部 Python runtime（推荐 3.12）。Windows Desktop 0.2.1-rc.2

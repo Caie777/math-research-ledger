@@ -108,8 +108,8 @@ def test_duplicate_blocks_structured_publication_but_explicit_raw_only_is_safe(r
     after = hashes(state)
     # A write attempt advances its coordination epoch, even on rollback. No
     # research record changes; pure preview tests still compare every state byte.
-    assert set(after) - set(before) == {".checkpoint-generation"}
-    assert all(after[p] == h for p, h in before.items())
+    assert after.pop(".checkpoint-generation") != before.pop(".checkpoint-generation")
+    assert after == before
     assert len((state / ".checkpoint-generation").read_bytes()) == 32
     result = ingest_episode(
         state, ref.problem_id, "raw.md", raw, provenance="test", archive_only=True
@@ -191,7 +191,12 @@ def test_required_target_is_actionable_error(research, kind):
 @pytest.mark.parametrize("action", ["Revised", "Refuted", "Invalidated"])
 def test_delta_assertions_cannot_mutate_canonical_or_receipts(research, action):
     state, ref = research
-    before = {p: h for p, h in hashes(state).items() if not p.startswith("research_archive/")}
+    before = {
+        p: h
+        for p, h in hashes(state).items()
+        if not p.startswith("research_archive/") and p != ".checkpoint-generation"
+    }
+    generation = (state / ".checkpoint-generation").read_bytes()
     raw = (
         "---\n"
         + yaml.safe_dump(
@@ -212,6 +217,7 @@ def test_delta_assertions_cannot_mutate_canonical_or_receipts(research, action):
     publish(research, raw)
     after = hashes(state)
     assert all(after[p] == h for p, h in before.items())
+    assert (state / ".checkpoint-generation").read_bytes() != generation
     assert get_object(state, ref).object.research_state == "CURRENT"
     assert not list((state / "ledger").glob("*accept*"))
 
@@ -297,7 +303,7 @@ def test_authored_input_versions_are_diagnosed_without_fabrication(research, ver
     assert len(value["metadata"].input_versions) == (version_mode != "missing")
 
 
-def test_mcp_preview_is_read_only_and_tool_count_stays_nine(research):
+def test_mcp_preview_is_read_only_with_eleven_tools(research):
     from math_research.mcp.adapter import SCHEMAS, LedgerAdapter
 
     state, ref = research
@@ -313,7 +319,7 @@ def test_mcp_preview_is_read_only_and_tool_count_stays_nine(research):
     )
     assert result["can_publish"] and result["local_ids"] == ["RESULT-1"]
     assert hashes(state) == before
-    assert len(SCHEMAS) == 9
+    assert len(SCHEMAS) == 11
 
 
 @pytest.mark.parametrize("route", ["specialized", "span", "generic", "manifest", "extraction"])

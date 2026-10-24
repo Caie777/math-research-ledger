@@ -91,7 +91,7 @@ def test_other_roots_are_rejected_before_ledger_inspection(research, second, mon
 
 
 @pytest.mark.parametrize("name", list(SCHEMAS))
-def test_scope_check_covers_all_nine_tools_without_reading_or_writing(
+def test_scope_check_covers_all_tools_without_reading_or_writing(
     research, second, monkeypatch, name
 ):
     state, ref = research
@@ -116,6 +116,12 @@ def test_scope_check_covers_all_nine_tools_without_reading_or_writing(
             body="Synthetic only.",
             provenance="fixture",
         )
+    elif name == "research_create_problem":
+        args.update(
+            title="Synthetic", statement="Synthetic only", primary_target="Synthetic target"
+        )
+    elif name == "research_update_problem":
+        args.update(problem_id=ref.problem_id, lifecycle_status="paused")
     result = call(server, name, **args)
     assert result.isError and result.structuredContent["error"]["code"] == "WORKSPACE_OUT_OF_SCOPE"
 

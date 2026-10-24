@@ -148,7 +148,15 @@ def consistent_checkpoint_read(
     )
 
 
-def _restore(state: Path, files: dict) -> None:
+def _restore(state: Path, files: dict, created_problem: str | None = None) -> None:
+    from math_research.ledger.records import store
+
+    created_paths = set()
+    if created_problem is not None:
+        base = store.dossier_dir(state, created_problem)
+        created_paths = {
+            (base / name).relative_to(state).as_posix() for name in store.DOSSIER_FILES
+        } | {"problems/.current"}
     for relative, previous in files.items():
         path = (state / relative).resolve()
         parts = Path(relative).parts
@@ -157,39 +165,82 @@ def _restore(state: Path, files: dict) -> None:
             and parts[0] == "problems"
             and parts[2:] == ("archive", "episodes", "candidates.jsonl")
         )
+        allowed = (
+            allowed
+            or relative in created_paths
+            or (
+                len(parts) == 3
+                and parts[0] == "problems"
+                and parts[2] in {"problem.yaml", "statement.md"}
+            )
+        )
         if not allowed or not path.is_relative_to(state.resolve()):
             raise ResearchError("Invalid checkpoint journal path; inspect manually.")
         if previous is None:
             path.unlink(missing_ok=True)
         elif not path.is_file() or path.read_bytes() != bytes.fromhex(previous):
             atomic_write_text(path, bytes.fromhex(previous).decode("utf-8"))
+    if created_problem is not None:
+        for sub in (*store.DOSSIER_SUBDIRS, ""):
+            directory = base / sub
+            if directory.exists():
+                directory.rmdir()  # Only empty directories created by this transaction.
 
 
 @contextmanager
-def checkpoint_transaction(state: Path, problem_id: str):
+def checkpoint_transaction(state: Path, problem_id: str | None, *, problem_record: bool = False):
     from math_research.ledger.records import store
 
-    store.require_dossier(state, problem_id)
+    if _active.get() == state.resolve():
+        # A Problem service may wrap the existing storage creator so its response
+        # is materialized before unlocking. Reuse that journal's allocation only.
+        created = json.loads((state / JOURNAL).read_text("utf-8")).get("created_problem")
+        if not problem_record or problem_id is not None or not created:
+            raise ResearchError("Nested checkpoint publication is not supported.")
+        yield created
+        return
+    if not state.is_dir():
+        raise ResearchError("No research state; initialize a workspace explicitly.")
+    if problem_id is None and not problem_record:
+        raise ResearchError("Select an existing Problem for checkpoint publication.")
     with file_lock(state / ".checkpoint"):
         guard_checkpoint(state)
+        created_problem = None
+        if problem_id is None:
+            problem_id = store._next_problem_id(state)
+            created_problem = problem_id
+        else:
+            store.require_dossier(state, problem_id)
+        base = store.dossier_dir(state, problem_id)
         paths = [
             state / "research_archive/index.jsonl",
-            store.dossier_dir(state, problem_id) / "archive/episodes/candidates.jsonl",
+            base / "archive/episodes/candidates.jsonl",
         ]
+        if problem_record:
+            paths = [
+                base / name
+                for name in (
+                    store.DOSSIER_FILES if created_problem else ("problem.yaml", "statement.md")
+                )
+            ]
+            if created_problem:
+                paths.append(state / "problems/.current")
         before = {
             p.relative_to(state).as_posix(): p.read_bytes().hex() if p.exists() else None
             for p in paths
         }
         journal = state / JOURNAL
-        atomic_write_text(journal, json.dumps({"files": before}))
+        atomic_write_text(
+            journal, json.dumps({"files": before, "created_problem": created_problem})
+        )
         token = _active.set(state.resolve())
         try:
             # Never roll this back: even an aborted publication invalidates readers
             # that might have seen its intermediate multi-file state.
             atomic_write_text(state / GENERATION, uuid4().hex)
-            yield
+            yield problem_id
         except BaseException:
-            _restore(state, before)
+            _restore(state, before, created_problem)
             journal.unlink()
             raise
         else:
@@ -219,6 +270,6 @@ def recover_checkpoint(state: Path) -> dict:
             return {"recovered": False}
         value = json.loads(journal.read_text("utf-8"))
         atomic_write_text(state / GENERATION, uuid4().hex)
-        _restore(state, value["files"])
+        _restore(state, value["files"], value.get("created_problem"))
         journal.unlink()
         return {"recovered": True, "raw_sources_retained": True}

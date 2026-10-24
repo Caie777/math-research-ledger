@@ -2,19 +2,23 @@
 
 The recommended integration is a **configuration-only Bundle** using DSH's built-in
 `@deepseek-ai/dsh-mcp-client`. It launches an external, persistent Python runtime with
-`--workspace <research-workspace>` and exposes the same nine tools as Codex. Python
+`--workspace <research-workspace>` and exposes the same eleven tools as Codex (development checkout). Python
 **3.12** is recommended. DSH manages the process lifecycle and native Plugins OFF/ON.
 
 Windows Desktop **DSH 0.2.1-rc.2 / Python 3.12.10** Host acceptance passed: synthetic
 read/write, real-workspace zero-write reads, restart persistence, OFF/ON and
 cross-workspace rejection. DSH macOS/Linux and formal real-corpus writes are untested.
-See the [acceptance record](../../docs/archive/2026-10/dsh-host-acceptance-2026-10-23.md).
+That acceptance covers released 1.2.1's nine tools; the two lifecycle tools have
+synthetic stdio coverage and have not been tested in a real DSH Host.
+See the [Problem lifecycle contract](../../docs/problem-lifecycle.md) and the [acceptance record](../../docs/archive/2026-10/dsh-host-acceptance-2026-10-23.md).
 
 ## Prepare and install
 
-Download the matching wheel and source archive from
-[GitHub Releases](https://github.com/Caie777/math-research-ledger/releases), extract the
-source archive, and run from its root with an existing initialized research workspace:
+For the unreleased lifecycle tools, build a local wheel from this checkout with
+`python -m build --wheel`. Published packages are available from
+[GitHub Releases](https://github.com/Caie777/math-research-ledger/releases); 1.2.1 has
+nine tools. Run preparation from the matching checkout or extracted source archive
+with an existing initialized research workspace:
 
 ```powershell
 python scripts/prepare_dsh_config_bundle.py --workspace '<research-workspace>' --wheel '<local-wheel>'
@@ -40,7 +44,7 @@ dsh plugin --profile desktop remove dsh-math-research-ledger
 dsh plugin --profile desktop add '<rendered-bundle-path>'
 ```
 
-Reload Desktop and start a fresh session. Verify one set of nine Ledger tools, then
+Reload Desktop and start a fresh session. Verify one set of eleven Ledger tools for this checkout, then
 call `research_status` and `research_search` against the pinned workspace. Initialize
 missing research state explicitly with the CLI; installation never creates it.
 
