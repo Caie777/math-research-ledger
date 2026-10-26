@@ -141,10 +141,11 @@ Git-local exclusions. Historical provenance is not rewritten by tool upgrades.
   startup session cwd using `--workspace .`, without parent discovery or auto-init.
   [Installation and configuration](docs/codex-mcp.md). This is tested Codex 0.160.0
   behavior, not a guaranteed project-root API. See the [acceptance matrix](docs/codex-session-acceptance.md).
-- **DeepSeek Harness:** the [configuration-only Bundle](integrations/deepseek-harness/README.md)
-  uses DSH's native MCP client and an external Python runtime (3.12 recommended).
-  Windows Desktop 0.2.1-rc.2 Host acceptance passed, including synthetic writes,
-  real-workspace read-only access and native Plugins OFF/ON.
+- **DeepSeek Harness:** the [Agent Host plugin](integrations/deepseek-harness/README.md)
+  binds each new Agent to its immutable session root through the official MCP client.
+  Windows DSH 0.2.1-rc.3 synthetic factory acceptance covers eleven tools, isolation,
+  resume and lifecycle. The configuration-only Bundle remains a single-workspace
+  fallback; its earlier rc.2 real-workspace acceptance is a separate deployment.
 
 [Known limitations](docs/known-limitations.md): DSH macOS/Linux and formal writes to a
 real research corpus have not been separately validated. Each MCP session has one pinned

@@ -106,9 +106,10 @@ Harness 拥有 workspace，用户拥有普通文件，Ledger 只拥有 `.math-re
   `--workspace .` 精确绑定 Host 提供的启动 session cwd，不查找父目录，不自动初始化。
   见 [Codex 指南](docs/codex-mcp.md) 和 [验收矩阵](docs/codex-session-acceptance.md)。
   这是 Codex 0.160.0 的实测行为，不是官方保证的 project-root API；本轮只验收隔离合成工作区。
-- **DeepSeek Harness：**推荐 [configuration-only Bundle](integrations/deepseek-harness/README.md)，
-  由 DSH 原生 MCP client 连接外部 Python runtime（推荐 3.12）。Windows Desktop 0.2.1-rc.2
-  真实 Host 验收已通过，包括 synthetic 写入、真实工作区只读及原生 Plugins OFF/ON。
+- **DeepSeek Harness：**推荐 [Agent Host plugin](integrations/deepseek-harness/README.md)，
+  通过官方 MCP client 按 Agent 的不可变 session root 绑定。Windows DSH 0.2.1-rc.3 已通过
+  十一个工具、隔离、resume 和生命周期的 synthetic factory 验收。configuration-only Bundle
+  保留为单工作区 fallback；其此前 rc.2 真实工作区验收属于另一部署方式。
 
 [已知限制](docs/known-limitations.md)：DSH macOS/Linux、真实研究 corpus 的正式写入尚未专门验收；
 每个 MCP 会话仅绑定一个工作区。插件不修改权限或 Full Access，GitHub 发布不代表已上架公开插件目录。

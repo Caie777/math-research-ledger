@@ -1,6 +1,44 @@
 # DeepSeek Harness
 
-The recommended integration is a **configuration-only Bundle** using DSH's built-in
+The development default is the [Agent Host plugin](host-plugin/README.md) for
+**DSH 0.2.1-rc.3**. It uses the same Python MCP server, but binds each Agent to its
+Host-provided immutable `agent.session.header.cwd`. A serial `agent/created` listener
+awaits the scoped official MCP client before Agent creation returns. No workspace
+is selected at installation and no model argument can select another Ledger.
+
+Prepare a new local package with an existing persistent runtime:
+
+```powershell
+python scripts/prepare_dsh_host_plugin.py --out '<new-plugin-directory>' --python '<persistent-python>'
+dsh plugin --profile '<profile>' add '<new-plugin-directory>'
+```
+
+Use this checkout's wheel+[mcp] for eleven tools; formal metadata still reads 1.2.1.
+Preparation only renders the Python path, never installs/changes the runtime or
+initializes research data. Rendered packages contain a private runtime path. The
+public unrendered package uses `__MRL_PYTHON__`, which must be configured before
+activation. Do not enable this plugin and the config-only Bundle in one profile.
+
+Load the Host entry before the Agents it should serve; create/resume a new Agent
+after installation or enabling. OFF unloads the creation listener, so new Agents
+have no Ledger tools. Existing Agents retain their scoped client until disposal;
+ON does not retrofit those already created. Agent dispose closes its own transport.
+Resume uses the persisted header root, independently of ambient shell cwd.
+
+Known roots without Ledger, ordinary subdirectories and state directories return
+`NO_WORKSPACE` with eleven registered tools and no init/fallback. Missing absolute
+Host cwd fails Agent setup with `NO_WORKSPACE` before spawning any MCP process.
+This is a Host metadata error; restart with a Host-created workspace-bound session.
+Shared workflow comes from the same MCP server instructions; no DSH policy is added
+to the shared Codex skill. See [scope/lifecycle acceptance](../../docs/dsh-agent-workspace-acceptance.md).
+
+Uninstall through `dsh plugin --profile '<profile>' remove dsh-math-research-ledger-host`.
+No research data is deleted. This task changed no real Profile or research workspace.
+rc.2 and macOS/Linux acceptance of the new Host adapter are unverified.
+
+## Single-workspace/manual fallback
+
+The retained **configuration-only Bundle** uses DSH's built-in
 `@deepseek-ai/dsh-mcp-client`. It launches an external, persistent Python runtime with
 `--workspace <research-workspace>` and exposes the same eleven tools as Codex (development checkout). Python
 **3.12** is recommended. DSH manages the process lifecycle and native Plugins OFF/ON.
@@ -12,7 +50,7 @@ That acceptance covers released 1.2.1's nine tools; the two lifecycle tools have
 synthetic stdio coverage and have not been tested in a real DSH Host.
 See the [Problem lifecycle contract](../../docs/problem-lifecycle.md) and the [acceptance record](../../docs/archive/2026-10/dsh-host-acceptance-2026-10-23.md).
 
-## Prepare and install
+### Prepare and install fallback
 
 For the unreleased lifecycle tools, build a local wheel from this checkout with
 `python -m build --wheel`. Published packages are available from
@@ -52,14 +90,14 @@ The release `.tgz` contains the public configuration template, not a rendered lo
 deployment. Prepare it through the source-archive script above before installation.
 Rendered patches contain private deployment paths; keep them local.
 
-## Enable, disable and uninstall
+### Enable, disable and uninstall fallback
 
 Use DSH's native **Plugins** page. OFF removes the tools and stops the server; ON
 restores them and starts the server. Disabling or removing the Bundle preserves data.
 Uninstall with the `remove` command above, reload Desktop, and optionally remove only
 the Bundle and its dedicated runtime.
 
-## Scope and troubleshooting
+### Scope and troubleshooting fallback
 
 - The startup pin selects one Ledger. Tool `workspace` can only assert the same root;
   another root returns `WORKSPACE_OUT_OF_SCOPE`. MCP roots and Desktop cwd cannot

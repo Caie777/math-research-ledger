@@ -1,5 +1,10 @@
 # MathResearch Ledger for DeepSeek Harness
 
+**Single-workspace/manual fallback.** The development default is the separate
+Agent Host plugin (`host-plugin/` in the source archive), validated with DSH rc.3.
+Do not enable both deployments in one profile. This Bundle intentionally keeps its
+installation-time workspace pin and existing configuration-only behavior.
+
 This configuration-only Bundle uses DSH's built-in `@deepseek-ai/dsh-mcp-client`
 and an external persistent Python runtime (3.12 recommended). The server pins one
 workspace at startup and exposes eleven tools in the development checkout. DSH's native Plugins page controls OFF/ON.

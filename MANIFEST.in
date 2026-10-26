@@ -13,6 +13,10 @@ include integrations/deepseek-harness/config-bundle/package.json
 include integrations/deepseek-harness/config-bundle/locale/en.json
 include integrations/deepseek-harness/config-bundle/locale/zh.json
 include integrations/deepseek-harness/config-bundle/icon.svg
+include integrations/deepseek-harness/host-plugin/*.cjs
+include integrations/deepseek-harness/host-plugin/*.json
+include integrations/deepseek-harness/host-plugin/*.yml
+include integrations/deepseek-harness/host-plugin/*.md
 recursive-include docs *.md
 recursive-include examples *.md
 recursive-include tests *.py

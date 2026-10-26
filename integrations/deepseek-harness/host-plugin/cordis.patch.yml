@@ -1,0 +1,5 @@
+- insert:
+    - id: math-research-ledger-host
+      name: dsh-math-research-ledger-host
+      config:
+        python: __MRL_PYTHON__
