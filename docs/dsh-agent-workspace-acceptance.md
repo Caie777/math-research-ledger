@@ -1,10 +1,10 @@
 # DSH Agent workspace acceptance
 
-2026-10-26; 1.2.2 development, formal package identity still 1.2.1.
+2026-10-26 isolated pre-release acceptance; formal identity was 1.2.1 at that stage.
 All commands run from the tool checkout. The actual installed official Desktop
 packages are **0.2.1-rc.3**; the user approved testing that version after discovery.
-rc.2 is unverified for this new adapter. No real Profile, credentials, research
-workspace, persistent Python runtime, Codex integration or Core was modified.
+rc.2 is unverified for this new adapter. The isolated phase modified no real Profile,
+credentials, research workspace, persistent Python runtime, Codex integration or Core.
 
 ## Capability and implementation
 
@@ -57,7 +57,8 @@ official connection/protocol handling, not an adapter process pool or manager.
 Profile/plugin ON/OFF here exercises the actual underlying Cordis entry lifecycle,
 not a real Desktop GUI toggle or installation into the user's Profile. Existing
 Agent immediate unload is intentionally not claimed. A complete Desktop UI restart,
-real-workspace cutover, macOS/Linux and network paths remain separate acceptance.
+real-workspace cutover, macOS/Linux and network paths were separate acceptance.
+The later real cutover is recorded below.
 
 ## Regression and package checks
 
@@ -98,3 +99,41 @@ effect loader and MCP client implementation; upstream
 [Agent reference](https://github.com/deepseek-ai/deepseek-harness/tree/master/packages/core/agent)
 and [MCP subsystem](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/mcp.md).
 Online master is supporting context, not evidence that another version passed.
+
+## Later controlled real Profile cutover (2026-10-26)
+
+The existing Windows rc.3 desktop Profile was backed up, the fixed-root config-only
+MCP was temporarily disabled, and the exact accepted Host package was installed.
+Acceptance booted that real Profile through the official Desktop `runProfile` entry,
+using real Agent factory, persistence, MCP transport and plugin manager services.
+It was not an isolated replacement Profile or a GUI/model conversational turn.
+
+The first runner omitted required `sessionId`; the Host rejected creation before
+Ledger calls. Configuration was restored and Ledger fingerprints remained unchanged.
+An isolated regression then reproduced the exact failure and proved that an explicit
+shared Session/Agent identity fixes it; `resumeSessionId` was already explicit.
+Only the private acceptance runner changed. The production adapter was unchanged.
+
+The retried real Profile acceptance passed:
+
+- Eleven distinct Ledger tools available before the first request; status/search
+  read the correct real workspace without migration.
+- Empty root: eleven tools, `NO_WORKSPACE`, no init or fallback. Real and initialized
+  synthetic Agents coexisted; both cross-root assertions were rejected.
+- Shell cd left the binding unchanged. Dispose released the scoped transport/process.
+  Resume and an independent Host process restart restored the persisted header root.
+- Native Profile manager OFF gave new Agents zero tools; existing Agents retained
+  eleven. ON gave new Agents eleven tools.
+- Real Ledger file bytes, file set, generation and mtimes were identical before/after.
+  No mutation tool or model was called; no runtime or adapter source was modified.
+
+After those checks, the old config-only Bundle was deselected from the Profile's
+bundle list, its temporary disable override removed, and a new Agent again exposed
+exactly eleven tools. The fallback files and verified rollback backup were retained.
+Desktop restarted with the Host plugin as default. Private logs, fingerprints,
+session identities and configuration copies remain outside public source artifacts.
+
+This was pre-release code acceptance before the formal 1.2.2 version bump. Existing
+installations still need an explicit wheel/package update and restart to adopt that
+identity. rc.2, macOS/Linux, UNC and GUI conversational acceptance remain unverified.
+See the [capability matrix](harness-capability-matrix.md).

@@ -26,7 +26,7 @@ spec.loader.exec_module(prep)
 
 def test_manifest_locale_icon_and_no_adapter():
     package = json.loads((BUNDLE / "package.json").read_text("utf-8"))
-    assert package["version"] == __version__ == "1.2.1"
+    assert package["version"] == __version__ == "1.2.2"
     assert package["dsh"]["bundle"]["patch"] == "./cordis.patch.yml"
     assert package["files"] == [
         "cordis.patch.yml",

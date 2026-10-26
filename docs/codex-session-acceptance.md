@@ -124,16 +124,21 @@ Codex home and synthetic Git/initialized/empty roots inside it; it uses native
 configuration writes/reload for plugin policy, not direct server injection. The
 runtime must have this checkout's freshly built wheel with MCP installed.
 
-## Remaining deployment boundary
+## Later controlled real-workspace cutover (2026-10-26)
 
-Real project direct MCP was not removed and no real configuration was edited. A
-later authorized cutover should back up config, install the prepared native package
-with the new runtime, disable the old direct entry and stale bundled-server override,
-then open a fresh session at the exact research root. Verify eleven tools, reported
-root and scoped status/search; verify OFF yields zero tools before retiring the old
-entry permanently. Keep the backup for rollback.
+A separately authorized cutover subsequently upgraded the persistent runtime to the
+accepted development implementation, refreshed the native package, and retired the
+old project direct MCP and bundled-server disable override after eleven/zero/eleven
+acceptance. Shared Skill availability followed plugin policy. Status/search reported
+the correct root, cross-workspace assertions were rejected, and all Ledger file
+contents, generation and mtimes remained unchanged. Backups remain local.
 
-Actual Desktop GUI switch interaction and the real-workspace cutover remain untested
-for this deployment. macOS/Linux Host behavior and UNC/network paths are untested.
-Neither this acceptance nor installation changes permissions, integrity labels or
-authentication. Research initialization requires explicit user authorization.
+That cutover used native plugin-policy/app-server APIs and fresh sessions, not GUI
+conversational turns. It does not add persisted `thread/resume` coverage. The earlier
+isolated counts above remain historical results, not the 1.2.2 release regression
+count. See the [current capability matrix](harness-capability-matrix.md).
+
+macOS/Linux Host behavior, UNC/network roots and GUI conversational acceptance are
+unverified. This release preparation changes metadata/documentation, not the user's
+installed runtime or configuration. Refresh packages and restart after installing
+1.2.2. Research initialization still requires explicit user authorization.

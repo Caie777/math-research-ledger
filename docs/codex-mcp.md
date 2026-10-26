@@ -1,17 +1,17 @@
 # Codex integration
 
 Use the **Codex-native plugin package** prepared below: one plugin contains the shared
-Ledger skill and a bundled stdio MCP server. Plugin ON exposes eleven tools in this
-1.2.2 development checkout; OFF removes its skill and tools. Published 1.2.1 still has
-nine tools. Keep the Python runtime outside both the plugin cache and research data.
-For this unreleased checkout, use a new runtime: formal package version is still
-1.2.1, so an existing runtime may retain the older same-version wheel. Verify the
-installed implementation and eleven-tool discovery before adopting it.
+Ledger skill and a bundled stdio MCP server. Plugin ON exposes eleven tools in
+1.2.2; OFF removes its skill and tools. Keep the Python runtime outside both the
+plugin cache and research data. Updating source or package metadata does not update
+an installed runtime: install the 1.2.2 wheel with MCP dependencies, refresh the
+prepared native package and start fresh sessions/restart. Verify the installed
+implementation and eleven-tool discovery before adopting it.
 
 ## Prepare and install
 
-Install Python 3.12 (3.11+ supported by the package). Build a wheel from this checkout
-for the unreleased eleven-tool implementation. Run these commands from the tool checkout:
+Install Python 3.12 (3.11+ supported by the package). Use the 1.2.2 wheel or build
+one from the matching checkout. Run these commands from the tool checkout:
 
 ```powershell
 python -m build --wheel
@@ -131,7 +131,7 @@ Set `false` to disable the plugin as a whole. Trusted project settings can overr
 user defaults; remove stale per-server disabled overrides when adopting this deployment.
 There must be no additional project direct MCP for Ledger, otherwise disabling the
 plugin cannot disable that independent server. Verify exactly eleven tools ON and
-zero OFF in this development version.
+zero OFF.
 
 Native config change plus `config/mcpServer/reload` removed skill/tools in an existing
 isolated session and restored them on ON. The existing idle Python processes remained
@@ -163,8 +163,10 @@ Before switching an existing project: back up local config, install the prepared
 native package, stop old sessions, remove only the Ledger direct-server entry and
 its bundled-server disabled override, enable the plugin, then create a session at
 the exact research root. Check tool count, reported root and a scoped read before
-using writes; test OFF too. Keep the backup for rollback. **This development task
-has not changed any real research project's configuration or removed its direct MCP.**
+using writes; test OFF too. Keep the backup for rollback. A controlled Windows
+0.160.0 real-workspace cutover passed using native policy/app-server APIs and
+zero-write reads; its old direct MCP was retired. This is not GUI conversational
+acceptance. See the [capability matrix](harness-capability-matrix.md).
 
 ## Reproduce isolated acceptance
 
@@ -179,4 +181,5 @@ marketplace, synthetic Git/workspace fixtures and TMP/TEMP; it never copies logi
 state. It exercises native app-server APIs without a model turn. Windows process
 checks inspect PID/parent/executable names only. Evidence stays under ignored `dist/`.
 See the [acceptance matrix and limitations](codex-session-acceptance.md). Actual
-Desktop GUI interaction and a real-workspace switch remain separate user steps.
+Desktop GUI conversational acceptance remains unverified; the controlled real-workspace
+switch is recorded separately from isolated acceptance.

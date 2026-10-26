@@ -7,9 +7,9 @@ MathResearch Ledger 不是另一个研究 Agent runtime。外部 Agent 负责研
 
 [English](README.md) · [更新记录](CHANGELOG.md)
 
-**1.2.2 development：**当前源码新增 [Problem lifecycle](docs/problem-lifecycle.md)，
-共十一个工具。已发布 1.2.1 为九个工具；正式版本元数据暂保持 1.2.1，等待单独发布任务。
-十一个工具已有隔离 Windows Codex 0.160.0 发现验证；真实工作区验收仍为先前 1.2.1 的记录。
+**1.2.2：**十一个工具，包含 [Problem lifecycle](docs/problem-lifecycle.md)、Codex session-workspace
+bundled MCP 与 DSH per-Agent workspace 绑定。见[发布说明](docs/releases/v1.2.2.md)、
+[Adapter Contract](docs/adapter-contract.md) 和[实测能力矩阵](docs/harness-capability-matrix.md)。
 
 ## 为什么需要研究 Ledger？
 
@@ -42,7 +42,7 @@ workspace 必须在工具仓库之外，由用户显式初始化。init 创建�
 保留已有指令和普通文件，不创建 demo 研究对象。上面的 create-problem 创建用户显式指定的问题。
 
 也可从 [GitHub Releases](https://github.com/Caie777/math-research-ledger/releases) 下载 wheel，
-用 `python -m pip install './math_research_ledger-1.2.1-py3-none-any.whl[mcp]'` 安装。
+用 `python -m pip install './math_research_ledger-1.2.2-py3-none-any.whl[mcp]'` 安装。
 接着按 [Codex 安装指南](docs/codex-mcp.md) 安装插件，在研究项目启用并新开会话。
 安装与启用是两步；普通项目可关闭。独立 MCP client 可用 stdio 启动
 `math-research-ledger-mcp --workspace '<research-workspace>'`，MCP 不会初始化缺失的工作区。
@@ -105,11 +105,12 @@ Harness 拥有 workspace，用户拥有普通文件，Ledger 只拥有 `.math-re
 - **Codex：**用持久 runtime 准备 Codex-native 插件，插件 ON/OFF 统一控制共享 skill 和 bundled MCP。
   `--workspace .` 精确绑定 Host 提供的启动 session cwd，不查找父目录，不自动初始化。
   见 [Codex 指南](docs/codex-mcp.md) 和 [验收矩阵](docs/codex-session-acceptance.md)。
-  这是 Codex 0.160.0 的实测行为，不是官方保证的 project-root API；本轮只验收隔离合成工作区。
+  这是 Windows Codex 0.160.0 的实测行为，不是官方保证的 project-root API；真实工作区只读 cutover 已通过。
 - **DeepSeek Harness：**推荐 [Agent Host plugin](integrations/deepseek-harness/README.md)，
   通过官方 MCP client 按 Agent 的不可变 session root 绑定。Windows DSH 0.2.1-rc.3 已通过
-  十一个工具、隔离、resume 和生命周期的 synthetic factory 验收。configuration-only Bundle
-  保留为单工作区 fallback；其此前 rc.2 真实工作区验收属于另一部署方式。
+  隔离 Host 和真实 Profile 只读 cutover，覆盖十一个工具、隔离、resume 和 OFF/ON。
+  configuration-only Bundle 保留为 manual / single-workspace fallback；不要同时启用两种部署。
+  rc.2 对当前 adapter 未验证；不声称已完成 GUI 对话验收。
 
 [已知限制](docs/known-limitations.md)：DSH macOS/Linux、真实研究 corpus 的正式写入尚未专门验收；
 每个 MCP 会话仅绑定一个工作区。插件不修改权限或 Full Access，GitHub 发布不代表已上架公开插件目录。

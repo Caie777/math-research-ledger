@@ -1,6 +1,6 @@
 # DeepSeek Harness
 
-The development default is the [Agent Host plugin](host-plugin/README.md) for
+The 1.2.2 default is the [Agent Host plugin](host-plugin/README.md) for
 **DSH 0.2.1-rc.3**. It uses the same Python MCP server, but binds each Agent to its
 Host-provided immutable `agent.session.header.cwd`. A serial `agent/created` listener
 awaits the scoped official MCP client before Agent creation returns. No workspace
@@ -13,7 +13,8 @@ python scripts/prepare_dsh_host_plugin.py --out '<new-plugin-directory>' --pytho
 dsh plugin --profile '<profile>' add '<new-plugin-directory>'
 ```
 
-Use this checkout's wheel+[mcp] for eleven tools; formal metadata still reads 1.2.1.
+Install the matching 1.2.2 wheel+[mcp] for eleven tools. Refresh local packages and
+start new sessions/restart after updates; existing runtimes are not upgraded automatically.
 Preparation only renders the Python path, never installs/changes the runtime or
 initializes research data. Rendered packages contain a private runtime path. The
 public unrendered package uses `__MRL_PYTHON__`, which must be configured before
@@ -33,29 +34,32 @@ Shared workflow comes from the same MCP server instructions; no DSH policy is ad
 to the shared Codex skill. See [scope/lifecycle acceptance](../../docs/dsh-agent-workspace-acceptance.md).
 
 Uninstall through `dsh plugin --profile '<profile>' remove dsh-math-research-ledger-host`.
-No research data is deleted. This task changed no real Profile or research workspace.
-rc.2 and macOS/Linux acceptance of the new Host adapter are unverified.
+No research data is deleted. Windows rc.3 real Profile cutover passed through the
+official Desktop Host entry: eleven tools, real-workspace status/search, empty and
+synthetic isolation, disposal, persisted resume, independent Host restart and
+new-Agent OFF/ON. The Ledger remained byte-for-byte unchanged and the old default
+was deselected. No GUI conversational turn or real-corpus mutation was tested.
+See the [capability matrix](../../docs/harness-capability-matrix.md).
+rc.2, macOS/Linux and UNC acceptance of the new Host adapter are unverified.
 
 ## Single-workspace/manual fallback
 
 The retained **configuration-only Bundle** uses DSH's built-in
 `@deepseek-ai/dsh-mcp-client`. It launches an external, persistent Python runtime with
-`--workspace <research-workspace>` and exposes the same eleven tools as Codex (development checkout). Python
+`--workspace <research-workspace>` and exposes the same eleven tools as Codex in 1.2.2. Python
 **3.12** is recommended. DSH manages the process lifecycle and native Plugins OFF/ON.
 
-Windows Desktop **DSH 0.2.1-rc.2 / Python 3.12.10** Host acceptance passed: synthetic
-read/write, real-workspace zero-write reads, restart persistence, OFF/ON and
-cross-workspace rejection. DSH macOS/Linux and formal real-corpus writes are untested.
-That acceptance covers released 1.2.1's nine tools; the two lifecycle tools have
-synthetic stdio coverage and have not been tested in a real DSH Host.
+The fallback retains its fixed startup workspace and official MCP client behavior.
+Its earlier nine-tool deployment is a historical record, not acceptance of the
+current Host adapter or a claim about rc.2 compatibility. The current eleven-tool
+Host adapter was tested on rc.3. Real-corpus mutations and macOS/Linux are untested.
 See the [Problem lifecycle contract](../../docs/problem-lifecycle.md) and the [acceptance record](../../docs/archive/2026-10/dsh-host-acceptance-2026-10-23.md).
 
 ### Prepare and install fallback
 
-For the unreleased lifecycle tools, build a local wheel from this checkout with
-`python -m build --wheel`. Published packages are available from
-[GitHub Releases](https://github.com/Caie777/math-research-ledger/releases); 1.2.1 has
-nine tools. Run preparation from the matching checkout or extracted source archive
+Use the matching 1.2.2 wheel or build it with `python -m build --wheel`.
+Published packages are available from
+[GitHub Releases](https://github.com/Caie777/math-research-ledger/releases). Run preparation from the matching checkout or extracted source archive
 with an existing initialized research workspace:
 
 ```powershell

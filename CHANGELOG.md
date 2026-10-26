@@ -1,13 +1,25 @@
 # Changelog
 
-## 1.2.2 development — unreleased
+## [1.2.2] - 2026-10-26
 
-- Add explicit Problem create/update MCP tools (eleven total); retain the original
-  nine schemas. Preview without writes; allocate IDs under the checkpoint writer.
-- Separate active/paused/closed project lifecycle and metadata from explicit semantic
-  statement/target revision. Preserve legacy mathematical pins during metadata edits.
-- Reuse existing version history and dependency freshness; closure never grants
-  verification or human acceptance. Package/plugin metadata remains 1.2.1 for now.
+### Added
+
+- Problem lifecycle MCP tools: `research_create_problem` and `research_update_problem`,
+  with preview and explicit metadata/lifecycle versus semantic revision boundaries.
+- Codex session-workspace bundled MCP and DSH per-Agent Host plugin integration.
+- Shared adapter contract and measured Harness capability matrix.
+
+### Changed
+
+- Codex's normal deployment bundles Skill and MCP; project-level direct MCP is fallback.
+- DSH Host plugin is recommended; config-only Bundle is manual / single-workspace fallback.
+- Explicit MCP workspace binding enforces the supplied exact root.
+
+### Fixed
+
+- Explicit state-directory compatibility aliases can no longer bind a parent Ledger
+  through MCP. Shared human path-helper compatibility remains available.
+- Runtime/deployment documentation clarifies installation, refresh and restart requirements.
 
 ## 1.2.1 — 2026-10-23
 

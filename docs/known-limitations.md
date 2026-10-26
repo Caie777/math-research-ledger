@@ -9,10 +9,11 @@
 - **Read consistency has a cost.** Content fingerprinting adds measurable latency;
   large Ledgers may need more time for status/context reads. See the recorded
   [read-consistency measurements](archive/2026-10/read-only-checkpoint-2026-10-23.md).
-- **Host coverage is specific.** Windows Codex fresh-session and DSH Desktop
-  0.2.1-rc.2 acceptance passed, including real-workspace zero-write reads, workspace
-  rejection and DSH synthetic writes/OFF/ON. Formal writes to a real research corpus
-  were not separately exercised. DSH macOS/Linux Host acceptance is untested.
+- **Host coverage is specific.** Windows Codex 0.160.0 and DSH 0.2.1-rc.3 have
+  isolated native Host acceptance and controlled real-workspace/Profile read-only
+  cutover evidence. GUI conversational acceptance, macOS/Linux Host behavior,
+  UNC/network roots and real-corpus mutations remain unverified. DSH rc.2 is
+  unverified for the current Host adapter. See the [capability matrix](harness-capability-matrix.md).
 - **Permissions remain the operator's responsibility.** Pure reads do not create a
   state-directory lock; writes still need write permission. The plugin never changes
   ACLs, integrity labels, ownership, authentication or Full Access. For startup errors,
@@ -24,17 +25,19 @@
   establish mathematical truth or general long-term research reliability.
 
 For installation, see [Codex](codex-mcp.md) or
-[DeepSeek Harness](../integrations/deepseek-harness/README.md). The
-[Host acceptance record](archive/2026-10/dsh-host-acceptance-2026-10-23.md) identifies
-the tested candidate and the source of the real-session evidence.
+[DeepSeek Harness](../integrations/deepseek-harness/README.md).
+Version 1.2.2 adds two [Problem lifecycle tools](problem-lifecycle.md), for eleven
+in total. Mutation coverage for those tools is synthetic; real cutovers only
+registered them and used read operations.
 
-The 1.2.2 development checkout adds two [Problem lifecycle tools](problem-lifecycle.md),
-for eleven total. Formal version metadata remains 1.2.1; published 1.2.1 has nine.
-These two tools have synthetic stdio coverage, without new real-workspace Desktop GUI acceptance.
-The eleven-tool Codex-native plugin also has isolated Windows Codex 0.160.0
-[session/ON/OFF acceptance](codex-session-acceptance.md). It relies on that version's
-inherited session cwd, not an official project-root variable. Agent Plugins 1.0 has
-different cwd defaults: install the prepared Codex-native package, not this checkout's
-portable root manifest. OFF removes skill/tools; the Host may retain idle processes
-until thread archive or app-server exit. macOS/Linux, UNC and actual Desktop GUI
-switching of this new deployment have not been tested.
+Codex binding relies on measured inherited session cwd in 0.160.0, not an official
+stable project-root variable. Install the prepared Codex-native package; the portable
+Agent Plugins layout has different cwd defaults. OFF removes Skill/tools, while
+idle processes may remain until thread archive or Host closure. Persisted Codex
+thread resume was not separately verified. DSH OFF affects new Agents; existing
+Agents retain clients until disposal. Neither adapter hot-rebinds an existing root.
+
+Updating source or plugin metadata does not upgrade an installed persistent Python
+runtime. Explicitly install the matching wheel, refresh local packages and start new
+sessions/restart. Read the [adapter contract](adapter-contract.md) before extending
+Host-specific behavior; Core, schemas, authority and checkpoint semantics are shared.

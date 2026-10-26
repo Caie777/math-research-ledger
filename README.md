@@ -10,10 +10,10 @@ same research workspace into the next session without reconstructing it from cha
 
 [中文说明](README.zh-CN.md) · [Changelog](CHANGELOG.md)
 
-**1.2.2 development:** this checkout adds [Problem lifecycle](docs/problem-lifecycle.md)
-and exposes eleven tools. Published 1.2.1 has nine; formal version metadata remains
-1.2.1 until a separate release. All eleven tools are discovered in isolated Windows
-Codex 0.160.0 sessions; real-workspace acceptance remains the earlier 1.2.1 record.
+**1.2.2:** eleven tools, including [Problem lifecycle](docs/problem-lifecycle.md),
+Codex session-workspace bundled MCP and DSH per-Agent workspace binding.
+See the [release notes](docs/releases/v1.2.2.md), [adapter contract](docs/adapter-contract.md)
+and [measured capability matrix](docs/harness-capability-matrix.md).
 
 ## Why keep a research ledger?
 
@@ -63,7 +63,7 @@ It creates empty state, `workspace.yaml` and research `AGENTS.md`, preserves exi
 instructions and ordinary files, and creates no demonstration research objects.
 The `create-problem` command above creates the Problem you explicitly request.
 
-For a downloaded wheel, use `python -m pip install './math_research_ledger-1.2.1-py3-none-any.whl[mcp]'`
+For a downloaded wheel, use `python -m pip install './math_research_ledger-1.2.2-py3-none-any.whl[mcp]'`
 instead of the editable install. See [GitHub Releases](https://github.com/Caie777/math-research-ledger/releases).
 Then follow [Codex plugin setup](docs/codex-mcp.md), enable the plugin for your research
 project and start a fresh session. Installation and enablement are separate; ordinary
@@ -143,9 +143,10 @@ Git-local exclusions. Historical provenance is not rewritten by tool upgrades.
   behavior, not a guaranteed project-root API. See the [acceptance matrix](docs/codex-session-acceptance.md).
 - **DeepSeek Harness:** the [Agent Host plugin](integrations/deepseek-harness/README.md)
   binds each new Agent to its immutable session root through the official MCP client.
-  Windows DSH 0.2.1-rc.3 synthetic factory acceptance covers eleven tools, isolation,
-  resume and lifecycle. The configuration-only Bundle remains a single-workspace
-  fallback; its earlier rc.2 real-workspace acceptance is a separate deployment.
+  Windows DSH 0.2.1-rc.3 isolated Host and real Profile read-only cutover passed,
+  including eleven tools, workspace isolation, resume and OFF/ON. The configuration-only
+  Bundle remains a manual / single-workspace fallback. Do not enable both at once.
+  rc.2 is unverified for this adapter; GUI conversational acceptance is not claimed.
 
 [Known limitations](docs/known-limitations.md): DSH macOS/Linux and formal writes to a
 real research corpus have not been separately validated. Each MCP session has one pinned

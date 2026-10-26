@@ -1,8 +1,8 @@
-# Problem lifecycle (1.2.2 development)
+# Problem lifecycle (1.2.2)
 
-The development checkout exposes eleven MCP tools. The published 1.2.1 release has
-nine; its recorded real Host acceptance does not cover these two new tools.
-Formal package/plugin versions remain 1.2.1 until a separate release task.
+Version 1.2.2 exposes eleven MCP tools. Problem create/update have synthetic mutation
+coverage and real Host registration checks. The read-only deployment cutovers did
+not mutate Problems in a real research corpus.
 
 ## Create an explicit research line
 

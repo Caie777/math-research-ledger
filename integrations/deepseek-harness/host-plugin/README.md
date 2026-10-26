@@ -1,7 +1,7 @@
 # MathResearch Ledger Agent Host plugin
 
-The 1.2.2 development default for DSH **0.2.1-rc.3**. Formal package identity is
-still 1.2.1; use a wheel built from this development checkout for eleven tools.
+The 1.2.2 default for DSH **0.2.1-rc.3**. Install the matching Python wheel with
+MCP dependencies into a persistent runtime for eleven tools.
 The adapter contains no research logic: it awaits the official MCP client inside
 each new Agent's scope, using the Host's immutable `agent.session.header.cwd`.
 The existing Python server supplies the shared research workflow instructions.
@@ -45,6 +45,8 @@ changes, authentication handling or automatic authority promotion is added.
 
 Windows rc.3 synthetic factory acceptance covers isolation, concurrent writers,
 exact roots, first-request readiness, disposal, persistence/resume and ON/OFF.
-rc.2, macOS/Linux and real-workspace Desktop acceptance of this new deployment are
+The real rc.3 Profile cutover also passed read-only access, isolation, resume,
+Host restart and new-Agent OFF/ON with zero Ledger writes. This used the official
+Desktop Host entry, not GUI conversational turns. rc.2, macOS/Linux and UNC are
 unverified. See `integrations/deepseek-harness/README.md` in the source archive for
 the complete matrix, reproduction and the retained fallback deployment.
