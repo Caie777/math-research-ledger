@@ -9,7 +9,7 @@ MathResearch Ledger 不是另一个研究 Agent runtime。外部 Agent 负责研
 
 **1.2.2 development：**当前源码新增 [Problem lifecycle](docs/problem-lifecycle.md)，
 共十一个工具。已发布 1.2.1 为九个工具；正式版本元数据暂保持 1.2.1，等待单独发布任务。
-新工具已有 synthetic stdio 验证；1.2.1 的真实 Host 验收不覆盖这两个工具。
+十一个工具已有隔离 Windows Codex 0.160.0 发现验证；真实工作区验收仍为先前 1.2.1 的记录。
 
 ## 为什么需要研究 Ledger？
 
@@ -102,9 +102,10 @@ Harness 拥有 workspace，用户拥有普通文件，Ledger 只拥有 `.math-re
 
 ## 集成与限制
 
-- **Codex：**推荐项目级 direct MCP，使用持久 runtime 和启动时 workspace pin；保留插件 skill，
-  关闭 bundled MCP，避免重复工具。见 [Codex 指南](docs/codex-mcp.md)。已发布 1.2.1 的 Windows 新会话验收
-  已通过：仅一套九个工具、真实工作区零写入读取、跨工作区拒绝。
+- **Codex：**用持久 runtime 准备 Codex-native 插件，插件 ON/OFF 统一控制共享 skill 和 bundled MCP。
+  `--workspace .` 精确绑定 Host 提供的启动 session cwd，不查找父目录，不自动初始化。
+  见 [Codex 指南](docs/codex-mcp.md) 和 [验收矩阵](docs/codex-session-acceptance.md)。
+  这是 Codex 0.160.0 的实测行为，不是官方保证的 project-root API；本轮只验收隔离合成工作区。
 - **DeepSeek Harness：**推荐 [configuration-only Bundle](integrations/deepseek-harness/README.md)，
   由 DSH 原生 MCP client 连接外部 Python runtime（推荐 3.12）。Windows Desktop 0.2.1-rc.2
   真实 Host 验收已通过，包括 synthetic 写入、真实工作区只读及原生 Plugins OFF/ON。

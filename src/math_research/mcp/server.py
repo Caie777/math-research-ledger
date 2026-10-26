@@ -58,7 +58,7 @@ def resolve_workspace(
     cwd: Path | None = None,
     environ: Mapping[str, str] | None = None,
 ) -> Path:
-    """Explicit flag > MRL_WORKSPACE > legacy SMR_WORKSPACE > cwd; never initialize."""
+    """Explicit sources are exact roots; absent those, discover cwd/ancestors; never init."""
     env = os.environ if environ is None else environ
     here = Path.cwd() if cwd is None else cwd
     selected = (
@@ -70,7 +70,9 @@ def resolve_workspace(
             root = here / root
         root = root.resolve()
         state = state_at(root)
-        if state is not None:
+        # state_at also accepts state-directory aliases for human/legacy callers.
+        # Explicit MCP authority names a workspace root, never its parent's state.
+        if state is not None and state.parent == root:
             return state
         raise WorkspaceError(
             "Selected workspace has no .math-research-ledger directory (or legacy state)."

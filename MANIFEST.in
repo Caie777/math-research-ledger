@@ -1,6 +1,7 @@
 include plugin.json mcp.json README.zh-CN.md
 include CHANGELOG.md
 include .codex-plugin/plugin.json
+include .mcp.json
 recursive-include scripts *.py
 recursive-include skills *.md
 include integrations/deepseek-harness/*.md

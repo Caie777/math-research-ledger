@@ -30,4 +30,11 @@ the tested candidate and the source of the real-session evidence.
 
 The 1.2.2 development checkout adds two [Problem lifecycle tools](problem-lifecycle.md),
 for eleven total. Formal version metadata remains 1.2.1; published 1.2.1 has nine.
-These two tools have synthetic stdio coverage, without new real Host acceptance.
+These two tools have synthetic stdio coverage, without new real-workspace Desktop GUI acceptance.
+The eleven-tool Codex-native plugin also has isolated Windows Codex 0.160.0
+[session/ON/OFF acceptance](codex-session-acceptance.md). It relies on that version's
+inherited session cwd, not an official project-root variable. Agent Plugins 1.0 has
+different cwd defaults: install the prepared Codex-native package, not this checkout's
+portable root manifest. OFF removes skill/tools; the Host may retain idle processes
+until thread archive or app-server exit. macOS/Linux, UNC and actual Desktop GUI
+switching of this new deployment have not been tested.

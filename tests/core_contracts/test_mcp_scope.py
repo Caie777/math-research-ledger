@@ -32,6 +32,75 @@ def call(server, name="research_status", **arguments):
     return anyio.run(run)
 
 
+@pytest.mark.parametrize("location", ["root", "state", "subdir", "ordinary"])
+def test_codex_dot_is_exact_immutable_startup_root(research, tmp_path, monkeypatch, location):
+    state, _ = research
+    root = state.parent
+    directory = {
+        "root": root,
+        "state": state,
+        "subdir": root / "child",
+        "ordinary": tmp_path / "ordinary",
+    }[location]
+    directory.mkdir(exist_ok=True)
+    # Even valid env/ancestor candidates must lose to explicit dot.
+    monkeypatch.setenv("MRL_WORKSPACE", str(root))
+    monkeypatch.setenv("SMR_WORKSPACE", str(root))
+    monkeypatch.chdir(directory)
+    server = transport.create_server(Path("."))
+    monkeypatch.chdir(root if location != "root" else root.parent)
+    monkeypatch.delenv("MRL_WORKSPACE")
+    result = call(server)
+    if location == "root":
+        assert not result.isError
+        assert result.structuredContent["workspace_root"] == str(root)
+    else:
+        assert result.isError
+        assert result.structuredContent["error"]["code"] == "NO_WORKSPACE"
+        assert not (directory / ".math-research-ledger").exists()
+
+
+@pytest.mark.parametrize("source", ["flag", "MRL_WORKSPACE", "SMR_WORKSPACE"])
+@pytest.mark.parametrize("location", ["root", "state", "subdir"])
+def test_all_explicit_sources_require_exact_root(research, monkeypatch, source, location):
+    state, _ = research
+    root = state.parent
+    selected = {"root": root, "state": state, "subdir": root / "child"}[location]
+    selected.mkdir(exist_ok=True)
+    monkeypatch.chdir(root)
+    monkeypatch.delenv("MRL_WORKSPACE", raising=False)
+    monkeypatch.delenv("SMR_WORKSPACE", raising=False)
+    if source == "flag":
+        server = transport.create_server(selected)
+    else:
+        monkeypatch.setenv(source, str(selected))
+        server = transport.create_server()
+    result = call(server)
+    if location == "root":
+        assert not result.isError and Path(result.structuredContent["workspace_root"]) == root
+    else:
+        assert result.isError and result.structuredContent["error"]["code"] == "NO_WORKSPACE"
+        assert not (selected / ".math-research-ledger").exists()
+
+
+@pytest.mark.parametrize("dirname", [".math-research-ledger", ".math-research"])
+def test_legacy_alias_and_implicit_discovery_are_unchanged(tmp_path, dirname):
+    from math_research.core.paths import state_at
+
+    state = tmp_path / dirname
+    state.mkdir()
+    nested = tmp_path / "nested" / "deep"
+    nested.mkdir(parents=True)
+    assert state_at(state) == state  # Shared compatibility API is intentionally retained.
+    for cwd in (tmp_path, nested, state):
+        assert transport.resolve_workspace(cwd=cwd, environ={}) == state
+    for source in ("MRL_WORKSPACE", "SMR_WORKSPACE"):
+        with pytest.raises(transport.WorkspaceError):
+            transport.resolve_workspace(cwd=nested, environ={source: str(state)})
+    with pytest.raises(transport.WorkspaceError):
+        transport.resolve_workspace(state, cwd=nested, environ={})
+
+
 @pytest.fixture
 def second(tmp_path_factory):
     root = tmp_path_factory.mktemp("second-ledger")
@@ -158,6 +227,19 @@ def test_resolved_directory_alias_obeys_exact_root_pin(research, second, same):
             assert result.structuredContent["workspace_root"] == str(state.parent)
         else:
             assert result.structuredContent["error"]["code"] == "WORKSPACE_OUT_OF_SCOPE"
+    finally:
+        remove_alias(link)
+
+
+def test_explicit_startup_junction_is_canonical_root(research):
+    state, _ = research
+    link = state.parent / "startup-alias"
+    alias(link, state.parent)
+    try:
+        result = call(transport.create_server(link))
+        assert (
+            not result.isError and Path(result.structuredContent["workspace_root"]) == state.parent
+        )
     finally:
         remove_alias(link)
 

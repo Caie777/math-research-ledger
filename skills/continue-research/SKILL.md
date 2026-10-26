@@ -16,8 +16,10 @@ not verification or acceptance. Do not turn lifecycle changes into Claim authori
 
 Omit `workspace` normally: the server session is pinned at startup. The optional
 compatibility field can only assert the same resolved root; it cannot select another
-Ledger. On NO_WORKSPACE, ask the operator to configure startup `--workspace` or
-`MRL_WORKSPACE` and restart; do not try other paths. MCP roots alone do not grant scope.
+Ledger. On NO_WORKSPACE, explain that the startup root has no initialized Ledger;
+ask whether to initialize there, or restart in the intended workspace. Never initialize
+without explicit authorization, try other roots or fall back to a parent directory.
+MCP roots alone do not grant scope.
 
 Keep research hot paths light. At meaningful checkpoints, submit complete Markdown
 through `research_ingest_episode`: separate Confirmed Research Increment from advisory

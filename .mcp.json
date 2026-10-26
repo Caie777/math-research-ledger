@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "math-research-ledger": {
+      "command": "python",
+      "args": ["-B", "-m", "math_research.mcp.server", "--workspace", "."]
+    }
+  }
+}

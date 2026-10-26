@@ -12,8 +12,8 @@ same research workspace into the next session without reconstructing it from cha
 
 **1.2.2 development:** this checkout adds [Problem lifecycle](docs/problem-lifecycle.md)
 and exposes eleven tools. Published 1.2.1 has nine; formal version metadata remains
-1.2.1 until a separate release. The new tools have synthetic stdio coverage; real Host
-acceptance recorded for 1.2.1 does not cover them.
+1.2.1 until a separate release. All eleven tools are discovered in isolated Windows
+Codex 0.160.0 sessions; real-workspace acceptance remains the earlier 1.2.1 record.
 
 ## Why keep a research ledger?
 
@@ -136,10 +136,11 @@ Git-local exclusions. Historical provenance is not rewritten by tool upgrades.
 
 ## Integrations and limitations
 
-- **Codex:** use a project-local direct MCP server with a persistent runtime and startup
-  workspace pin; retain the plugin skill and disable its bundled MCP to avoid duplicates.
-  [Installation and configuration](docs/codex-mcp.md). Released 1.2.1 Windows fresh-session acceptance
-  passed with one set of nine tools, zero-write reads and cross-workspace rejection.
+- **Codex:** prepare the Codex-native plugin with a persistent runtime; one plugin ON/OFF
+  controls its shared skill and bundled MCP. The server binds exactly to the Host's
+  startup session cwd using `--workspace .`, without parent discovery or auto-init.
+  [Installation and configuration](docs/codex-mcp.md). This is tested Codex 0.160.0
+  behavior, not a guaranteed project-root API. See the [acceptance matrix](docs/codex-session-acceptance.md).
 - **DeepSeek Harness:** the [configuration-only Bundle](integrations/deepseek-harness/README.md)
   uses DSH's native MCP client and an external Python runtime (3.12 recommended).
   Windows Desktop 0.2.1-rc.2 Host acceptance passed, including synthetic writes,

@@ -289,9 +289,10 @@ class RawClient:
 
 
 @contextmanager
-def raw_client(cwd, args=(), env=None):
+def raw_client(cwd, args=(), env=None, *, module=False):
+    entry = ["-m", "math_research.mcp.server"] if module else [str(LAUNCHER)]
     process = subprocess.Popen(
-        [sys.executable, "-B", str(LAUNCHER), *map(str, args)],
+        [sys.executable, "-B", *entry, *map(str, args)],
         cwd=cwd,
         env=environment() if env is None else env,
         stdin=subprocess.PIPE,
@@ -317,6 +318,34 @@ def raw_client(cwd, args=(), env=None):
         process.communicate(timeout=10)
 
 
+@pytest.mark.parametrize("location", ["root", "state", "subdir", "ordinary"])
+def test_codex_module_entry_registers_tools_and_binds_exact_dot(research, tmp_path, location):
+    state, _ = research
+    root = state.parent
+    directory = {
+        "root": root,
+        "state": state,
+        "subdir": root / "nested",
+        "ordinary": tmp_path / "empty",
+    }[location]
+    directory.mkdir(exist_ok=True)
+    with raw_client(
+        directory,
+        ["--workspace", "."],
+        env={**environment(), "MRL_WORKSPACE": str(root)},
+        module=True,
+    ) as client:
+        assert len(client.request("tools/list")["tools"]) == 11
+        result = client.call("research_status", {})
+        if location == "root":
+            assert not result.get("isError")
+            assert result["structuredContent"]["workspace_root"] == str(root)
+        else:
+            assert result["isError"]
+            assert result["structuredContent"]["error"]["code"] == "NO_WORKSPACE"
+            assert not (directory / ".math-research-ledger").exists()
+
+
 def test_resolution_precedence_no_init_and_raw_protocol(tmp_path, research):
     state, ref = research
     other = tmp_path / "其他 workspace with spaces"
@@ -330,7 +359,8 @@ def test_resolution_precedence_no_init_and_raw_protocol(tmp_path, research):
     assert resolve_workspace(state.parent, cwd=nested, environ=env) == state
     assert resolve_workspace(cwd=nested, environ=env) == other / ".math-research-ledger"
     assert resolve_workspace(cwd=nested, environ={}) == state
-    assert resolve_workspace(state, environ={}) == state
+    with pytest.raises(WorkspaceError):
+        resolve_workspace(state, environ={})
     empty = tmp_path / "empty"
     empty.mkdir()
     with pytest.raises(WorkspaceError):

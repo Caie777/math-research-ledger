@@ -1,7 +1,8 @@
-"""Stage a portable local plugin; optionally pin a developer Python interpreter.
+"""Stage the Codex-native plugin with an existing persistent Python runtime.
 
-The staged package contains source and instructions, never a workspace or venv.
-Install .[mcp] dependencies into the selected interpreter before starting a host.
+Install the Ledger wheel with [mcp] into that runtime first. No research path,
+runtime, source copy or credentials enter the package. Do not add root plugin.json:
+its Agent Plugins loader defaults cwd to PLUGIN_ROOT rather than session cwd.
 """
 
 import argparse
@@ -13,26 +14,22 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def prepare(destination: Path, python: str = "python") -> None:
+def prepare(destination: Path, python: str = sys.executable) -> None:
     destination = destination.resolve()
     if destination.exists():
         raise ValueError("Choose a new package directory; never overwrite an existing install.")
+    # Preserve a POSIX venv's python symlink: resolving it selects the base Python.
+    interpreter = Path(python).expanduser().absolute()
+    interpreter.stat()
+    if not interpreter.is_file():
+        raise ValueError("Select the persistent runtime's Python executable.")
     destination.mkdir(parents=True)
-    for filename in ("plugin.json", "LICENSE"):
-        shutil.copyfile(ROOT / filename, destination / filename)
+    shutil.copyfile(ROOT / "LICENSE", destination / "LICENSE")
     for directory in ("skills", ".codex-plugin"):
         shutil.copytree(ROOT / directory, destination / directory)
-    shutil.copytree(
-        ROOT / "src/math_research",
-        destination / "src/math_research",
-        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
-    )
-    (destination / "scripts").mkdir()
-    shutil.copyfile(ROOT / "scripts/smr_mcp.py", destination / "scripts/smr_mcp.py")
-    config = json.loads((ROOT / "mcp.json").read_text("utf-8"))
-    if python != "python":
-        config["mcpServers"]["math-research-ledger"]["env"] = {"MRL_PYTHON": python}
-    (destination / "mcp.json").write_text(json.dumps(config, indent=2) + "\n", "utf-8")
+    config = json.loads((ROOT / ".mcp.json").read_text("utf-8"))
+    config["mcpServers"]["math-research-ledger"]["command"] = str(interpreter)
+    (destination / ".mcp.json").write_text(json.dumps(config, indent=2) + "\n", "utf-8")
 
 
 if __name__ == "__main__":
