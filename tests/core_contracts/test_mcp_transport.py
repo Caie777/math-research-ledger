@@ -319,7 +319,7 @@ def raw_client(cwd, args=(), env=None, *, module=False):
 
 
 @pytest.mark.parametrize("location", ["root", "state", "subdir", "ordinary"])
-def test_codex_module_entry_registers_tools_and_binds_exact_dot(research, tmp_path, location):
+def test_module_entry_registers_tools_and_binds_exact_dot(research, tmp_path, location):
     state, _ = research
     root = state.parent
     directory = {
@@ -378,13 +378,17 @@ def test_resolution_precedence_no_init_and_raw_protocol(tmp_path, research):
         reply = client.call("research_status", {})
         assert reply["structuredContent"]["state_dir"] == str(other / ".math-research-ledger")
     assert not (empty / ".math-research-ledger").exists()
-    drive_root = Path(state.anchor)
-    if not (drive_root / ".math-research-ledger").exists():
-        with pytest.raises(WorkspaceError):
-            resolve_workspace(cwd=drive_root, environ={})
-        with raw_client(drive_root) as client:
-            reply = client.call("research_status", {})
-            assert reply["structuredContent"]["error"]["code"] == "NO_WORKSPACE"
+    # A synthetic ordinary root must stay closed, even below a valid Ledger.
+    # Explicit dot tests startup cwd binding without probing the machine's drive root.
+    ordinary = tmp_path / "uninitialized-root"
+    ordinary.mkdir()
+    with pytest.raises(WorkspaceError):
+        resolve_workspace(Path("."), cwd=ordinary, environ={})
+    with raw_client(ordinary, ["--workspace", "."]) as client:
+        reply = client.call("research_status", {})
+        assert reply["isError"]
+        assert reply["structuredContent"]["error"]["code"] == "NO_WORKSPACE"
+    assert not list(ordinary.iterdir())
 
 
 def test_ambiguous_ref_bounded_review_and_truncation(research):

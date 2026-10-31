@@ -1,4 +1,7 @@
+import ast
 import json
+from importlib.util import resolve_name
+from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
@@ -39,21 +42,91 @@ def test_mcp_adapter_bounded_and_no_accept_or_filesystem(research):
     assert adapter.call("research_search", {"query": "synthetic"})["hits"]
 
 
-def test_runtime_independent_import_boundaries():
-    import ast
-    from pathlib import Path
+_RUNTIME_LAYERS = ("core", "ledger", "retrieval", "verification", "services")
+_FORBIDDEN_RUNTIME_MODULES = (
+    "math_research.cli",
+    "math_research.mcp",
+    "math_research.agent",
+    "math_research.app",
+    "math_research.formalization",
+    "math_research.integrations",
+    "mcp",
+    "codex",
+    "dsh",
+    "deepseek_harness",
+    "openai",
+    "anthropic",
+    "integrations",
+)
 
+
+def _forbidden_runtime_imports(source, package, layer):
+    imports = set()
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Import):
+            imports.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            module = resolve_name("." * node.level + (node.module or ""), package)
+            imports.add(module)
+            imports.update(f"{module}.{alias.name}" for alias in node.names)
+    forbidden = _FORBIDDEN_RUNTIME_MODULES
+    if layer != "services":
+        forbidden += ("math_research.services",)
+    return {
+        module
+        for module in imports
+        if any(module == prefix or module.startswith(prefix + ".") for prefix in forbidden)
+    }
+
+
+@pytest.mark.parametrize("layer", _RUNTIME_LAYERS)
+def test_runtime_independent_import_boundaries(layer):
     root = Path(__file__).resolve().parents[2] / "src" / "math_research"
-    assert root.is_dir()
-    for folder in ["core", "ledger", "retrieval", "verification", "services"]:
-        for path in (root / folder).rglob("*.py"):
-            for node in ast.walk(ast.parse(path.read_text("utf-8"))):
-                if isinstance(node, ast.ImportFrom) and node.module:
-                    assert not node.module.startswith(
-                        ("math_research.agent", "math_research.app", "math_research.formalization")
-                    ), path
-                    if folder != "services":
-                        assert not node.module.startswith("math_research.services"), path
+    assert (root / layer).is_dir()
+    for path in (root / layer).rglob("*.py"):
+        parts = path.relative_to(root.parent).with_suffix("").parts
+        package = ".".join(parts[:-1])
+        forbidden = _forbidden_runtime_imports(path.read_text("utf-8"), package, layer)
+        assert not forbidden, f"{path}: forbidden runtime imports: {sorted(forbidden)}"
+
+
+@pytest.mark.parametrize("layer", _RUNTIME_LAYERS)
+@pytest.mark.parametrize("module", _FORBIDDEN_RUNTIME_MODULES)
+@pytest.mark.parametrize(
+    "statement", ["import {module} as adapter", "from {module} import adapter"]
+)
+def test_import_boundary_guard_rejects_import_and_from(layer, module, statement):
+    assert _forbidden_runtime_imports(
+        statement.format(module=module), f"math_research.{layer}", layer
+    )
+
+
+@pytest.mark.parametrize("layer", _RUNTIME_LAYERS)
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "from math_research import cli as adapter",
+        "from math_research import mcp",
+        "from .. import cli",
+        "from ..mcp import adapter",
+        "if False:\n    import codex",
+        "def deferred():\n    from dsh import runtime",
+    ],
+)
+def test_import_boundary_guard_rejects_indirect_and_nested_imports(layer, statement):
+    assert _forbidden_runtime_imports(statement, f"math_research.{layer}", layer)
+
+
+@pytest.mark.parametrize("layer", _RUNTIME_LAYERS)
+def test_import_boundary_guard_preserves_shared_layers(layer):
+    package = f"math_research.{layer}"
+    assert not _forbidden_runtime_imports(
+        "import json\nfrom math_research.core import errors\nfrom . import helpers", package, layer
+    )
+    forbidden = _forbidden_runtime_imports(
+        "from math_research.services import research", package, layer
+    )
+    assert bool(forbidden) == (layer != "services")
 
 
 def test_cli_pipe_preserves_mathematical_unicode(research):

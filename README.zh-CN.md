@@ -1,15 +1,24 @@
 # MathResearch Ledger
 
-为外部 AI 编程与研究 Harness 中的长期数学研究提供持久结构化记忆和验证基础设施。
+MathResearch Ledger is a structured research-memory and verification layer exposed through a standard MCP server.
 
-MathResearch Ledger 不是另一个研究 Agent runtime。外部 Agent 负责研究；Ledger 保留可跨会话
-恢复的研究状态。用 Codex 或其他 Harness 推理、阅读和实验，下次会话继续使用同一份研究记录。
+DSH is the primary supported and tested Harness.
+Other Harness integrations are best-effort or added on demand.
+
+MathResearch Ledger 通过标准 MCP server 提供结构化研究记忆与验证层，核心与 MCP 合同保持
+Harness-neutral；DSH 是主要支持、测试和文档化的 Harness，其他集成 best-effort 或按需增加。
+它不是另一个研究 Agent runtime。外部 Agent 负责研究；Ledger 保留可跨会话恢复的研究状态。
+用 DSH 推理、阅读和实验，下次会话继续使用同一份研究记录。
 
 [English](README.md) · [更新记录](CHANGELOG.md)
 
-**1.2.2：**十一个工具，包含 [Problem lifecycle](docs/problem-lifecycle.md)、Codex session-workspace
-bundled MCP 与 DSH per-Agent workspace 绑定。见[发布说明](docs/releases/v1.2.2.md)、
-[Adapter Contract](docs/adapter-contract.md) 和[实测能力矩阵](docs/harness-capability-matrix.md)。
+**1.3.0 — Protocol-neutral, DSH-first, other Harnesses on demand。**
+正式 Host 集成展示名为 **MathResearch Ledger for DSH**，产品名仍是 MathResearch Ledger。
+标准 MCP server 保留十一个工具，包含 [Problem lifecycle](docs/problem-lifecycle.md)；
+无 Core/MCP breaking change，也不要求研究 schema migration。
+见 [1.3.0 发布说明](docs/releases/v1.3.0.md)、[Adapter Contract](docs/adapter-contract.md) 和
+[带日期的能力矩阵](docs/harness-capability-matrix.md)。
+[2026-10-30 DSH-first 审计报告](docs/dsh-first-finalization.md) 是历史证据，不是 1.3.0 本次发布门槛结果。
 
 ## 为什么需要研究 Ledger？
 
@@ -42,9 +51,11 @@ workspace 必须在工具仓库之外，由用户显式初始化。init 创建�
 保留已有指令和普通文件，不创建 demo 研究对象。上面的 create-problem 创建用户显式指定的问题。
 
 也可从 [GitHub Releases](https://github.com/Caie777/math-research-ledger/releases) 下载 wheel，
-用 `python -m pip install './math_research_ledger-1.2.2-py3-none-any.whl[mcp]'` 安装。
-接着按 [Codex 安装指南](docs/codex-mcp.md) 安装插件，在研究项目启用并新开会话。
-安装与启用是两步；普通项目可关闭。独立 MCP client 可用 stdio 启动
+用 `python -m pip install './math_research_ledger-1.3.0-py3-none-any.whl[mcp]'` 安装。
+默认接着按 [DSH Agent Host plugin 安装指南](integrations/deepseek-harness/host-plugin/README.md)
+安装并在所选 Profile 启用，随后在研究根目录创建或恢复 Agent。
+安装与启用是两步；默认安装建议不代表已经替用户部署。普通项目可关闭。
+仅需要 Codex 时参阅 [Tier 2 兼容指南](docs/codex-mcp.md)。独立 MCP client 可用 stdio 启动
 `math-research-ledger-mcp --workspace '<research-workspace>'`，MCP 不会初始化缺失的工作区。
 兼容 CLI 别名 `smr`、`math-research`、`smr-mcp` 和 Python import `math_research` 保留。
 
@@ -102,17 +113,27 @@ Harness 拥有 workspace，用户拥有普通文件，Ledger 只拥有 `.math-re
 
 ## 集成与限制
 
-- **Codex：**用持久 runtime 准备 Codex-native 插件，插件 ON/OFF 统一控制共享 skill 和 bundled MCP。
-  `--workspace .` 精确绑定 Host 提供的启动 session cwd，不查找父目录，不自动初始化。
-  见 [Codex 指南](docs/codex-mcp.md) 和 [验收矩阵](docs/codex-session-acceptance.md)。
-  这是 Windows Codex 0.160.0 的实测行为，不是官方保证的 project-root API；真实工作区只读 cutover 已通过。
-- **DeepSeek Harness：**推荐 [Agent Host plugin](integrations/deepseek-harness/README.md)，
-  通过官方 MCP client 按 Agent 的不可变 session root 绑定。Windows DSH 0.2.1-rc.3 已通过
-  隔离 Host 和真实 Profile 只读 cutover，覆盖十一个工具、隔离、resume 和 OFF/ON。
-  configuration-only Bundle 保留为 manual / single-workspace fallback；不要同时启用两种部署。
-  rc.2 对当前 adapter 未验证；不声称已完成 GUI 对话验收。
+| 支持层级 | Harness | 承诺 |
+|---|---|---|
+| **Tier 1 — Official** | DeepSeek Harness | 默认安装路径；主动开发、文档化、回归测试，并作为 release-blocking 验收目标 |
+| **Tier 2 — Compatibility** | Codex | 保留现有兼容集成，best-effort；并非每个功能都做专门 Harness 回归；Codex-only 问题通常不阻塞发布，除非影响共享 Core/MCP 语义 |
+| **Tier 3 — On demand** | 其他 Harness | 标准 MCP 可供接入；有真实用例后才增加专用 adapter |
+
+- **DSH 默认路径：**正式 [Agent Host plugin](integrations/deepseek-harness/host-plugin/README.md)，
+  展示名 **MathResearch Ledger for DSH**，通过官方 MCP client 按 Agent 的不可变 session root 绑定。
+  configuration-only Bundle **仅是 manual / single-workspace fallback**；同一 Profile 两种部署互斥。
+- **Codex 兼容路径：**[native plugin](docs/codex-mcp.md) 的 ON/OFF 统一控制共享 skill 和 bundled MCP。
+  `--workspace .` 绑定 Host 提供的启动 session cwd，不查找父目录，不自动初始化。
+  这是 Windows Codex 0.160.0 的实测行为，不是官方保证的 project-root API。
+
+**历史实测不等于当前部署状态。**2026-10-26 的 Windows DSH 0.2.1-rc.3、Codex 0.160.0
+Host/cutover 结果保留为历史证据。2026-10-30 Profile 审计显示两个 DSH 包都已登记为 dependencies，
+但 `bundles` 均未选中，不能由此声称当前已启用；仓库默认路径也不代表已替用户部署。
+不声称 GUI 对话验收。见[带日期的能力矩阵](docs/harness-capability-matrix.md)和
+[支持合同](docs/adapter-contract.md)。
 
 [已知限制](docs/known-limitations.md)：DSH macOS/Linux、真实研究 corpus 的正式写入尚未专门验收；
 每个 MCP 会话仅绑定一个工作区。插件不修改权限或 Full Access，GitHub 发布不代表已上架公开插件目录。
-开发命令见 [English README](README.md)；
+发布门槛是 **Core + MCP + DSH 实际 Host 验收**，Codex 专项回归是可选兼容证据，不能替代 DSH。
+开发检查和 release runner 参数见[开发指南](docs/development.md)；
 [历史工程报告](docs/archive/2026-10/README.md) 已与长期用户文档分开。

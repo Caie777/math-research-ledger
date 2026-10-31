@@ -1,16 +1,30 @@
-# Codex integration
+# Codex integration — Tier 2 compatibility
 
-Use the **Codex-native plugin package** prepared below: one plugin contains the shared
-Ledger skill and a bundled stdio MCP server. Plugin ON exposes eleven tools in
-1.2.2; OFF removes its skill and tools. Keep the Python runtime outside both the
-plugin cache and research data. Updating source or package metadata does not update
-an installed runtime: install the 1.2.2 wheel with MCP dependencies, refresh the
+DSH is the [Tier 1 official integration](../integrations/deepseek-harness/host-plugin/README.md)
+and the default installation path. Codex is retained as **Tier 2 compatibility**,
+best-effort rather than an equal release target. Not every feature receives a
+dedicated Codex Harness regression; Codex-only issues do not normally block releases
+unless they expose a shared Core/MCP semantic failure. Other Harness adapters are
+added on demand, not preemptively. See the [support contract](adapter-contract.md).
+
+The observations below are from Windows Codex **0.160.0** acceptance on
+**2026-10-26**, not a new run or a claim about the current user's installation.
+
+Version **1.3.0** retains the standard eleven-tool MCP contract with no Core/MCP
+breaking change or research-schema migration. The DSH Host UI name **MathResearch
+Ledger for DSH** does not rename the product or this compatibility package.
+
+If you need Codex, use the **Codex-native plugin package** prepared below: one plugin
+contains the shared Ledger skill and a bundled stdio MCP server. Plugin ON exposes
+eleven tools; OFF removes its skill and tools. Keep the Python runtime outside both
+the plugin cache and research data. Updating source or package metadata does not
+update an installed runtime: install the 1.3.0 wheel with MCP dependencies, refresh the
 prepared native package and start fresh sessions/restart. Verify the installed
 implementation and eleven-tool discovery before adopting it.
 
 ## Prepare and install
 
-Install Python 3.12 (3.11+ supported by the package). Use the 1.2.2 wheel or build
+Install Python 3.12 (3.11+ supported by the package). Use the 1.3.0 wheel or build
 one from the matching checkout. Run these commands from the tool checkout:
 
 ```powershell

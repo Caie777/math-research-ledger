@@ -1,5 +1,34 @@
 # Deterministic core product path
 
+## Protocol-neutral core, DSH-first product
+
+MathResearch Ledger 1.3.0 is a research-memory and verification layer exposed through
+a standard MCP server, not a Harness runtime. The release retains the eleven-tool
+Core/MCP contract without a breaking change or research-schema migration.
+**Protocol-neutral, DSH-first, other Harnesses on demand.** The official Host UI
+name is **MathResearch Ledger for DSH**; Core product identity remains MathResearch
+Ledger. DSH is the primary supported and tested Harness, not a Core dependency. Core/ledger/retrieval/verification stay independent
+of CLI, MCP and external Harnesses; adapters obtain trusted context and manage Host
+lifecycle without duplicating service decisions or weakening server-side gates.
+
+Support commitments are separate from protocol semantics:
+
+- **Tier 1 — Official DSH:** actively developed, documented, regression-tested;
+  actual DSH Host acceptance is release-blocking with Core and MCP.
+- **Tier 2 — Compatibility Codex:** retained best-effort; not every feature gets
+  dedicated Harness regression. Codex-only issues are normally non-blocking unless
+  they affect shared Core/MCP semantics.
+- **Tier 3 — On demand:** add other dedicated adapters only for real use cases;
+  standard MCP availability is not evidence of Host acceptance.
+
+Default installation uses the [DSH Agent Host plugin](../integrations/deepseek-harness/host-plugin/README.md).
+Its config-only Bundle is manual / single-workspace fallback only and mutually
+exclusive in one Profile. Default guidance does not install or activate a deployment;
+see the [dated capability/deployment matrix](harness-capability-matrix.md),
+[adapter contract](adapter-contract.md) and [release gates](development.md).
+
+## Layers
+
 ```text
 core/          refs, hashing, config, atomic IO/locks, limits, paths/process
 ledger/        typed dossiers, archive/proposals/reviews, unified manifest,
@@ -96,7 +125,7 @@ Acceptance requests still write and retain the exclusive guard without replay.
 Interrupted metadata needs trusted-human
 `ingest recover`. No per-turn capture hook or full-ledger rewrite is installed.
 
-MCP exposes eleven top-level `research_*` tools: status, search, object windows, context/review packets, stale reports, provisional Episode/note ingestion pending acceptance requests, and explicit Problem creation/lifecycle. `tools/list` provides descriptions and strict schemas; there is no generic dispatcher. External references are strings, resolved to internal ObjectRef values without guessing ambiguous IDs. Episode/note writes reuse the existing archive/Proposal Store, content deduplication, locks and atomic IO. Output, including both SDK representations, is bounded to 64 KiB; review inputs are never silently truncated. Errors include a code and recovery action. There is no compiler, filesystem, shell or human accept. See [Codex integration and validation](codex-mcp.md).
+MCP exposes eleven top-level `research_*` tools: status, search, object windows, context/review packets, stale reports, provisional Episode/note ingestion pending acceptance requests, and explicit Problem creation/lifecycle. `tools/list` provides descriptions and strict schemas; there is no generic dispatcher. External references are strings, resolved to internal ObjectRef values without guessing ambiguous IDs. Episode/note writes reuse the existing archive/Proposal Store, content deduplication, locks and atomic IO. Output, including both SDK representations, is bounded to 64 KiB; review inputs are never silently truncated. Errors include a code and recovery action. There is no compiler, filesystem, shell or human accept. See the [DSH default integration](../integrations/deepseek-harness/host-plugin/README.md), [shared adapter contract](adapter-contract.md) and [Codex compatibility guide](codex-mcp.md).
 
 MCP captures a single canonical workspace from startup flag,
 environment or cwd discovery. Tool `workspace` is only an exact-root compatibility

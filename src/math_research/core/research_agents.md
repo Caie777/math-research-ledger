@@ -2,8 +2,11 @@
 
 - At a new session on long-running research, restore MathResearch Ledger state once.
   Call `research_status` first with an explicitly selected Problem.
-  Include `workspace` with the current harness absolute workspace root in tool calls
-  when available; some plugin hosts start stdio in the installation directory.
+  The MCP server pins its authorized workspace root at startup, selected by the host
+  or explicit deployment configuration. Omit `workspace` in normal tool calls: if supplied,
+  it only asserts the same pinned root and cannot select or expand session scope.
+  If startup selected the wrong root, ask the host/user to restart with the correct root;
+  tool arguments cannot repair an unbound or incorrectly bound session.
 - At session start, load the exact target / `research_context_packet` before substantial work.
   Respect provenance, trust/freshness labels and missing or truncated mandatory material.
 - Select the Problem explicitly; `.current` is not a safe substitute for user intent.

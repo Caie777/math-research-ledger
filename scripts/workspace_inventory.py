@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import stat
 import sys
 from pathlib import Path
 
@@ -12,16 +13,24 @@ from math_research.core.hashing import content_hash  # noqa: E402
 from math_research.ledger.manifest import Ledger  # noqa: E402
 
 
+def is_link(path: Path) -> bool:
+    """Reject symlinks and Windows junction/reparse points, including Python 3.11."""
+    return path.is_symlink() or bool(
+        getattr(path.lstat(), "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+    )
+
+
 def inventory(state: Path) -> dict:
     files = {}
     for path in sorted(state.rglob("*")):
-        if path.is_symlink():
-            raise ValueError(f"Inventory refuses symlinks: {path}")
+        if is_link(path):
+            raise ValueError(f"Inventory refuses links: {path}")
         if path.is_file():
             raw = path.read_bytes()
             files[path.relative_to(state).as_posix()] = {
                 "bytes": len(raw),
                 "sha256": hashlib.sha256(raw).hexdigest(),
+                "mtime_ns": path.stat().st_mtime_ns,
             }
     ledger = Ledger(state)
     objects = ledger.objects()
@@ -30,6 +39,13 @@ def inventory(state: Path) -> dict:
         "file_count": len(files),
         "total_bytes": sum(f["bytes"] for f in files.values()),
         "inventory_hash": content_hash(files),
+        "tree_hash": content_hash(files),
+        "latest_mtime_ns": max((f["mtime_ns"] for f in files.values()), default=0),
+        "ledger_generation": (
+            (state / ".checkpoint-generation").read_text("utf-8")
+            if (state / ".checkpoint-generation").is_file()
+            else None
+        ),
         "object_count": len(objects),
         "problem_count": sum(e.ref.kind == "problem" for e in objects),
         "versions": {e.qualified_id: e.version for e in objects},
@@ -49,8 +65,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     state = args.state.resolve(strict=True)
     report = args.report.resolve()
-    if report.is_relative_to(state):
-        parser.error("Report must be outside research state.")
+    if report.is_relative_to(state.parent):
+        parser.error("Report must be outside the entire research workspace.")
     result = inventory(state)
     report.write_text(json.dumps(result, ensure_ascii=False, indent=2), "utf-8")
     print(

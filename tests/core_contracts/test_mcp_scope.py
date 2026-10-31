@@ -33,7 +33,7 @@ def call(server, name="research_status", **arguments):
 
 
 @pytest.mark.parametrize("location", ["root", "state", "subdir", "ordinary"])
-def test_codex_dot_is_exact_immutable_startup_root(research, tmp_path, monkeypatch, location):
+def test_explicit_dot_is_exact_immutable_startup_root(research, tmp_path, monkeypatch, location):
     state, _ = research
     root = state.parent
     directory = {

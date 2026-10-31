@@ -26,7 +26,7 @@ spec.loader.exec_module(prep)
 
 def test_manifest_locale_icon_and_no_adapter():
     package = json.loads((BUNDLE / "package.json").read_text("utf-8"))
-    assert package["version"] == __version__ == "1.2.2"
+    assert package["version"] == __version__ == "1.3.0"
     assert package["dsh"]["bundle"]["patch"] == "./cordis.patch.yml"
     assert package["files"] == [
         "cordis.patch.yml",
@@ -39,7 +39,8 @@ def test_manifest_locale_icon_and_no_adapter():
     assert not any(p.suffix in {".js", ".mjs"} or p.name == "install.py" for p in BUNDLE.rglob("*"))
     for language in ("en", "zh"):
         meta = json.loads((BUNDLE / f"locale/{language}.json").read_text("utf-8"))["meta"]
-        assert meta["title"] == "MathResearch Ledger" and meta["description"]
+        assert "MathResearch Ledger" in meta["title"] and meta["description"]
+        assert "Fallback" in meta["title"] or "备用" in meta["title"]
     assert ET.parse(BUNDLE / "icon.svg").getroot().tag.endswith("svg")
     assert (BUNDLE / "icon.svg").stat().st_size <= 256 * 1024
 

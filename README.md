@@ -1,19 +1,26 @@
 # MathResearch Ledger
 
-Durable structured memory and verification infrastructure for long-horizon
-mathematical research across external AI coding and research harnesses.
+MathResearch Ledger is a structured research-memory and verification layer exposed through a standard MCP server.
 
-MathResearch Ledger is not another research-agent runtime.
-External agents do the research; Ledger preserves durable research state.
-Use Codex or another harness for reasoning, reading and experiments, then carry the
-same research workspace into the next session without reconstructing it from chat.
+DSH is the primary supported and tested Harness.
+Other Harness integrations are best-effort or added on demand.
+
+Ledger is not another research-agent runtime. External agents do the research;
+Ledger preserves durable research state. Use DSH for reasoning, reading and
+experiments, then carry the same research workspace into the next session without
+reconstructing it from chat. Core services and the MCP contract remain Harness-neutral.
 
 [中文说明](README.zh-CN.md) · [Changelog](CHANGELOG.md)
 
-**1.2.2:** eleven tools, including [Problem lifecycle](docs/problem-lifecycle.md),
-Codex session-workspace bundled MCP and DSH per-Agent workspace binding.
-See the [release notes](docs/releases/v1.2.2.md), [adapter contract](docs/adapter-contract.md)
-and [measured capability matrix](docs/harness-capability-matrix.md).
+**1.3.0 — Protocol-neutral, DSH-first, other Harnesses on demand.**
+The official Host integration is displayed as **MathResearch Ledger for DSH**;
+the product remains MathResearch Ledger. The standard MCP server retains eleven
+tools, including [Problem lifecycle](docs/problem-lifecycle.md), with no Core/MCP
+breaking change or research-schema migration.
+See the [1.3.0 release notes](docs/releases/v1.3.0.md), [adapter contract](docs/adapter-contract.md)
+and [dated capability matrix](docs/harness-capability-matrix.md).
+The [2026-10-30 DSH-first audit](docs/dsh-first-finalization.md) is historical evidence,
+not the 1.3.0 release-gate result.
 
 ## Why keep a research ledger?
 
@@ -34,7 +41,7 @@ with their sources, versions and checkpoint history.
   human acceptance have distinct roles.
 
 ```text
-External research agent (Codex / other harness)
+External research agent (DSH / other MCP clients)
                        │ eleven MCP tools
                MathResearch Ledger
              state · context · evidence
@@ -63,11 +70,13 @@ It creates empty state, `workspace.yaml` and research `AGENTS.md`, preserves exi
 instructions and ordinary files, and creates no demonstration research objects.
 The `create-problem` command above creates the Problem you explicitly request.
 
-For a downloaded wheel, use `python -m pip install './math_research_ledger-1.2.2-py3-none-any.whl[mcp]'`
+For a downloaded wheel, use `python -m pip install './math_research_ledger-1.3.0-py3-none-any.whl[mcp]'`
 instead of the editable install. See [GitHub Releases](https://github.com/Caie777/math-research-ledger/releases).
-Then follow [Codex plugin setup](docs/codex-mcp.md), enable the plugin for your research
-project and start a fresh session. Installation and enablement are separate; ordinary
-projects can leave it disabled. A standalone MCP client can launch
+Then follow the default [DSH Agent Host plugin setup](integrations/deepseek-harness/host-plugin/README.md),
+enable it in the selected Profile, and create/resume an Agent at your research root.
+Installation and enablement are separate; this recommendation does not deploy it for
+you. Ordinary projects can leave it disabled. If you specifically need Codex, use its
+[Tier 2 compatibility guide](docs/codex-mcp.md). A standalone MCP client can launch
 `math-research-ledger-mcp --workspace '<research-workspace>'` over stdio.
 MCP never initializes missing state. CLI aliases `smr`, `math-research` and `smr-mcp`
 remain available; the Python import namespace is `math_research`.
@@ -136,17 +145,28 @@ Git-local exclusions. Historical provenance is not rewritten by tool upgrades.
 
 ## Integrations and limitations
 
-- **Codex:** prepare the Codex-native plugin with a persistent runtime; one plugin ON/OFF
-  controls its shared skill and bundled MCP. The server binds exactly to the Host's
-  startup session cwd using `--workspace .`, without parent discovery or auto-init.
-  [Installation and configuration](docs/codex-mcp.md). This is tested Codex 0.160.0
-  behavior, not a guaranteed project-root API. See the [acceptance matrix](docs/codex-session-acceptance.md).
-- **DeepSeek Harness:** the [Agent Host plugin](integrations/deepseek-harness/README.md)
-  binds each new Agent to its immutable session root through the official MCP client.
-  Windows DSH 0.2.1-rc.3 isolated Host and real Profile read-only cutover passed,
-  including eleven tools, workspace isolation, resume and OFF/ON. The configuration-only
-  Bundle remains a manual / single-workspace fallback. Do not enable both at once.
-  rc.2 is unverified for this adapter; GUI conversational acceptance is not claimed.
+| Support tier | Harness | Commitment |
+|---|---|---|
+| **Tier 1 — Official** | DeepSeek Harness | Primary installation path; actively developed, documented, regression-tested and release-blocking |
+| **Tier 2 — Compatibility** | Codex | Retained best-effort; not every feature gets dedicated Harness regression; Codex-only issues are normally non-blocking unless shared Core/MCP semantics are affected |
+| **Tier 3 — On demand** | Other Harnesses | Standard MCP is available; no dedicated adapter until there is a real use case |
+
+- **DSH default:** the official [Agent Host plugin](integrations/deepseek-harness/host-plugin/README.md),
+  displayed as **MathResearch Ledger for DSH**, binds each new Agent to its immutable
+  session root through the official MCP client.
+  The configuration-only Bundle is **manual / single-workspace fallback only**;
+  the two deployments are mutually exclusive in one Profile.
+- **Codex compatibility:** a prepared [native plugin](docs/codex-mcp.md) controls the
+  shared skill and bundled MCP together. In measured Windows Codex 0.160.0 behavior,
+  `--workspace .` binds to startup session cwd, without parent discovery or auto-init;
+  this is not a guaranteed project-root API.
+
+**Evidence is versioned, not deployment status.** The 2026-10-26 Windows DSH
+0.2.1-rc.3 and Codex 0.160.0 Host/cutover results remain historical. The 2026-10-30
+Profile audit found both DSH packages installed as dependencies but neither selected
+in `bundles`; it did not establish an enabled current deployment. No GUI conversational
+acceptance is claimed. See the [dated capability matrix](docs/harness-capability-matrix.md)
+and [support contract](docs/adapter-contract.md).
 
 [Known limitations](docs/known-limitations.md): DSH macOS/Linux and formal writes to a
 real research corpus have not been separately validated. Each MCP session has one pinned
@@ -156,6 +176,11 @@ does not imply a public Plugin Directory listing.
 ## Development
 
 Use separate synthetic temporary workspaces; do not initialize research state here.
+The release gate is **Core + MCP + actual DSH Host acceptance**; Codex-only regression
+is optional compatibility evidence, not a substitute for DSH. See
+[development and the release runner interface](docs/development.md) for the required
+persistent Python/runtime and DSH prerequisites. The commands below are baseline
+checks, not a complete release gate.
 
 ```powershell
 python -m pip install -e '.[dev,mcp]'

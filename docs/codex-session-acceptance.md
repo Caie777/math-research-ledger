@@ -1,5 +1,12 @@
 # Codex session-workspace acceptance
 
+> Historical evidence, preserved with its original date and versions. Support policy
+> updated 2026-10-30: Codex is Tier 2 compatibility (best-effort), not the primary
+> release target. Dedicated Codex regression is optional; Codex-only failures are
+> normally non-blocking unless shared Core/MCP semantics are affected. This record
+> does not report a new test run. See [support tiers](adapter-contract.md) and the
+> [current release gate](development.md).
+
 Date: 2026-10-26. Target: 1.2.2 development, with formal package/plugin identity
 still 1.2.1. This is local engineering acceptance, not a release or Plugin Directory
 submission. All commands were run from the tool checkout. Only isolated synthetic

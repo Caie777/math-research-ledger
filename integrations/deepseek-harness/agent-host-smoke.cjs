@@ -8,7 +8,14 @@ const assert = require('node:assert/strict');
 const cp = require('node:child_process');
 const { syncBuiltinESMExports } = require('node:module');
 const { pathToFileURL } = require('node:url');
-const [modules, python, output] = process.argv.slice(2);
+const [modules, python, output, readonlyWorkspace] = process.argv.slice(2);
+// Reviewed protocol surface, deliberately exact rather than count-only.
+const expectedTools = [
+  'research_create_problem', 'research_update_problem', 'research_status',
+  'research_search', 'research_get_object', 'research_context_packet',
+  'research_review_packet', 'research_stale_report', 'research_ingest_episode',
+  'research_save_note', 'research_request_acceptance',
+].map(n => 'mcp__math-research-ledger__' + n).sort();
 const checkout = path.resolve(__dirname, '../..');
 const base = path.resolve(output || '.');
 assert(base.startsWith(path.join(checkout, 'dist') + path.sep) && !fs.existsSync(base));
@@ -76,7 +83,7 @@ async function gone(list) {
     assert.fail('Tool execution failed without a structured result');
   };
   const check = async (handle, root) => {
-    assert.equal(names(handle.agent).length,11);
+    assert.deepEqual(names(handle.agent), expectedTools);
     const r = await call(handle); assert.equal(path.resolve(r.workspace_root),path.resolve(root));return r;
   };
   const plugin=require('./host-plugin/index.cjs');
@@ -98,6 +105,18 @@ async function gone(list) {
     assert.notEqual(live[0].pid,live[1].pid);
     record('different_workspace_concurrent',{tools:[11,11],pids:live.map(p=>p.pid),startup_processes:launches.length,cross_root_rejected:true});
     record('agent_create',{registered_before_create_return:true});
+    assert.deepEqual(ctx.tools.schemas().map(t => t.name).filter(n => n.startsWith('mcp__math-research-ledger__')), []);
+    record('fallback_not_registered',{global_ledger_tools:0,agent_tools_exact:true,host_only:true});
+    record('exact_tool_list',{tools:names(ha.agent)});
+    if (readonlyWorkspace) {
+      // No mutation tools, CLI initialization, migrations, or model requests here.
+      const real = await create(path.resolve(readonlyWorkspace));
+      const status = await check(real, readonlyWorkspace);
+      const search = await call(real, 'research_search', {query:'PROBLEM-0001',limit:1});
+      assert(Array.isArray(search.hits));
+      record('real_workspace_readonly',{root_matches:true,tools:11,status_ok:true,search_ok:true,problems:status.problems});
+      await real.dispose();
+    }
     // Enter the actual driver's first request boundary, then stop before provider I/O.
     let gate=false;
     const unhook=ha.agent.ctx.on('agent/request',async()=>{
@@ -153,7 +172,7 @@ async function gone(list) {
     const on=await create(b);await check(on,b);
     record('profile_plugin_ON',{new_agent_tools:11});
     await on.dispose();const restarted=await create(b);await check(restarted,b);
-    record('restart',{fresh_agent:true,tools:11,new_pid:launches.at(-1).pid});
+    record('fresh_agent_restart',{fresh_agent:true,tools:11,new_pid:launches.at(-1).pid});
     const count=launches.length;
     await assert.rejects(create(undefined),/NO_WORKSPACE/);
     assert.equal(launches.length,count);

@@ -30,6 +30,10 @@ __pycache__/
 *.egg
 /build/
 /dist/
+# Interrupted pip build scratch directories are not project inputs.
+/pip-build-tracker-*/
+/pip-ephem-wheel-cache-*/
+/pip-install-*/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/

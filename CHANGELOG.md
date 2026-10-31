@@ -1,5 +1,38 @@
 # Changelog
 
+## [1.3.0] - 2026-10-31
+
+**Protocol-neutral, DSH-first, other Harnesses on demand.** This release consolidates
+the support-policy work recorded on 2026-10-30; those test results remain historical.
+The 2026-10-31 release verification passed: full suite 657 passed / 1 skipped;
+required Core/MCP/DSH gate 655 passed / 1 skipped / 2 deselected, plus two passing
+Codex packaging compatibility cases and 17 passing actual DSH Host scenarios.
+See the [release notes](docs/releases/v1.3.0.md) for checks and unverified boundaries;
+commit-specific hosted CI and publication results belong to the GitHub Release.
+
+### Changed
+
+- Clarify the protocol-neutral, DSH-first product: Tier 1 official DeepSeek Harness
+  is actively developed, documented, regression-tested and release-blocking; Tier 2
+  Codex is retained best-effort compatibility; Tier 3 adapters are added on demand
+  only after a real use case. Shared Core/MCP semantics remain Harness-independent.
+- Make the official DSH Agent Host plugin, displayed as **MathResearch Ledger for
+  DSH**, the default installation path. Add English/Chinese Host locales: the public
+  npm package intentionally grows from the historical five-file layout to seven
+  files. Stable package IDs, MCP server name and runtime behavior are retained.
+- Keep the config-only Bundle as manual / single-workspace fallback only and mutually
+  exclusive with Host. Installation guidance is not a claim that a user's Profile
+  has been activated.
+- Retain the standard eleven-tool MCP server and existing research data semantics.
+  No Core/MCP breaking change or research-schema migration is introduced.
+- Define the release gate as Core + MCP + actual DSH Host acceptance. Dedicated
+  Codex regression is optional; Codex-only issues normally do not block a release
+  unless they reveal a shared Core/MCP semantic failure.
+- Add development/release-runner instructions and separate historical acceptance
+  from current deployment observations. The 2026-10-30 audit found both DSH packages
+  registered as dependencies but neither selected in bundles. No historical test
+  count or GUI acceptance is claimed as a new result by this documentation update.
+
 ## [1.2.2] - 2026-10-26
 
 ### Added

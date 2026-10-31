@@ -1,4 +1,4 @@
-name: core
+name: core-mcp
 on: [push, pull_request]
 permissions:
   contents: read
@@ -18,5 +18,16 @@ jobs:
       - run: ruff check src tests scripts benchmarks
       - run: ruff format --check src tests scripts benchmarks
       - run: python -m mypy
-      - run: python -m pytest
+      # Hosted CI is Core/MCP + DSH packaging only, not actual Host acceptance.
+      - run: python -m pytest -m "not codex_compat"
       - run: python -m build
+  codex-compatibility:
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[dev,mcp]"
+      - run: python -m pytest -m codex_compat

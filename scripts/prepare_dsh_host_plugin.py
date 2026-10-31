@@ -1,4 +1,4 @@
-"""Render a new local DSH Host plugin package; never install runtime or select workspace."""
+"""Prepare only the recommended DSH Host plugin; never install runtime or select workspace."""
 
 import argparse
 import shutil
@@ -33,3 +33,14 @@ if __name__ == "__main__":
     parser.add_argument("--python", type=Path, required=True)
     args = parser.parse_args()
     prepare(args.out, args.python)
+    out_literal = "'" + str(args.out.resolve()).replace("'", "''") + "'"
+    print(
+        "Prepared only the recommended Host plugin; no fallback Bundle was prepared or installed."
+    )
+    print("Run in ordinary PowerShell; preparation never changes the Profile or runs DSH.")
+    print("# Replace desktop with the target Profile; remove each package only if installed.")
+    print("# Migrate from the old fallback: OFF can leave both installation candidates visible.")
+    print("dsh plugin --profile desktop remove dsh-math-research-ledger")
+    print("# Upgrade an existing Host plugin only:")
+    print("dsh plugin --profile desktop remove dsh-math-research-ledger-host")
+    print("dsh plugin --profile desktop add " + out_literal)

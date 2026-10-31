@@ -1,4 +1,7 @@
-"""Prepare static DSH configuration and an external Python runtime; never invoke DSH."""
+"""Prepare the manual single-workspace fallback only; prefer prepare_dsh_host_plugin.py.
+
+Render static configuration and an external Python runtime; never invoke DSH.
+"""
 
 from __future__ import annotations
 
@@ -250,14 +253,26 @@ def main() -> None:
     for flag in ("force", "no-install", "no-index"):
         parser.add_argument("--" + flag, action="store_true")
     parser.add_argument("--find-links", type=Path)
+    args = parser.parse_args()
+    print(
+        "WARNING: FALLBACK / manual single-workspace integration, not the recommended Host plugin. "
+        "Remove dsh-math-research-ledger-host from the target Profile before adding this Bundle; "
+        "OFF alone can leave both installation candidates visible. "
+        "Preparation never changes the Profile or runs DSH.",
+        file=sys.stderr,
+    )
     try:
-        out = prepare(parser.parse_args())
+        out = prepare(args)
     except (OSError, ValueError, subprocess.TimeoutExpired, zipfile.BadZipFile) as exc:
         parser.exit(1, f"Preparation failed: {exc}\n")
     # Single quotes are PowerShell literals, including spaces and apostrophes.
     print(
         "Run in ordinary PowerShell; do not run DSH plugin installation from a sandboxed DSH shell."
     )
+    print("# Replace desktop with the target Profile; remove each package only if installed.")
+    print("# Required for fallback: remove the alternative Host plugin first (OFF is not removal).")
+    print("dsh plugin --profile desktop remove dsh-math-research-ledger-host")
+    print("# Upgrade an existing fallback only:")
     print("dsh plugin --profile desktop remove dsh-math-research-ledger")
     print("dsh plugin --profile desktop add " + quote(str(out)))
 

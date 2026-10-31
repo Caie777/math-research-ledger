@@ -27,6 +27,10 @@ def test_native_host_manifest_and_runtime_only_configuration():
     meta = json.loads((TEMPLATE / "package.json").read_text("utf-8"))
     assert meta["version"] == __version__
     assert meta["main"] == "index.cjs"
+    assert meta["exports"]["."] == "./index.cjs"
+    for language in ("en", "zh"):
+        locale = json.loads((TEMPLATE / f"locale/{language}.json").read_text("utf-8"))
+        assert locale["meta"]["title"] == "MathResearch Ledger for DSH"
     assert meta["dsh"]["bundle"]["patch"] == "./cordis.patch.yml"
     assert meta["peerDependencies"]["@deepseek-ai/dsh-mcp-client"] == "0.2.1-rc.3"
     rows = yaml.safe_load((TEMPLATE / "cordis.patch.yml").read_text("utf-8"))
@@ -45,6 +49,7 @@ def test_preparation_selects_python_never_workspace_or_runtime_install(tmp_path)
         "cordis.patch.yml",
         "README.md",
         "LICENSE",
+        "locale",
     }
     config = yaml.safe_load((out / "cordis.patch.yml").read_text("utf-8"))[0]["insert"][0]["config"]
     assert config == {"python": str(Path(sys.executable).absolute())}
@@ -82,7 +87,15 @@ def test_actual_public_host_tarball_has_no_local_runtime_or_state(tmp_path):
     with tarfile.open(tmp_path / json.loads(packed.stdout)[0]["filename"]) as archive:
         assert set(archive.getnames()) == {
             "package/" + name
-            for name in ("index.cjs", "package.json", "cordis.patch.yml", "README.md", "LICENSE")
+            for name in (
+                "index.cjs",
+                "package.json",
+                "cordis.patch.yml",
+                "README.md",
+                "LICENSE",
+                "locale/en.json",
+                "locale/zh.json",
+            )
         }
         patch = archive.extractfile("package/cordis.patch.yml").read()
         assert b"__MRL_PYTHON__" in patch and str(tmp_path).encode() not in patch
@@ -94,9 +107,10 @@ def test_actual_dsh_agent_factory_acceptance(tmp_path):
     modules = os.environ.get("MRL_DSH_NODE_MODULES")
     python = os.environ.get("MRL_DSH_PYTHON")
     if not all((executable, modules, python)):
-        pytest.skip(
-            "Set MRL_DSH_EXECUTABLE/NODE_MODULES/PYTHON for isolated official Host acceptance"
-        )
+        message = "Set MRL_DSH_EXECUTABLE/NODE_MODULES/PYTHON for official Host acceptance"
+        if os.environ.get("MRL_DSH_REQUIRED") == "1":
+            pytest.fail(message + "; required release gate must not skip DSH")
+        pytest.skip(message)
     out = tmp_path / "host-acceptance"
     assert out.resolve().is_relative_to(ROOT / "dist"), "Use --basetemp inside checkout dist/"
     env = {
@@ -118,6 +132,7 @@ def test_actual_dsh_agent_factory_acceptance(tmp_path):
         if name in os.environ
     }
     env.update(ELECTRON_RUN_AS_NODE="1", DSH_HOME=str(tmp_path / "home"), NODE_PATH=modules)
+    readonly = os.environ.get("MRL_DSH_READONLY_WORKSPACE")
     result = subprocess.run(
         [
             executable,
@@ -126,17 +141,44 @@ def test_actual_dsh_agent_factory_acceptance(tmp_path):
             modules,
             python,
             str(out),
+            *([readonly] if readonly else []),
         ],
         cwd=ROOT,
         env=env,
         capture_output=True,
         text=True,
         encoding="utf-8",
-        timeout=90,
+        timeout=180,
     )
     assert result.returncode == 0, result.stdout[-2000:] + result.stderr[-2000:]
     report = json.loads((out / "acceptance.json").read_text("utf-8"))
     assert report["dsh"] == "0.2.1-rc.3" and not report["model_called"]
-    assert len(report["cases"]) == 14 and all(v["passed"] for v in report["cases"].values())
+    expected_cases = {
+        "different_workspace_concurrent",
+        "agent_create",
+        "first_turn_availability",
+        "same_workspace_concurrent",
+        "ordinary_subdirectory",
+        "state_directory_exact_root",
+        "uninitialized",
+        "shell_cd_immutability",
+        "agent_dispose",
+        "resume",
+        "profile_plugin_OFF",
+        "profile_plugin_ON",
+        "fresh_agent_restart",
+        "restart",
+        "missing_host_root",
+        "fallback_not_registered",
+        "exact_tool_list",
+    }
+    if readonly:
+        expected_cases.add("real_workspace_readonly")
+    assert set(report["cases"]) == expected_cases
+    assert all(v["passed"] for v in report["cases"].values())
+    assert report["cases"]["fallback_not_registered"]["global_ledger_tools"] == 0
+    assert len(set(report["cases"]["exact_tool_list"]["tools"])) == 11
+    for launch in report["launches"]:
+        assert launch["args"] == ["-B", "-m", "math_research.mcp.server", "--workspace", "."]
     assert report["cases"]["profile_plugin_OFF"]["new_agent_tools"] == 0
     assert report["cases"]["profile_plugin_ON"]["new_agent_tools"] == 11

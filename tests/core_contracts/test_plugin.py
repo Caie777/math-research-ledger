@@ -10,6 +10,7 @@ from math_research import __version__
 ROOT = Path(__file__).resolve().parents[2]
 
 
+@pytest.mark.codex_compat
 def test_plugin_portable_identity_overlay_and_launcher(tmp_path):
     portable = json.loads((ROOT / "plugin.json").read_text("utf-8"))
     overlay = json.loads((ROOT / ".codex-plugin/plugin.json").read_text("utf-8"))
@@ -40,6 +41,7 @@ def test_plugin_portable_identity_overlay_and_launcher(tmp_path):
     )
 
 
+@pytest.mark.codex_compat
 def test_preparation_refuses_existing_package_or_missing_runtime(tmp_path):
     import importlib.util
 

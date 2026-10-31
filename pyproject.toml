@@ -62,4 +62,7 @@ no_implicit_optional = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
-markers = ["integration: needs an explicitly enabled external service"]
+markers = [
+    "integration: needs an explicitly enabled external service",
+    "codex_compat: Codex-only packaging compatibility; not a Core/MCP/DSH release gate",
+]

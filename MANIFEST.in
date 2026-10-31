@@ -17,6 +17,7 @@ include integrations/deepseek-harness/host-plugin/*.cjs
 include integrations/deepseek-harness/host-plugin/*.json
 include integrations/deepseek-harness/host-plugin/*.yml
 include integrations/deepseek-harness/host-plugin/*.md
+include integrations/deepseek-harness/host-plugin/locale/*.json
 recursive-include docs *.md
 recursive-include examples *.md
 recursive-include tests *.py
