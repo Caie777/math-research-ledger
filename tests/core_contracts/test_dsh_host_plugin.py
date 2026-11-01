@@ -12,8 +12,6 @@ from pathlib import Path
 import pytest
 import yaml
 
-from math_research import __version__
-
 ROOT = Path(__file__).resolve().parents[2]
 TEMPLATE = ROOT / "integrations/deepseek-harness/host-plugin"
 spec = importlib.util.spec_from_file_location(
@@ -25,14 +23,17 @@ spec.loader.exec_module(prep)
 
 def test_native_host_manifest_and_runtime_only_configuration():
     meta = json.loads((TEMPLATE / "package.json").read_text("utf-8"))
-    assert meta["version"] == __version__
+    # Adapter-only patches do not require a Python runtime release.
+    assert meta["version"] == "1.3.1"
     assert meta["main"] == "index.cjs"
     assert meta["exports"]["."] == "./index.cjs"
     for language in ("en", "zh"):
         locale = json.loads((TEMPLATE / f"locale/{language}.json").read_text("utf-8"))
         assert locale["meta"]["title"] == "MathResearch Ledger for DSH"
     assert meta["dsh"]["bundle"]["patch"] == "./cordis.patch.yml"
-    assert meta["peerDependencies"]["@deepseek-ai/dsh-mcp-client"] == "0.2.1-rc.3"
+    assert meta["engines"]["dsh"] == "0.2.x"
+    assert meta["peerDependencies"]["@deepseek-ai/dsh-agent"] == "0.2.x"
+    assert meta["peerDependencies"]["@deepseek-ai/dsh-mcp-client"] == "0.2.x"
     rows = yaml.safe_load((TEMPLATE / "cordis.patch.yml").read_text("utf-8"))
     assert len(rows) == len(rows[0]["insert"]) == 1
     row = rows[0]["insert"][0]

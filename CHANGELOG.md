@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.1] - 2026-11-01
+
+### Fixed
+
+- Host packaging only: relax `engines.dsh`, `@deepseek-ai/dsh-agent` and
+  `@deepseek-ai/dsh-mcp-client` to `0.2.x`. DSH checks ranges with
+  `includePrerelease: true`, accepting all 0.2-series RCs and patches while excluding
+  0.3-series prereleases and releases. No per-RC allowlist or adapter is needed;
+  revisit compatibility only for an observed loading failure or regression.
+- The Host artifact is 1.3.1; the unchanged Python Ledger runtime remains 1.3.0.
+  No Core, MCP tools, workspace binding or Host lifecycle changes.
+
 ## [1.3.0] - 2026-10-31
 
 **Protocol-neutral, DSH-first, other Harnesses on demand.** This release consolidates
