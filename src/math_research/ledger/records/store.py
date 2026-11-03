@@ -189,10 +189,15 @@ def require_dossier(ot_dir: Path, problem_id: str) -> ProblemRecord:
         # 'PROPROBLEM-0001' and another for a 'PROBLEM-0003' that was never created —
         # and a workspace almost always holds exactly one dossier, so listing them turns
         # a true statement into the answer.
-        available = [d.id for d in list_dossiers(ot_dir)]
-        known = ", ".join(available) if available else "none (create one with problem new)"
+        #
+        # This is an existence check over the real dossiers on disk. It is deliberately
+        # not an ID-format allowlist: PROBLEM numbers carry no meaning beyond identity,
+        # and the list is whatever this workspace actually contains.
+        existing = [d.id for d in list_dossiers(ot_dir)]
+        known = ", ".join(existing) if existing else "none yet"
         raise ResearchError(
-            f"No problem dossier with id '{problem_id}'. This workspace has: {known}."
+            f"Unknown Problem '{problem_id}'. Existing Problems: {known}. "
+            "A new Problem must be created explicitly; this lookup never invents one."
         )
     return dossier
 

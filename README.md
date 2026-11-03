@@ -12,15 +12,18 @@ reconstructing it from chat. Core services and the MCP contract remain Harness-n
 
 [中文说明](README.zh-CN.md) · [Changelog](CHANGELOG.md)
 
-**1.3.0 — Protocol-neutral, DSH-first, other Harnesses on demand.**
+**1.4.0 — workspace-gated DSH Host activation.**
 The official Host integration is displayed as **MathResearch Ledger for DSH**;
-the product remains MathResearch Ledger. The standard MCP server retains eleven
-tools, including [Problem lifecycle](docs/problem-lifecycle.md), with no Core/MCP
-breaking change or research-schema migration.
-See the [1.3.0 release notes](docs/releases/v1.3.0.md), [adapter contract](docs/adapter-contract.md)
+the product remains MathResearch Ledger. The Host plugin may stay globally ON, but
+it mounts research tools only for a workspace that has an explicit activation
+pointer. The standard MCP server retains eleven tools, including
+[Problem lifecycle](docs/problem-lifecycle.md), with no Core/MCP breaking change or
+research-schema migration. This release also relaxes Problem-ID shape handling and
+reports *existing* Problems by name rather than an ID range.
+See the [1.4.0 release notes](docs/releases/v1.4.0.md), [adapter contract](docs/adapter-contract.md)
 and [dated capability matrix](docs/harness-capability-matrix.md).
 The [2026-10-30 DSH-first audit](docs/dsh-first-finalization.md) is historical evidence,
-not the 1.3.0 release-gate result.
+not the 1.4.0 release-gate result.
 
 ## Why keep a research ledger?
 
@@ -80,6 +83,26 @@ you. Ordinary projects can leave it disabled. If you specifically need Codex, us
 `math-research-ledger-mcp --workspace '<research-workspace>'` over stdio.
 MCP never initializes missing state. CLI aliases `smr`, `math-research` and `smr-mcp`
 remain available; the Python import namespace is `math_research`.
+
+### Enabling Ledger in DSH
+
+The Host plugin can stay **globally ON**. ON only permits a workspace to use Ledger;
+it never attaches research tools to every Agent.
+
+- **Ordinary workspace:** without activation metadata a new Agent gets **0 Ledger
+  tools**, starts **no Python MCP process**, and creates **no research state**.
+- **First use:** in the intended session, run the native command
+  `/math-research-ledger enable [workspace-relative directory]`.
+  With no argument it initializes `<session-root>/.math-research-ledger`; with
+  `research/foo` it initializes `<session-root>/research/foo/.math-research-ledger`.
+  The path must resolve inside that **exact session root**; `..`, absolute paths
+  outside the root and symlink/junction escapes are rejected.
+- **Afterwards:** the tiny `.math-research-ledger-link` pointer in the session root
+  records the relative state directory, and new Agents in that root automatically get
+  exactly eleven tools bound to that Ledger.
+- **Exact root only:** a parent directory's Ledger is never inherited, and other
+  `.math-research-ledger` directories are never scanned or guessed. New Problems are
+  still created explicitly with `research_create_problem`.
 
 ## A minimal continuation workflow
 

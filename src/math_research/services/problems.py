@@ -58,7 +58,12 @@ class CreateProblemInput(ProblemInput):
 
 
 class UpdateProblemInput(ProblemInput):
-    problem_id: str = Field(pattern=r"^PROBLEM-\d{4,}$", max_length=128)
+    # Identity, not a naming allowlist: resolution requires the dossier to exist, and
+    # storage still enforces a safe path component. Legacy/unpadded ids are not rejected
+    # by shape before the existence check gets a chance to explain them.
+    problem_id: str = Field(
+        min_length=1, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"
+    )
     revision_kind: Literal["metadata", "semantic"] = "metadata"
     expected_version: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     title: str | None = Field(default=None, min_length=1, max_length=300, pattern=r"^[^\r\n]+$")

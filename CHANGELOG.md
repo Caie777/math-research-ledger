@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.4.0] - 2026-11-03
+
+### Changed
+
+- DSH Host activation is workspace-gated. The Host entry may stay globally ON, but
+  it now mounts the Ledger MCP client only for a new Agent whose exact session root
+  contains a `.math-research-ledger-link` pointer naming one in-root Ledger state
+  directory. No pointer means zero Ledger tools, no Python MCP process and no
+  automatic state creation. There is no ancestor search or workspace scan.
+- Add the native human command `/math-research-ledger enable [directory]` for
+  explicit initialization. It uses the normal `math_research` CLI once and rejects
+  `..`, absolute paths outside the exact session root, and symlink/junction escapes.
+  No resident model-facing bootstrap tool is added.
+- Existing workspaces get a pointer only; `D:\Math Research` keeps its current
+  Ledger files unchanged.
+- DSH Host package is 1.4.0 and contains one additional file, `activation.cjs`.
+  Core, MCP tool semantics, Research Episode semantics and workspace binding are
+  unchanged. The Python runtime remains 1.3.0-compatible.
+
+### Fixed
+
+- An unknown Problem reports the **existing Problems** by name and states that a new
+  Problem must be created explicitly, instead of listing a numeric range that looked
+  like an ID allowlist. The check is still an existence check over the real dossiers.
+- `research_update_problem` no longer rejects a non-canonical Problem ID shape before
+  the existence check; storage keeps its path-safety validation. Problem numbers carry
+  no meaning beyond identity.
+
 ## [1.3.1] - 2026-11-01
 
 ### Fixed

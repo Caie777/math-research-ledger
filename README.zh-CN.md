@@ -12,13 +12,15 @@ Harness-neutral；DSH 是主要支持、测试和文档化的 Harness，其他�
 
 [English](README.md) · [更新记录](CHANGELOG.md)
 
-**1.3.0 — Protocol-neutral, DSH-first, other Harnesses on demand。**
+**1.4.0 — workspace-gated DSH Host activation。**
 正式 Host 集成展示名为 **MathResearch Ledger for DSH**，产品名仍是 MathResearch Ledger。
+Host 插件可以全局开启，但只为带有显式 activation pointer 的 workspace 挂载研究工具。
 标准 MCP server 保留十一个工具，包含 [Problem lifecycle](docs/problem-lifecycle.md)；
-无 Core/MCP breaking change，也不要求研究 schema migration。
-见 [1.3.0 发布说明](docs/releases/v1.3.0.md)、[Adapter Contract](docs/adapter-contract.md) 和
+无 Core/MCP breaking change，也不要求研究 schema migration。本版同时放宽 Problem ID
+形状限制，并在报错中列出**实际存在的** Problem，而不是编号范围。
+见 [1.4.0 发布说明](docs/releases/v1.4.0.md)、[Adapter Contract](docs/adapter-contract.md) 和
 [带日期的能力矩阵](docs/harness-capability-matrix.md)。
-[2026-10-30 DSH-first 审计报告](docs/dsh-first-finalization.md) 是历史证据，不是 1.3.0 本次发布门槛结果。
+[2026-10-30 DSH-first 审计报告](docs/dsh-first-finalization.md) 是历史证据，不是 1.4.0 本次发布门槛结果。
 
 ## 为什么需要研究 Ledger？
 
@@ -58,6 +60,23 @@ workspace 必须在工具仓库之外，由用户显式初始化。init 创建�
 仅需要 Codex 时参阅 [Tier 2 兼容指南](docs/codex-mcp.md)。独立 MCP client 可用 stdio 启动
 `math-research-ledger-mcp --workspace '<research-workspace>'`，MCP 不会初始化缺失的工作区。
 兼容 CLI 别名 `smr`、`math-research`、`smr-mcp` 和 Python import `math_research` 保留。
+
+### 在 DSH 中启用 Ledger
+
+Host 插件可以**全局 ON**。ON 只表示“允许该 workspace 使用 Ledger”，不会给所有 Agent
+自动挂载研究工具。
+
+- **普通 workspace：**没有 activation metadata 时，新 Agent **0 个 Ledger tools**，
+  不启动 Python MCP 进程，也不创建任何 Ledger 状态。
+- **首次使用：**在目标 session 中执行原生命令
+  `/math-research-ledger enable [workspace-relative directory]`。
+  不带参数时初始化 `<session-root>/.math-research-ledger`；带 `research/foo` 时初始化
+  `<session-root>/research/foo/.math-research-ledger`。路径必须 resolve 后仍严格位于
+  **exact session root** 内；`..`、root 外的绝对路径和 symlink/junction 逃逸都会被拒绝。
+- **之后：**session root 中的极小 `.math-research-ledger-link` 记录相对 state 目录，
+  该 root 下的新 Agent 自动获得精确十一个工具并绑定该 Ledger。
+- **仅限 exact root：**不继承父目录的 Ledger，也不扫描或猜测其他
+  `.math-research-ledger` 目录。新 Problem 仍必须通过 `research_create_problem` 显式创建。
 
 ## 最小续研流程
 

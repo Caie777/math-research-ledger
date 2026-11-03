@@ -117,9 +117,28 @@ def test_missing_workspace_and_unknown_episode_never_initialize(tmp_path, resear
     assert not absent.exists()
     state, _ = research
     before = inventory(state)
-    with pytest.raises(ResearchError, match="No problem dossier"):
+    with pytest.raises(ResearchError, match="Unknown Problem"):
         ingest_episode(state, "PROBLEM-0999", "bad.md", b"Synthetic.", provenance="fixture")
     assert inventory(state) == before
+
+
+def test_unknown_problem_lists_real_dossiers_not_a_fixed_range(research):
+    """An unknown ID reports the Problems that exist; numbers are identity, not semantics."""
+    state, _ = research
+    extra = [
+        problems.create_problem(state, **{**CREATE, "title": f"Synthetic extra {i}"})["problem_id"]
+        for i in range(2)
+    ]
+    existing = [dossier.id for dossier in store.list_dossiers(state)]
+    assert extra == existing[1:]
+    with pytest.raises(ResearchError) as excinfo:
+        store.require_dossier(state, "PROBLEM-9999")
+    message = str(excinfo.value)
+    assert message.startswith("Unknown Problem 'PROBLEM-9999'.")
+    assert f"Existing Problems: {', '.join(existing)}." in message
+    assert "A new Problem must be created explicitly" in message
+    # A fixed PROBLEM-0001..NNN allowlist would pass the previous assertion only by accident.
+    assert "PROBLEM-0999" not in message
 
 
 @pytest.mark.parametrize("kind", ["resolved", "abandoned", "superseded", "other"])
