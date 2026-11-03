@@ -1,11 +1,11 @@
 {
   "name": "dsh-math-research-ledger-host",
-  "version": "1.3.1",
-  "description": "Recommended Agent Host plugin: agent-scoped MathResearch Ledger MCP for DeepSeek Harness.",
+  "version": "1.4.0",
+  "description": "Recommended Agent Host plugin: workspace-gated, agent-scoped MathResearch Ledger MCP for DeepSeek Harness.",
   "license": "Apache-2.0",
   "main": "index.cjs",
   "exports": {".": "./index.cjs", "./locale/*.json": "./locale/*.json"},
-  "files": ["index.cjs", "cordis.patch.yml", "locale/*.json", "README.md", "LICENSE"],
+  "files": ["index.cjs", "activation.cjs", "cordis.patch.yml", "locale/*.json", "README.md", "LICENSE"],
   "engines": {"dsh": "0.2.x"},
   "peerDependencies": {
     "@deepseek-ai/dsh-agent": "0.2.x",

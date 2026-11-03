@@ -45,10 +45,14 @@ explicit exact binding. That canonical root is immutable for the server lifetime
 Tool arguments can assert it, never select a new root. A different assertion returns
 `WORKSPACE_OUT_OF_SCOPE`.
 
-An uninitialized root returns `NO_WORKSPACE` while tools remain registered. Ordinary
-subdirectories and the state directory itself do not bind a parent's Ledger.
-There is no ancestor fallback or automatic initialization in this deployment.
-An Agent may ask whether the user wants explicit initialization. Implicit human CLI
+For DSH, the Host mounts no Ledger client unless the exact session root contains a
+valid `.math-research-ledger-link` pointer. Without one, a new Agent has zero Ledger
+tools and no Python process; nothing is initialized, scanned or inherited from a
+parent directory. A pointer naming an ordinary subdirectory binds exactly that
+Ledger. A malformed or escaping pointer fails closed rather than binding a
+substitute. Explicit initialization belongs to the Host lifecycle (the native
+`/math-research-ledger enable [directory]` command), not to the research MCP server.
+An uninitialized root with no pointer is simply not activated. Implicit human CLI
 cwd/ancestor discovery and shared path-helper compatibility remain separate behavior.
 
 ## DeepSeek Harness — Tier 1 official

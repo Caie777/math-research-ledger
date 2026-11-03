@@ -24,7 +24,8 @@ spec.loader.exec_module(prep)
 def test_native_host_manifest_and_runtime_only_configuration():
     meta = json.loads((TEMPLATE / "package.json").read_text("utf-8"))
     # Adapter-only patches do not require a Python runtime release.
-    assert meta["version"] == "1.3.1"
+    assert meta["version"] == "1.4.0"
+    assert "activation.cjs" in meta["files"]
     assert meta["main"] == "index.cjs"
     assert meta["exports"]["."] == "./index.cjs"
     for language in ("en", "zh"):
@@ -46,6 +47,7 @@ def test_preparation_selects_python_never_workspace_or_runtime_install(tmp_path)
     prep.prepare(out, Path(sys.executable))
     assert {p.name for p in out.iterdir()} == {
         "index.cjs",
+        "activation.cjs",
         "package.json",
         "cordis.patch.yml",
         "README.md",
@@ -90,6 +92,7 @@ def test_actual_public_host_tarball_has_no_local_runtime_or_state(tmp_path):
             "package/" + name
             for name in (
                 "index.cjs",
+                "activation.cjs",
                 "package.json",
                 "cordis.patch.yml",
                 "README.md",
@@ -153,33 +156,25 @@ def test_actual_dsh_agent_factory_acceptance(tmp_path):
     )
     assert result.returncode == 0, result.stdout[-2000:] + result.stderr[-2000:]
     report = json.loads((out / "acceptance.json").read_text("utf-8"))
-    assert report["dsh"] == "0.2.1-rc.3" and not report["model_called"]
+    assert report["dsh"].startswith("0.2.") and not report["model_called"]
+    # Workspace-gated activation: no tools, process or state without a pointer.
     expected_cases = {
-        "different_workspace_concurrent",
-        "agent_create",
-        "first_turn_availability",
-        "same_workspace_concurrent",
-        "ordinary_subdirectory",
-        "state_directory_exact_root",
-        "uninitialized",
-        "shell_cd_immutability",
-        "agent_dispose",
-        "resume",
-        "profile_plugin_OFF",
-        "profile_plugin_ON",
-        "fresh_agent_restart",
-        "restart",
-        "missing_host_root",
-        "fallback_not_registered",
-        "exact_tool_list",
+        "absence_no_tools_no_process_no_state",
+        "explicit_default_activation",
+        "explicit_subdirectory_activation",
+        "reject_outside_and_unknown",
+        "no_ancestor_search",
+        "global_tools_absent",
     }
     if readonly:
-        expected_cases.add("real_workspace_readonly")
+        expected_cases.add("existing_real_workspace_pointer")
     assert set(report["cases"]) == expected_cases
     assert all(v["passed"] for v in report["cases"].values())
-    assert report["cases"]["fallback_not_registered"]["global_ledger_tools"] == 0
-    assert len(set(report["cases"]["exact_tool_list"]["tools"])) == 11
+    assert report["cases"]["global_tools_absent"]["global_ledger_tools"] == 0
+    assert report["cases"]["absence_no_tools_no_process_no_state"]["tools"] == 0
+    assert report["cases"]["absence_no_tools_no_process_no_state"]["python_processes"] == 0
+    assert report["cases"]["absence_no_tools_no_process_no_state"]["state_created"] is False
+    assert report["cases"]["explicit_default_activation"]["new_agent_tools"] == 11
+    assert report["cases"]["explicit_subdirectory_activation"]["bound"] == "research/foo"
     for launch in report["launches"]:
         assert launch["args"] == ["-B", "-m", "math_research.mcp.server", "--workspace", "."]
-    assert report["cases"]["profile_plugin_OFF"]["new_agent_tools"] == 0
-    assert report["cases"]["profile_plugin_ON"]["new_agent_tools"] == 11

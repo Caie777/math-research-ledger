@@ -1,17 +1,48 @@
 # MathResearch Ledger for DSH
 
 The official Agent Host plugin is the **only recommended / default installation**
-in **1.3.0** for DSH **0.2.1-rc.3**. **MathResearch Ledger for DSH** is its Host UI
+in **1.4.0** for DSH **0.2.x**. **MathResearch Ledger for DSH** is its Host UI
 name; the product remains MathResearch Ledger. **Protocol-neutral, DSH-first, other
 Harnesses on demand** means the standard MCP contract is retained, Codex is
 best-effort compatibility and other adapters need a real use case.
 
-Install the matching 1.3.0 Python wheel with MCP dependencies into a persistent
+Install the matching Python wheel with MCP dependencies into a persistent
 runtime for eleven tools. No Core/MCP breaking change or research-schema migration
 is introduced.
 The adapter contains no research logic: it awaits the official MCP client inside
 each new Agent's scope, using the Host's immutable `agent.session.header.cwd`.
 The existing Python server supplies the shared research workflow instructions.
+
+## Workspace-gated activation
+
+The Host entry may stay globally ON. ON alone grants no Ledger tools: it only
+permits a workspace that owns an activation pointer to use them. There is no
+ancestor search, workspace scan or automatic Ledger creation.
+
+For each new Agent, the Host reads exactly one tiny pointer in the exact session
+root, `.math-research-ledger-link`. The pointer contains a session-root-relative
+Ledger state directory such as `.math-research-ledger` or
+`research/foo/.math-research-ledger`.
+
+| Exact session-root state | Result |
+|---|---|
+| no pointer | 0 Ledger tools and no Python MCP process |
+| valid pointer | one scoped MCP client bound to that Ledger; exactly eleven tools |
+| invalid or escaping pointer | Agent setup fails with a clear diagnostic; no substitute directory |
+
+Enable Ledger only with the native human command, not by mentioning it in a model
+prompt:
+
+```text
+/math-research-ledger enable [workspace-relative directory]
+```
+
+The command initializes the default `./.math-research-ledger`, or the requested
+directory inside the exact session root. Absolute paths outside the root, `..`,
+and symlink/junction escapes are rejected. Initialization runs the normal
+`math_research` CLI once; without an existing pointer the research tools never
+appear and Python is never started. There is intentionally no resident bootstrap
+tool schema.
 
 Prepare a new local package with an already installed persistent Python runtime:
 
@@ -48,34 +79,34 @@ by manually rewriting its files.
 
 Load this Host entry before creating the Agents it should serve; after install,
 enable or reload, create/resume a new Agent. `agent/created` is an awaited DSH
-factory barrier: after creation resolves, tools are ready before the first model
-request. Existing Agents are not retrofitted. Profile/plugin OFF removes the
-creation listener: new Agents have no Ledger tools, while already-created Agents
-retain their scoped client until disposal. ON affects subsequently created Agents.
+factory barrier. Without a pointer the Agent simply has no Ledger tools; with one,
+tools are ready before the first model request. Existing Agents are not retrofitted.
+Profile/plugin OFF removes the creation listener: new Agents have no Ledger tools,
+while already-created Agents retain their scoped client until disposal. ON affects
+subsequently created Agents and remains necessary for the `/math-research-ledger`
+command.
 
-Each Agent owns one active connection/process. An additional short-lived startup
-process was observed with the tested SDK/Host before its active connection; the
-adapter adds no process manager. Agent disposal closes its official MCP transport
-and tools.
+Each Agent owns at most one active connection/process. Agent disposal closes its
+official MCP transport and tools.
 
-The process cwd is the Agent's recorded root and args are
+The process cwd is the bound Ledger root and args are
 `-B -m math_research.mcp.server --workspace .`. Shell cwd changes do not rebind it.
-Resume uses the saved session header, not ambient cwd. A known but uninitialized
-root, ordinary subdirectory or state directory registers eleven tools and returns
-`NO_WORKSPACE`. Missing Host cwd rejects Agent setup with that diagnostic without
-spawning a process. No parent discovery, model-selected scope, silent init, ACL
+Resume uses the saved session header and the same pointer, not ambient cwd. A
+missing pointer yields zero tools rather than a `NO_WORKSPACE` client. A malformed
+or escaping pointer refuses Agent setup without spawning a process or guessing
+another directory. No parent discovery, model-selected scope, silent init, ACL
 changes, authentication handling or automatic authority promotion is added.
 
-## Public 1.3.0 package
+## Public 1.4.0 package
 
-The public Host npm tarball contains **seven files**: `index.cjs`, `package.json`,
-`cordis.patch.yml`, `README.md`, `LICENSE`, `locale/en.json` and `locale/zh.json`.
-The locales supply the **MathResearch Ledger for DSH** Host title; the stable package
-ID `dsh-math-research-ledger-host`, MCP server name and runtime binding are unchanged.
-The five-file tarball described by dated 1.2.2 acceptance was the older package
-layout, not a failed seven-file assertion or a new 1.3.0 result. No Python runtime,
-rendered local configuration, research state or private evidence belongs in the
-public tarball.
+The public Host npm tarball contains **eight files**: `index.cjs`, `activation.cjs`,
+`package.json`, `cordis.patch.yml`, `README.md`, `LICENSE`, `locale/en.json` and
+`locale/zh.json`. The locales supply the **MathResearch Ledger for DSH** Host title;
+the stable package ID `dsh-math-research-ledger-host`, MCP server name and runtime
+binding are unchanged. The seven-file 1.3.0 layout and five-file 1.2.2 layout are
+historical. No Python runtime, rendered local configuration, research state or
+private evidence belongs in the public tarball.
+
 
 ## Historical validation boundary
 

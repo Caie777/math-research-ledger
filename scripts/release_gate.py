@@ -60,14 +60,19 @@ def verify_dsh_evidence(output: Path, *, readonly: bool) -> str:
         )
     report = json.loads(reports[0].read_text("utf-8"))
     cases = report.get("cases", {})
+    dsh = report.get("dsh")
+    # DSH is intentionally supported across the whole 0.2 series; this is not a
+    # per-RC allowlist. Activation smoke covers the absence/default/custom/
+    # rejected/no-ancestor/global cases and, when opted in, the real pointer.
     if (
-        report.get("dsh") != "0.2.1-rc.3"
+        not isinstance(dsh, str)
+        or not dsh.startswith("0.2.")
         or report.get("model_called") is not False
-        or len(cases) < 17
+        or len(cases) < 6
         or not all(case.get("passed") is True for case in cases.values())
-        or (readonly and not cases.get("real_workspace_readonly", {}).get("passed"))
+        or (readonly and not cases.get("existing_real_workspace_pointer", {}).get("passed"))
     ):
-        raise RuntimeError("Incomplete or failed actual DSH acceptance evidence.")
+        raise RuntimeError("Incomplete or failed actual DSH activation evidence.")
     return str(reports[0].relative_to(output))
 
 

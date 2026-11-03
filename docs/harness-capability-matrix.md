@@ -57,10 +57,10 @@ conversational turn was tested. These results are not a new 2026-10-30 release r
 | Exact-root binding | Passed: Agent header root is child cwd, `--workspace .` | Passed: `--workspace .`, no configured cwd |
 | Multiple workspaces concurrent | Isolated A/B; real/initialized synthetic Agents also coexist and reject cross-root assertions | Isolated A/B, eleven tools each, cross-root assertions rejected |
 | Same workspace concurrent | Isolated two-Agent writes: distinct IDs, consistent counts, generation/lock checks | Isolated two-server writes: distinct IDs, consistent counts, generation/lock checks |
-| Uninitialized workspace | Eleven tools; `NO_WORKSPACE`; no init; also passed in real Profile with an empty root | Eleven tools; `NO_WORKSPACE`; no init |
-| Subdirectory no fallback | Passed in isolated official Host | Passed in isolated native Host |
+| Uninitialized workspace | **Activation-gated:** no pointer means zero tools, no Python process, no init; Codex keeps its server and returns `NO_WORKSPACE` | Eleven tools; `NO_WORKSPACE`; no init |
+| Subdirectory no fallback | **Activation-gated:** needs its own pointer; never inherits a parent Ledger | Passed in isolated native Host |
 | State-dir no fallback | Passed in isolated official Host | Passed in isolated native Host |
-| First-turn tools | Factory returns with eleven tools; isolated first-request gate stops before provider I/O | Native session tool discovery before a model turn; no model call |
+| First-turn tools | After explicit `/math-research-ledger enable`, MCP tools are ready for the next task message | Native session tool discovery before a model turn; no model call |
 | Workspace immutable | Shell cd leaves existing binding unchanged, including real Profile | Shell cd leaves existing binding unchanged |
 | Session/Agent resume | Disk-persisted resume restores header root, including real Profile and independent Host restart | Persisted `thread/resume` was not separately verified; fresh-session/restart passed |
 | ON/OFF | New Agents eleven/zero; existing Agents retain eleven until dispose; real Profile manager applied both | Skill + tools eleven/zero; isolated reload and real cutover passed |

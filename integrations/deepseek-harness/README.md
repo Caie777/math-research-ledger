@@ -56,10 +56,13 @@ have no Ledger tools. Existing Agents retain their scoped client until disposal;
 ON does not retrofit those already created. Agent dispose closes its own transport.
 Resume uses the persisted header root, independently of ambient shell cwd.
 
-Known roots without Ledger, ordinary subdirectories and state directories return
-`NO_WORKSPACE` with eleven registered tools and no init/fallback. Missing absolute
-Host cwd fails Agent setup with `NO_WORKSPACE` before spawning any MCP process.
-This is a Host metadata error; restart with a Host-created workspace-bound session.
+Known roots without a valid `.math-research-ledger-link` pointer expose **zero**
+Ledger tools and start no Python MCP process; there is no init, scan or ancestor
+fallback. A valid pointer mounts the scoped client for exactly that Ledger, and an
+invalid or escaping pointer refuses Agent setup. Missing absolute Host cwd fails
+Agent setup before spawning any MCP process.
+Explicit activation uses the native `/math-research-ledger enable [directory]`
+command, never a resident model-facing bootstrap tool.
 Shared workflow comes from the same MCP server instructions; no DSH policy is added
 to the shared Codex skill. See [scope/lifecycle acceptance](../../docs/dsh-agent-workspace-acceptance.md).
 
