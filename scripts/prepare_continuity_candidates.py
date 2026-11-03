@@ -36,7 +36,12 @@ def candidates(state: Path, problem_id: str) -> dict:
             "gap" if main.type == "OPEN_GAP" else "claim",
             "当前 Problem 明确指定的完整主目标是什么？",
         )
-    add(problem_id, "problem", "当前应恢复哪个研究问题，哪些记录仍需核对？", problem.status)
+    add(
+        problem_id,
+        "problem",
+        "当前应恢复哪个研究问题，哪些记录仍需核对？",
+        problem.lifecycle_status,
+    )
     for c in [c for c in claims if c.type == "OPEN_GAP"][:2]:
         add(c.id, "gap", "这个 Gap 当前依赖什么，哪些输入仍缺少版本绑定？", c.status, c.depends_on)
     for f in failures[:2]:

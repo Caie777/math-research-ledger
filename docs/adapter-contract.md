@@ -1,11 +1,15 @@
 # Harness adapter contract
 
-Applies to MathResearch Ledger 1.3.0. Support policy established 2026-10-30,
-release documentation updated 2026-10-31. **Protocol-neutral, DSH-first, other
+Applies to MathResearch Ledger 1.5.0. Support policy established 2026-10-30,
+release documentation updated 2026-11-03. **Protocol-neutral, DSH-first, other
 Harnesses on demand.** Adapters compose the standard MCP server; business decisions
 stay in deterministic services. The eleven-tool contract is retained with no
 Core/MCP breaking change or research-schema migration. DSH priority does not
 introduce DSH types, paths or lifecycle policy into Core or the MCP contract.
+
+The [v1.5.0 release](releases/v1.5.0.md) adds public input/output fields while
+retaining eleven tools. Its explicitly scoped verification defers actual DSH
+acceptance to post-release real use.
 
 ## Support tiers and release policy
 

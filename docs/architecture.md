@@ -2,7 +2,7 @@
 
 ## Protocol-neutral core, DSH-first product
 
-MathResearch Ledger 1.3.0 is a research-memory and verification layer exposed through
+MathResearch Ledger 1.5.0 is a research-memory and verification layer exposed through
 a standard MCP server, not a Harness runtime. The release retains the eleven-tool
 Core/MCP contract without a breaking change or research-schema migration.
 **Protocol-neutral, DSH-first, other Harnesses on demand.** The official Host UI

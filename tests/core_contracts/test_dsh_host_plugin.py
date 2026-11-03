@@ -24,7 +24,7 @@ spec.loader.exec_module(prep)
 def test_native_host_manifest_and_runtime_only_configuration():
     meta = json.loads((TEMPLATE / "package.json").read_text("utf-8"))
     # Adapter-only patches do not require a Python runtime release.
-    assert meta["version"] == "1.4.0"
+    assert meta["version"] == "1.5.0"
     assert "activation.cjs" in meta["files"]
     assert meta["main"] == "index.cjs"
     assert meta["exports"]["."] == "./index.cjs"

@@ -188,6 +188,7 @@ class ProblemRecord(BaseModel):
 
     id: str
     title: str = ""
+    # Legacy disk/hash compatibility only; lifecycle_status is authoritative.
     status: ProblemStatus = "open"
     domain: str = ""
     created_at: datetime = Field(default_factory=utcnow)

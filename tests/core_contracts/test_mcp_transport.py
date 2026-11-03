@@ -40,6 +40,75 @@ ROOT = Path(__file__).resolve().parents[2]
 LAUNCHER = ROOT / "scripts/smr_mcp.py"
 
 
+def test_design_convergence_smoke_over_real_stdio(tmp_path):
+    init_workspace(tmp_path)
+
+    async def run():
+        params = StdioServerParameters(
+            command=sys.executable,
+            args=["-B", str(LAUNCHER), "--workspace", str(tmp_path)],
+            env=environment(),
+        )
+        async with (
+            stdio_client(params) as (read, write),
+            ClientSession(read, write, read_timeout_seconds=timedelta(seconds=30)) as client,
+        ):
+            await client.initialize()
+
+            async def call(name, **args):
+                response = await client.call_tool(name, args)
+                assert not response.isError, response
+                assert len(response.model_dump_json().encode()) < MAX_OUTPUT_BYTES
+                return response.structuredContent
+
+            problem = await call(
+                "research_create_problem",
+                title="Synthetic smoke",
+                statement="Synthetic mathematical framework",
+                primary_target="Full synthetic target",
+            )
+            pid = problem["problem_id"]
+            await call(
+                "research_save_note",
+                problem_id=pid,
+                kind="claim",
+                title="Smoke claim",
+                body="Synthetic primary claim",
+                provenance="Synthetic stdio test",
+            )
+            hits = await call("research_search", problem_id=pid, kind="claim", query="primary")
+            claim = hits["hits"][0]["ref"]
+            claim_ref = f"{pid}:claim:{claim['object_id']}"
+            await call(
+                "research_update_problem",
+                problem_id=pid,
+                primary_claim_id=claim_ref,
+                revision_kind="semantic",
+            )
+            status = await call("research_status", problem_id=pid)
+            assert status["continuation"]["primary_target_binding"] == "CLAIM"
+            await call(
+                "research_save_note",
+                problem_id=pid,
+                kind="gap",
+                title="Smoke gap",
+                body="Synthetic open gap",
+                provenance="Synthetic stdio test",
+            )
+            hits = await call("research_search", problem_id=pid, kind="gap", query="gap")
+            assert hits["hits"] and all(h["ref"]["kind"] == "gap" for h in hits["hits"])
+            gap_ref = f"{pid}:gap:{hits['hits'][0]['ref']['object_id']}"
+            context = await call("research_context_packet", ref=gap_ref)
+            assert any(i["ref"] == claim for i in context["items"])
+            review = await call("research_review_packet", ref=gap_ref)
+            assert review["problem_context"]["statement"] == "Synthetic mathematical framework"
+            stale = await call("research_stale_report", problem_id=pid)
+            assert stale["scope"] == {"kind": "problem", "problem_id": pid}
+            assert stale["counts_are_scoped"]
+
+    asyncio.run(run())
+
+
 def test_episode_preview_and_integrity_error_over_real_stdio(research):
     from math_research.ledger.archive import source_path
     from math_research.services.ingest import ingest_episode

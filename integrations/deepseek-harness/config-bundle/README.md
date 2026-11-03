@@ -1,7 +1,7 @@
 # MathResearch Ledger — Fallback for DeepSeek Harness
 
 **Fallback / manual single-workspace integration — not the default.** The only
-recommended **1.3.0** installation is the separate official Agent Host plugin,
+recommended **1.5.0** installation is the separate official Agent Host plugin,
 displayed as **MathResearch Ledger for DSH** (`host-plugin/` in the source archive).
 Its DSH rc.3 acceptance cited below is historical, not a new 1.3.0 gate result.
 Choose this alternative only for an explicit installation-time workspace pin. **Remove the Host plugin
@@ -16,7 +16,7 @@ a JavaScript adapter or custom lifecycle code.
 
 This configuration-only Bundle uses DSH's built-in `@deepseek-ai/dsh-mcp-client`
 and an external persistent Python runtime (3.12 recommended). The server pins one
-workspace at startup and retains eleven tools in 1.3.0. DSH's native Plugins page
+workspace at startup and retains eleven tools in 1.5.0. DSH's native Plugins page
 controls OFF/ON. **Protocol-neutral, DSH-first, other Harnesses on demand** retains
 standard MCP and best-effort Codex compatibility; this manual fallback introduces
 no Core/MCP breaking change or research-schema migration.

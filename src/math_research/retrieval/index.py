@@ -455,6 +455,8 @@ def search_documents(docs: list[IndexDoc], query: str, k: int = 5) -> list[tuple
     query_tokens = _tokenize(query)
     doc_tokens = [_tokenize(f"{d.title} {d.text}") for d in docs]
     scores = _bm25_scores(query_tokens, doc_tokens)
+    title_scores = _bm25_scores(query_tokens, [_tokenize(d.title) for d in docs])
+    scores = [body + 2.0 * title for body, title in zip(scores, title_scores, strict=True)]
     ranked = sorted(zip(docs, scores, strict=True), key=lambda pair: pair[1], reverse=True)
     return [(doc, score) for doc, score in ranked[:k] if score > 0]
 

@@ -428,11 +428,13 @@ else: problems.update_problem(Path(sys.argv[1]),problem_id='PROBLEM-0001',
     assert store.require_dossier(state, ref.problem_id)
 
 
-def test_original_nine_schemas_are_unchanged():
-    # SHA256 of canonical JSON schema at public v1.2.1 (2ae449d).
+def test_all_public_mcp_schemas_are_pinned():
+    # SHA256(json.dumps(input_schema, sort_keys=True).encode()). The original
+    # nine-tool v1.2.1 contract omitted create/update (added in v1.2.2). Pin all
+    # public tools now; additive schema changes require deliberate digest updates.
     expected = dict(
         research_status="462076f8080161661bbe3187636813136468a2f3013f351da2368683ff248229",
-        research_search="f84f8dfb3207a73989625f1717ddda298449bf459fd8f2ba2a1f786b118c9c5f",
+        research_search="795f3ed519fb48df04928509c44eab3471e317139a2c45c43a0f5cf10a8d0a6a",
         research_get_object="cb93a63caf2c4237ff2cca725bfe8c2c576724758ec96d36a55bf2cb306d308e",
         research_context_packet="fd5d408ceed81fa8deac675ff698a2c029cf8fb02d6e71f4fe4adfdd28e6c720",
         research_review_packet="69bc3c0c99315c2cd5f530a27a1834428bf607acac12153569b4daf7af561a7d",
@@ -440,8 +442,11 @@ def test_original_nine_schemas_are_unchanged():
         research_ingest_episode="6a1d359006b23a5e5cb091014096170420de928ec79c928a47c14e9a11cb3c35",
         research_save_note="eb103db3cf8585ecbe9a5d87ea4402db9701be63d0b104d00ce7603d5658c04c",
         research_request_acceptance="a8841e8f286f4d45083a40bca3f497246ed36f4751c892c0f827e15920d9d44f",
+        research_create_problem="d5297ec4099d1a4337813580e6857bd3bd409bda50638baef93e4efcfdbd13e7",
+        research_update_problem="a4626123a5eb61e4eb426b327ad1e0d2542ee4ef166f6055a8d9311d37002326",
     )
     assert len(SCHEMAS) == 11
+    assert set(expected) == set(SCHEMAS)
     for name, digest in expected.items():
         assert (
             hashlib.sha256(

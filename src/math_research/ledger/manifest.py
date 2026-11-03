@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+from typing import get_args
 
 from pydantic import BaseModel, Field, computed_field
 
@@ -13,6 +14,7 @@ from math_research.ledger.archive import episode_text, source_path
 from math_research.ledger.dependencies import Dependency, DependencyRole
 from math_research.ledger.episodes import (
     Proposal,
+    ProposalKind,
     ResearchEpisode,
     ReviewDecision,
     list_candidates,
@@ -28,6 +30,47 @@ from math_research.ledger.state import KnowledgeStateResolver
 from math_research.verification.formal.models import FormalBundle
 from math_research.verification.models import VerificationReceipt
 from math_research.verification.review import ReviewReport
+
+# Readers and emitted object kinds share the search-filter contract. Proposal-only
+# relation records become edges, not objects; working proposal kinds remain searchable.
+RECORD_READERS = (
+    ("definition", store.list_definitions),
+    ("assumption", store.list_assumptions),
+    ("known_result", store.list_known_results),
+    ("claim", store.list_claims),
+    ("proof", store.list_proof_attempts),
+    ("evidence", store.list_evidence),
+    ("counterexample", store.list_counterexamples),
+    ("failed_attempt", store.list_failed_attempts),
+    ("approach", store.list_approaches),
+    ("theorem_ref", store.list_theorem_refs),
+    ("related_paper", store.list_related_papers),
+    ("experiment", list_experiments),
+)
+RESEARCH_OBJECT_KINDS = (
+    frozenset(kind for kind, _ in RECORD_READERS)
+    | (frozenset(get_args(ProposalKind)) - {"relation"})
+    | {
+        "problem",
+        "gap",
+        "episode",
+        "source",
+        "formal_bundle",
+        "verification_proof",
+        "artifact",
+        "review_report",
+        "verification",
+    }
+)
+
+
+def require_object_kind(kind: str) -> str:
+    if kind not in RESEARCH_OBJECT_KINDS:
+        raise ResearchError(
+            f"Unknown research object kind: {kind!r}; "
+            f"supported kinds: {', '.join(sorted(RESEARCH_OBJECT_KINDS))}."
+        )
+    return kind
 
 
 def record_content_hash(data: dict, body, artifacts: list[dict]) -> str:
@@ -114,6 +157,7 @@ class Ledger:
         contexts: dict[str, set[str]] = {}
 
         def add(kind, record, pid, states=None, *, ident=None, body=None, paths=()):
+            require_object_kind(kind)
             data = record.model_dump(mode="json")
             version_data = data
             if kind == "problem":
@@ -238,21 +282,7 @@ class Ledger:
                 body=store.read_statement(self.state, pid),
                 paths=[base / "statement.md"],
             )
-            readers = (
-                ("definition", store.list_definitions),
-                ("assumption", store.list_assumptions),
-                ("known_result", store.list_known_results),
-                ("claim", store.list_claims),
-                ("proof", store.list_proof_attempts),
-                ("evidence", store.list_evidence),
-                ("counterexample", store.list_counterexamples),
-                ("failed_attempt", store.list_failed_attempts),
-                ("approach", store.list_approaches),
-                ("theorem_ref", store.list_theorem_refs),
-                ("related_paper", store.list_related_papers),
-                ("experiment", list_experiments),
-            )
-            for kind, reader in readers:
+            for kind, reader in RECORD_READERS:
                 for record in reader(self.state, pid):
                     actual = "gap" if getattr(record, "type", None) == "OPEN_GAP" else kind
                     body, paths = None, []

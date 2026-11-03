@@ -7,6 +7,7 @@ from math_research.core.hashing import content_hash
 from math_research.core.refs import ObjectRef
 from math_research.ledger.manifest import Ledger
 from math_research.ledger.persistence import append_once, records
+from math_research.ledger.records import store
 from math_research.verification.models import VersionPin
 from math_research.verification.review import ReviewPacket, ReviewReport
 
@@ -21,9 +22,23 @@ def prepare_review(state: Path, target: ObjectRef) -> ReviewPacket:
     entry = ledger.get(target)
     if target.kind not in {"claim", "gap"}:
         raise ResearchError("Review packet requires an exact Claim/Gap.")
+    if target.problem_id is None:
+        raise ResearchError("Review packet requires a Problem-scoped Claim/Gap.")
     objects = ledger.objects(target.problem_id)
+    problem = store.require_dossier(state, target.problem_id)
+    problem_ref = ObjectRef(problem_id=problem.id, kind="problem", object_id=problem.id)
+    problem_context = {
+        "ref": problem_ref.model_dump(),
+        "version": ledger.get(problem_ref).version,
+        "statement": store.statement_body_for_display(store.read_statement(state, problem.id)),
+        "primary_target": problem.primary_target,
+        "primary_claim_id": problem.primary_claim_id,
+        "primary_target_binding": "CLAIM" if problem.primary_claim_id else "TEXT_ONLY",
+    }
 
     def full(e):
+        if e.ref.kind == "problem":
+            return problem_context  # Exclude project metadata even via dependency context.
         return {
             "ref": e.ref.model_dump(),
             "content_hash": e.content_hash,
@@ -34,6 +49,7 @@ def prepare_review(state: Path, target: ObjectRef) -> ReviewPacket:
     values = dict(
         target=VersionPin(ref=target, version=entry.version),
         claim=full(entry),
+        problem_context=problem_context,
         definitions=tuple(full(e) for e in objects if e.ref.kind == "definition"),
         assumptions=tuple(full(e) for e in objects if e.ref.kind == "assumption"),
         proofs=tuple(

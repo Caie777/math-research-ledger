@@ -19,7 +19,7 @@ from math_research.services.problems import (
     update_problem,
 )
 from math_research.services.research import get_object, list_objects, status
-from math_research.services.retrieval import export_context_packet, search_research
+from math_research.services.retrieval import SearchKind, export_context_packet, search_research
 from math_research.services.review import prepare_review
 from math_research.services.stale import stale_report
 
@@ -53,6 +53,10 @@ class StatusArgs(PageArgs):
 
 
 class SearchArgs(Arguments):
+    kind: SearchKind | None = Field(
+        default=None,
+        description="Strict kind filter: claim, gap, proof, failed_attempt, source, episode, etc.",
+    )
     query: str = Field(min_length=1, max_length=4000)
     problem_id: ProblemId | None = None
     limit: int = Field(default=20, ge=1, le=50)
@@ -147,7 +151,9 @@ DESCRIPTIONS = {
     "research_update_problem": (
         "Update an explicit Problem's metadata or active/paused/closed lifecycle. Closing "
         "requires closure_kind and closure_reason; resolution_refs are advisory object links. "
-        "statement/primary_target require revision_kind='semantic'; metadata never changes "
+        "statement/primary_target/primary_claim_id require revision_kind='semantic'; bind an "
+        "exact current Claim in this Problem, including provisional/unverified Claims. "
+        "Metadata never changes "
         "mathematical versions. Preview with dry_run=true; optionally pin expected_version. "
         "Does not verify, accept or promote any Claim; no deletion."
     ),
@@ -160,6 +166,9 @@ DESCRIPTIONS = {
     ),
     "research_search": (
         "Find prior results, gaps and failed routes by keywords before doing overlapping work. "
+        "Use problem_id + kind when seeking a Gap or another specific object kind. "
+        "kind is a strict canonical object filter; unknown kinds are errors. An exact identity "
+        "excluded by kind returns no hits, without fallback to unrelated lexical hits. "
         "Returns ranked scoped hits with provenance and trust labels. Do not treat a search "
         "excerpt as an accepted premise; load the object/context before relying on it. "
         "A whole qualified ref or unique object/Episode/candidate ID uses exact navigation first."
@@ -187,7 +196,8 @@ DESCRIPTIONS = {
     ),
     "research_stale_report": (
         "Inspect drift before reusing old checks or pending acceptance requests. Returns paginated "
-        "stale objects/verification/acceptance summaries and totals. Does not recheck, invalidate "
+        "stale objects/verification/acceptance summaries and totals, all within the report scope. "
+        "Does not recheck, invalidate "
         "or accept anything. Object risks include UNKNOWN (unbound), separately from STALE "
         "(confirmed drift). Do not interpret absence of staleness as verification."
     ),
@@ -358,6 +368,8 @@ class LedgerAdapter:
                 result = {
                     "source_version": report["source_version"],
                     "object_scope": report["object_scope"],
+                    "scope": report["scope"],
+                    "counts_are_scoped": report["counts_are_scoped"],
                     **{
                         key: values[args.offset : args.offset + args.limit]
                         for key, values in report.items()

@@ -11,6 +11,7 @@ from math_research.ledger.manifest import Ledger
 from math_research.ledger.records import store
 from math_research.mcp.adapter import LedgerAdapter
 from math_research.retrieval.memory_policy import memory_access
+from math_research.services.problems import update_problem
 from math_research.services.research import create_problem, status
 from math_research.services.retrieval import export_context_packet
 
@@ -23,7 +24,9 @@ def continuity_corpus(tmp_path_factory):
 def primary(research):
     state, ref = research
     problem = store.require_dossier(state, ref.problem_id)
-    store.save_dossier(state, problem.model_copy(update={"primary_claim_id": ref.object_id}))
+    update_problem(
+        state, problem_id=problem.id, revision_kind="semantic", primary_claim_id=ref.object_id
+    )
     return state, ref
 
 
@@ -62,7 +65,10 @@ def test_missing_primary_is_not_invented(research):
     state, ref = research
     value = status(state, ref.problem_id)["continuation"]
     assert value["primary_target"] is None
-    assert value["primary_target_diagnostic"] == "NOT_DESIGNATED"
+    assert (
+        value["primary_target_binding"] == "TEXT_ONLY"
+        and value["primary_target_diagnostic"] is None
+    )
     assert not value["recommended_next_calls"]
 
 

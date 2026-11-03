@@ -1,7 +1,7 @@
 # MathResearch Ledger for DSH
 
 The official Agent Host plugin is the **only recommended / default installation**
-in **1.4.0** for DSH **0.2.x**. **MathResearch Ledger for DSH** is its Host UI
+in **1.5.0** for DSH **0.2.x**. **MathResearch Ledger for DSH** is its Host UI
 name; the product remains MathResearch Ledger. **Protocol-neutral, DSH-first, other
 Harnesses on demand** means the standard MCP contract is retained, Codex is
 best-effort compatibility and other adapters need a real use case.
@@ -97,7 +97,7 @@ or escaping pointer refuses Agent setup without spawning a process or guessing
 another directory. No parent discovery, model-selected scope, silent init, ACL
 changes, authentication handling or automatic authority promotion is added.
 
-## Public 1.4.0 package
+## Public 1.5.0 package
 
 The public Host npm tarball contains **eight files**: `index.cjs`, `activation.cjs`,
 `package.json`, `cordis.patch.yml`, `README.md`, `LICENSE`, `locale/en.json` and

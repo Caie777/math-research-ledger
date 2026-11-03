@@ -1,6 +1,6 @@
 {
   "name": "dsh-math-research-ledger-host",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Recommended Agent Host plugin: workspace-gated, agent-scoped MathResearch Ledger MCP for DeepSeek Harness.",
   "license": "Apache-2.0",
   "main": "index.cjs",

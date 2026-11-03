@@ -19,6 +19,7 @@ class ReviewVerdict(StrEnum):
 class ReviewPacket(Strict):
     target: VersionPin
     claim: dict
+    problem_context: dict
     definitions: tuple[dict, ...]
     assumptions: tuple[dict, ...]
     proofs: tuple[dict, ...]

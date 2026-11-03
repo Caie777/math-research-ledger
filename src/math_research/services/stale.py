@@ -51,6 +51,10 @@ def stale_report(state: Path, problem_id: str | None = None) -> dict:
             result.reasons.append("Accepted verification evidence changed or unavailable")
         acceptance_states.append({"id": receipt.id, **result.model_dump(mode="json")})
     return {
+        "scope": {"kind": "problem", "problem_id": problem_id}
+        if problem_id
+        else {"kind": "workspace"},
+        "counts_are_scoped": True,
         "object_scope": "non_current_including_unknown_not_only_confirmed_drift",
         "source_version": ledger.source_version(problem_id),
         "objects": objects,

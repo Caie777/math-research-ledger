@@ -69,6 +69,7 @@ class UpdateProblemInput(ProblemInput):
     title: str | None = Field(default=None, min_length=1, max_length=300, pattern=r"^[^\r\n]+$")
     statement: Text | None = None
     primary_target: Text | None = Field(default=None, max_length=2000)
+    primary_claim_id: Link | None = None
     summary: str | None = Field(default=None, max_length=1000)
     source_refs: list[Link] | None = Field(default=None, max_length=20)
     metadata: Metadata | None = None
@@ -82,8 +83,11 @@ class UpdateProblemInput(ProblemInput):
         if {
             "statement",
             "primary_target",
+            "primary_claim_id",
         } & self.model_fields_set and self.revision_kind != "semantic":
-            raise ValueError("statement/primary_target require revision_kind='semantic'.")
+            raise ValueError(
+                "statement/primary_target/primary_claim_id require revision_kind='semantic'."
+            )
         changes = self.model_fields_set - {
             "problem_id",
             "revision_kind",
@@ -166,9 +170,27 @@ def update_problem(state: Path, **arguments) -> dict:
                     for link in fields["resolution_refs"]
                 )
             )
+        if "primary_claim_id" in fields:
+            from math_research.ledger.projection import get_object
+
+            claim_ref = Ledger(state).resolve(fields["primary_claim_id"], problem_id=old.id)
+            if claim_ref.problem_id != old.id or claim_ref.kind != "claim":
+                raise ResearchError("primary_claim_id must identify a Claim in this Problem.")
+            claim = get_object(state, claim_ref)
+            if claim.authority == "REJECTED/HISTORICAL" or claim.object.research_state in {
+                "REVISED",
+                "SUPERSEDED",
+                "HISTORICAL",
+                "REFUTED",
+                "INVALIDATED",
+                "REJECTED",
+            }:
+                raise ResearchError("Historical or invalidated Claim cannot be a primary target.")
+            fields["primary_claim_id"] = claim_ref.object_id
         changes = {k: v for k, v in fields.items() if k != "statement"}
         revised = old.model_copy(update=changes)
-        semantic = statement != before_statement or revised.primary_target != old.primary_target
+        text_changed = statement != before_statement or revised.primary_target != old.primary_target
+        semantic = text_changed or revised.primary_claim_id != old.primary_claim_id
         if revised.lifecycle_status == "closed" and (
             not revised.closure_kind or not revised.closure_reason.strip()
         ):
@@ -184,6 +206,7 @@ def update_problem(state: Path, **arguments) -> dict:
             return _result(state, revised, fields, dry_run=True, before=old, semantic=semantic)
         if semantic:
             snapshot_entry(state, entry)  # Prior committed version; retained on rollback.
+        if text_changed:
             revised.statement_authority = "PROVISIONAL"
         revised.version_title = old.version_title if old.version_title is not None else old.title
         revised.updated_at = utcnow()

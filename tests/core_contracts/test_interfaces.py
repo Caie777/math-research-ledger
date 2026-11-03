@@ -11,6 +11,24 @@ from math_research.core.errors import ResearchError
 from math_research.mcp.adapter import SCHEMAS, LedgerAdapter
 
 
+def test_cli_primary_designation_needs_no_revision_flag(research):
+    from math_research.ledger.records import store
+
+    state, ref = research
+    runner = CliRunner()
+    args = ["-w", str(state.parent), "ledger", "update-problem", ref.problem_id, ref.object_id]
+    before = {p.relative_to(state): p.read_bytes() for p in state.rglob("*") if p.is_file()}
+    preview = runner.invoke(app, [*args, "--dry-run"])
+    assert preview.exit_code == 0, preview.output
+    assert json.loads(preview.output)["semantic_revision"]
+    assert before == {p.relative_to(state): p.read_bytes() for p in state.rglob("*") if p.is_file()}
+    result = runner.invoke(app, args)
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output)["semantic_revision"]
+    problem = store.require_dossier(state, ref.problem_id)
+    assert problem.primary_claim_id == ref.object_id and problem.statement_authority is None
+
+
 def test_cli_services_share_same_qualified_objects(research):
     state, ref = research
     runner = CliRunner()

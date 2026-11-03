@@ -1,5 +1,37 @@
 # Changelog
 
+## [Unreleased]
+
+## [1.5.0] - 2026-11-03
+
+### Changed
+
+- Align Python runtime, Host plugin, fallback Bundle and compatibility manifests at 1.5.0.
+- Additive MCP schema changes on the existing eleven tools: input arguments
+  `research_search.kind` and `research_update_problem.primary_claim_id`; output
+  fields `research_review_packet.problem_context` and
+  `research_stale_report.scope` / `counts_are_scoped`.
+- Pin all eleven public MCP input schemas. Search kind filters use the audited finite
+  public search enum and reject unknown kinds. Exact identities excluded by
+  a valid kind return no hits without lexical fallback; prefer `problem_id + kind`.
+- Expose text-only versus Claim-bound primary targets explicitly in status.
+  Lifecycle is authoritative for project management, independent of verification
+  and acceptance; legacy status remains disk/hash compatibility-only.
+- Include Problem mathematical context in advisory review packet versions while
+  excluding editable project metadata. Newly submitted reports must pin the new
+  packet version; historical reports remain unchanged.
+
+### Fixed
+
+- `ledger update-problem PROBLEM CLAIM` binds a primary Claim without a revision
+  flag. MCP/service designation still requires explicit `revision_kind="semantic"`.
+- Binding-only semantic revisions retain statement authority while preserving the
+  existing version/snapshot/dependency-freshness mechanism. Only actual statement
+  or primary-target text changes reset statement authority to provisional.
+
+Code-level verification only. DSH live acceptance NOT performed; left for DSH.
+See [the design-convergence notes](docs/releases/v1.5.0.md).
+
 ## [1.4.0] - 2026-11-03
 
 ### Changed

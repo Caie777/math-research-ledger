@@ -15,6 +15,7 @@ from math_research.ledger.records.counterexamples import add_counterexample
 from math_research.ledger.records.models import FailedAttempt, ProofAttempt
 from math_research.services.acceptance import accept, request_acceptance
 from math_research.services.ingest import ingest_episode, review_proposal
+from math_research.services.problems import update_problem
 from math_research.services.research import (
     add_claim,
     add_definition,
@@ -39,7 +40,7 @@ def build_corpus(root: Path) -> dict:
 
     main = register("main", "claim", add_claim(state, p.id, "Primary synthetic chamber objective"))
     problem = store.require_dossier(state, p.id)
-    store.save_dossier(state, problem.model_copy(update={"primary_claim_id": main.id}))
+    update_problem(state, problem_id=problem.id, revision_kind="semantic", primary_claim_id=main.id)
     definition = register(
         "definition",
         "definition",

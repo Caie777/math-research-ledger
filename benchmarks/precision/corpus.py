@@ -12,6 +12,7 @@ from math_research.ledger.manifest import Ledger
 from math_research.ledger.records import claims, store
 from math_research.ledger.records.counterexamples import add_counterexample
 from math_research.services.ingest import ingest_episode
+from math_research.services.problems import update_problem
 from math_research.services.research import add_claim, create_problem
 
 
@@ -28,7 +29,7 @@ def build(root: Path) -> dict:
         statement="Synthetic three atom local trade gap",
         depends_on=[main.id, premise.id],
     )
-    store.save_dossier(state, p.model_copy(update={"primary_claim_id": main.id}))
+    update_problem(state, problem_id=p.id, revision_kind="semantic", primary_claim_id=main.id)
     roles = {
         "main": ObjectRef(problem_id=p.id, kind="claim", object_id=main.id),
         "premise": ObjectRef(problem_id=p.id, kind="claim", object_id=premise.id),

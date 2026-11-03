@@ -99,7 +99,7 @@ def build_research_map(ot_dir: Path, problem_id: str) -> ResearchMap:
             id=problem.id,
             type="problem",
             title=_label(problem.title, problem.id),
-            status=problem.status,
+            status=problem.lifecycle_status,
             authority="CANONICAL",
         )
     }

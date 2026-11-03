@@ -1,4 +1,4 @@
-# Problem lifecycle (1.2.2)
+# Problem lifecycle and primary binding
 
 Version 1.2.2 exposes eleven MCP tools. Problem create/update have synthetic mutation
 coverage and real Host registration checks. The read-only deployment cutovers did
@@ -27,10 +27,37 @@ The current Problem selection is unchanged. Use the returned explicit ID for sta
 search, context and subsequent Episodes; ingest never creates an unknown Problem.
 Missing workspace state must be initialized explicitly with the CLI.
 
-`primary_target` is mathematical text. It does not create a Claim or set the existing
-human-maintained `primary_claim_id` designation. Status exposes this target text;
+`primary_target` is mathematical text. Creating a Problem does not create a Claim
+or bind `primary_claim_id`. **TEXT_ONLY is a valid Problem state**.
+Status distinguishes `primary_target_statement`,
+`primary_target_binding = TEXT_ONLY | CLAIM`, and `primary_claim_id`; a bound Claim
+also has the existing authority/version/freshness navigation.
 `research_get_object` reads the Problem statement, target and labelled project metadata
 through its existing pagination. New and semantically revised statements are provisional.
+
+## Bind an existing primary Claim
+
+Use the existing MCP tool
+`research_update_problem(problem_id=..., primary_claim_id=..., revision_kind="semantic")`.
+The shared Python service is `math_research.services.problems.update_problem` with
+the same arguments. The designation accepts an exact bare or qualified Claim ID
+in the selected Problem, including provisional/unverified Claims. Cross-Problem,
+missing, rejected or historical/invalidated Claims are rejected; titles are never guessed.
+
+The designation-only CLI fixes the revision kind internally:
+
+```text
+math-research-ledger ledger update-problem PROBLEM-0001 CLAIM-0001
+```
+
+Optional `--dry-run` previews without writes; `--expected-version` pins the current
+Problem version. MCP/service also retain optional preview and expected-version
+arguments; no prior dry-run call is required.
+
+Primary Claim designation is not verification or acceptance. Changing only the
+binding changes the semantic Problem version and preserves a history snapshot,
+but preserves the unchanged statement's authority. Only actual changes to
+`statement` or `primary_target` text reset `statement_authority` to `PROVISIONAL`.
 
 ## Pause, close or reopen
 
@@ -47,7 +74,10 @@ Use `research_update_problem` with an explicit `problem_id`:
 }
 ```
 
-States are **active**, **paused**, **closed**. Any state can return to active.
+`lifecycle_status` is the sole authoritative project lifecycle field. States are
+**active**, **paused**, **closed**. Any state can return to active.
+Legacy `status` remains disk/hash compatibility-only; it is not a second lifecycle
+truth and is not exposed as `problem_status` by MCP status.
 Closing requires a nonempty reason and one of **resolved**, **abandoned**,
 **superseded**, **other**. `resolution_refs` link existing Ledger objects (Claim,
 Proof, paper or receipt); they do not add premise edges or grant authority.
@@ -65,9 +95,10 @@ The default `revision_kind="metadata"` supports title, summary, provenance,
 custom metadata, lifecycle and closure fields. These updates preserve the
 Problem's mathematical version and do not make dependents STALE.
 
-Supplying `statement` or `primary_target` requires explicit
-`revision_kind="semantic"`, even if the supplied value is identical. A real text
-change updates the existing content-derived version. Express changed assumptions
+Supplying `statement`, `primary_target` or `primary_claim_id` to MCP/service requires
+explicit `revision_kind="semantic"`, even if the supplied value is identical.
+An actual text or designation change updates the existing content-derived version.
+Express changed assumptions
 in the statement; this tool does not mutate separate Assumption/Claim records.
 Merely declaring a semantic revision without changing a semantic field does not
 bump the mathematical version.

@@ -2,6 +2,7 @@
 
 import re
 from pathlib import Path
+from typing import Literal, get_args
 
 from math_research.core.errors import ResearchError
 from math_research.ledger.episodes import list_candidates, list_reviews
@@ -13,15 +14,62 @@ from math_research.retrieval.packet import export_context_packet as export_conte
 from math_research.retrieval.recall import ResearchRecall
 from math_research.services.research import list_objects
 
+# Public search surface, audited against Ledger.objects -> projection.list_objects.
+# Both lexical and exact identity search can return every emitted ObjectView kind;
+# Recall only contributes scores. Dependency placeholders (unresolved), relation
+# edges and acceptance history do not become ObjectViews. Keep this explicit rather
+# than automatically publishing future internal Ledger kinds as search filters.
+SearchKind = Literal[
+    "approach",
+    "artifact",
+    "assumption",
+    "branch",
+    "claim",
+    "counterexample",
+    "definition",
+    "episode",
+    "evidence",
+    "experiment",
+    "failed_attempt",
+    "formal_bundle",
+    "gap",
+    "known_result",
+    "problem",
+    "proof",
+    "refutation",
+    "related_paper",
+    "review_report",
+    "revision",
+    "source",
+    "theorem_ref",
+    "verification",
+    "verification_proof",
+]
+SEARCH_KINDS = frozenset(get_args(SearchKind))
+
 
 def search_research(
-    state: Path, query: str, *, problem_id: str | None = None, limit: int = 20
+    state: Path,
+    query: str,
+    *,
+    problem_id: str | None = None,
+    kind: str | None = None,
+    limit: int = 20,
 ) -> dict:
     if not query.strip() or len(query) > 4000 or not 1 <= limit <= 100:
         raise ResearchError("Nonempty query <=4000 chars and limit 1..100 required.")
+    if kind is not None and kind not in SEARCH_KINDS:
+        raise ResearchError(
+            f"Unknown research object kind for search: {kind!r}; "
+            f"supported kinds: {', '.join(sorted(SEARCH_KINDS))}."
+        )
     ledger = Ledger(state)
     before = ledger.source_version(problem_id)
-    views = {v.object.qualified_id: v for v in list_objects(state, problem_id)}
+    views = {
+        v.object.qualified_id: v
+        for v in list_objects(state, problem_id)
+        if v.object.ref.kind in SEARCH_KINDS
+    }
     exact = None
     identifier = query.strip()
     if re.fullmatch(r"[A-Za-z][A-Za-z0-9_.]*-[A-Za-z0-9_.-]+", identifier) or ":" in identifier:
@@ -34,6 +82,8 @@ def search_research(
         ).resolve(identifier, problem_id=problem_id)
         if resolution.ref and resolution.ref.qualified_id in views:
             exact = resolution.ref.qualified_id
+    if kind is not None:
+        views = {key: v for key, v in views.items() if v.object.ref.kind == kind}
     docs = [
         IndexDoc(
             artifact_id=k,
@@ -53,19 +103,19 @@ def search_research(
         navigation = ResearchRecall(state, scope).find_files(query=query, limit=100)
         for rank, hit in enumerate(navigation.files, 1):
             raw_kind = hit.kind.removeprefix("dossier:")
-            kind = kinds.get(raw_kind, raw_kind)
+            hit_kind = kinds.get(raw_kind, raw_kind)
             matches = [
                 key
                 for key, view in views.items()
                 if view.object.ref.problem_id == scope
                 and view.object.ref.object_id == hit.artifact_id
-                and (kind is None or view.object.ref.kind == kind)
+                and (hit_kind is None or view.object.ref.kind == hit_kind)
             ]
             if len(matches) == 1:
                 key = matches[0]
                 scores[key] = scores.get(key, 0) + 1 / (60 + rank)
                 reasons.setdefault(key, []).extend(hit.why_relevant)
-    if exact:
+    if exact and exact in views:
         scores[exact], reasons[exact] = 1.0, ["EXACT_IDENTITY"]
     documents = {d.artifact_id: d for d in docs}
     ranked = sorted(scores, key=lambda key: (-scores[key], key))[:limit]

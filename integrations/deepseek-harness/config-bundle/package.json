@@ -1,6 +1,6 @@
 {
   "name": "dsh-math-research-ledger",
-  "version": "1.3.0",
+  "version": "1.5.0",
   "private": true,
   "type": "module",
   "description": "Fallback / manual single-workspace MathResearch Ledger MCP integration for DeepSeek Harness; prefer the Agent Host plugin.",

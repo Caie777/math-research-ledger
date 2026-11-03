@@ -1,6 +1,6 @@
 # DeepSeek Harness
 
-The **only recommended / default installation** in **1.3.0** is the official
+The **only recommended / default installation** in **1.5.0** is the official
 [Agent Host plugin](host-plugin/README.md), displayed as **MathResearch Ledger for
 DSH**, for **DSH 0.2.1-rc.3**. Product policy is **Protocol-neutral, DSH-first, other
 Harnesses on demand**: standard MCP is retained, Codex is best-effort compatibility,
@@ -43,7 +43,7 @@ selected as a Bundle**. This is a historical deployment snapshot, not a 1.3.0 up
 or activation result. The commands here are operator instructions: this documentation
 change has not upgraded, enabled or removed anything in the real Profile.
 
-Install the matching 1.3.0 wheel+[mcp] for eleven tools. Refresh local packages and
+Install the matching 1.5.0 wheel+[mcp] for eleven tools. Refresh local packages and
 start new sessions/restart after updates; existing runtimes are not upgraded automatically.
 Preparation only renders the Python path, never installs/changes the runtime or
 initializes research data. Rendered packages contain a private runtime path. The
@@ -91,7 +91,7 @@ manager is added, and its stable package ID and MCP `serverName` are unchanged.
 The retained **configuration-only Bundle** uses DSH's built-in
 `@deepseek-ai/dsh-mcp-client`. It launches an external, persistent Python runtime with
 `--workspace <research-workspace>` and retains the same eleven-tool standard MCP
-surface in 1.3.0. Python **3.12** is recommended. DSH manages the process lifecycle and native Plugins OFF/ON.
+surface in 1.5.0. Python **3.12** is recommended. DSH manages the process lifecycle and native Plugins OFF/ON.
 
 The fallback retains its fixed startup workspace and official MCP client behavior.
 Its earlier nine-tool deployment is a historical record, not acceptance of the
@@ -101,7 +101,7 @@ See the [Problem lifecycle contract](../../docs/problem-lifecycle.md) and the [a
 
 ### Prepare and install fallback
 
-Use the matching 1.3.0 wheel or build it with `python -m build --wheel`.
+Use the matching 1.5.0 wheel or build it with `python -m build --wheel`.
 Published packages are available from
 [GitHub Releases](https://github.com/Caie777/math-research-ledger/releases). Run preparation from the matching checkout or extracted source archive
 with an existing initialized research workspace:

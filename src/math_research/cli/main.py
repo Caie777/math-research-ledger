@@ -134,6 +134,29 @@ def create_problem(ctx: typer.Context, title: str, statement: str):
     emit(research.create_problem(state(ctx), title, statement))
 
 
+@ledger_app.command("update-problem")
+def update_problem(
+    ctx: typer.Context,
+    problem: str,
+    primary_claim_id: str,
+    dry_run: bool = False,
+    expected_version: str | None = None,
+):
+    """Bind an exact primary Claim using an explicit semantic revision."""
+    from math_research.services.problems import update_problem as update
+
+    emit(
+        update(
+            state(ctx),
+            problem_id=problem,
+            primary_claim_id=primary_claim_id,
+            revision_kind="semantic",
+            dry_run=dry_run,
+            expected_version=expected_version,
+        )
+    )
+
+
 @ledger_app.command("history")
 def object_history(ctx: typer.Context, reference: str):
     emit(research.history(state(ctx), ref(reference)))
@@ -167,8 +190,14 @@ def link(ctx: typer.Context, dependent: str, target: str, role: DependencyRole):
 
 
 @app.command("search")
-def search(ctx: typer.Context, query: str, problem: str | None = None, limit: int = 20):
-    emit(retrieval.search_research(state(ctx), query, problem_id=problem, limit=limit))
+def search(
+    ctx: typer.Context,
+    query: str,
+    problem: str | None = None,
+    kind: str | None = None,
+    limit: int = 20,
+):
+    emit(retrieval.search_research(state(ctx), query, problem_id=problem, kind=kind, limit=limit))
 
 
 @context_app.command("export")

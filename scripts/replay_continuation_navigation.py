@@ -21,6 +21,7 @@ from math_research.core.workspace import init_workspace, workspace_dir  # noqa: 
 from math_research.ledger.records import store  # noqa: E402
 from math_research.mcp.adapter import DESCRIPTIONS, LedgerAdapter  # noqa: E402
 from math_research.services.ingest import ingest_episode  # noqa: E402
+from math_research.services.problems import update_problem  # noqa: E402
 from math_research.services.research import add_claim, create_problem  # noqa: E402
 
 output = args.output.resolve()
@@ -31,7 +32,7 @@ state = workspace_dir(workspace)
 problem = create_problem(state, "Synthetic continuity", "Synthetic navigation only")
 main = add_claim(state, problem.id, "Synthetic orion target")
 upstream = add_claim(state, problem.id, "Synthetic input")
-store.save_dossier(state, problem.model_copy(update={"primary_claim_id": main.id}))
+update_problem(state, problem_id=problem.id, revision_kind="semantic", primary_claim_id=main.id)
 store.rewrite_claims(
     state,
     problem.id,
