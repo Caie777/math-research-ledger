@@ -8,6 +8,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const childProcess = require('node:child_process');
 const { TextDecoder } = require('node:util');
+const { PYTHON_FLAGS } = require('./runtime.cjs');
 
 const POINTER = '.math-research-ledger-link';
 const STATE = '.math-research-ledger';
@@ -211,14 +212,11 @@ function mkdirChecked(root, directory) {
 }
 
 function initialize(wanted, python, signal) {
-  if (typeof python !== 'string' || !path.isAbsolute(python) || python.includes('\0')) {
-    invalid('ACTIVATION_INIT_FAILED', 'Initialization requires an absolute persistent Python executable.');
-  }
   return new Promise((resolve, reject) => {
     const failed = error => reject(failure('ACTIVATION_INIT_FAILED', 'The explicit Ledger initialization CLI failed; no activation pointer was written.', error));
     try {
-      childProcess.execFile(python, ['-B', '-m', 'math_research.cli', '--workspace', wanted.ledgerRoot, 'init'], {
-        cwd: wanted.ledgerRoot, timeout: 60000, maxBuffer: 64 * 1024, shell: false, signal,
+      childProcess.execFile(python, [...PYTHON_FLAGS, '-m', 'math_research.cli', '--workspace', wanted.ledgerRoot, 'init'], {
+        cwd: wanted.ledgerRoot, timeout: 60000, maxBuffer: 64 * 1024, shell: false, windowsHide: true, signal,
       }, error => {
         if (error) failed(error);
         else resolve();
@@ -249,16 +247,22 @@ function writePointer(wanted) {
   return sameBinding(readAtRoot(wanted.root), wanted);
 }
 
-async function activateAtRoot(root, { directory, python, signal, existingOnly }) {
+async function activateAtRoot(root, { directory, getPython, signal, existingOnly }) {
   signal?.throwIfAborted();
   // A corrupt existing pointer is never ignored, even for another target.
   const existing = readAtRoot(root);
   const wanted = requestedBinding(root, directory);
-  if (existing) return sameBinding(existing, wanted);
+  if (existing) sameBinding(existing, wanted);
   const present = checkPath(root, wanted.state, { code: 'INVALID_ACTIVATION_PATH', allowMissing: true });
+  if (!present && existingOnly) {
+    invalid('INVALID_ACTIVATION_PATH', 'existingOnly requires an existing real .math-research-ledger directory.');
+  }
+  // Validate scope before probing Python, and probe before any activation writes.
+  const python = await getPython?.();
+  signal?.throwIfAborted();
+  const current = readAtRoot(root);
+  if (existing || current) return sameBinding(current, wanted);
   if (!present) {
-    if (existingOnly) invalid('INVALID_ACTIVATION_PATH', 'existingOnly requires an existing real .math-research-ledger directory.');
-    // Validate Python before creating even the requested parent directories.
     if (typeof python !== 'string' || !path.isAbsolute(python) || python.includes('\0')) {
       invalid('ACTIVATION_INIT_FAILED', 'Initialization requires an absolute persistent Python executable.');
     }
@@ -278,10 +282,10 @@ async function activateAtRoot(root, { directory, python, signal, existingOnly })
   return writePointer(wanted);
 }
 
-async function activate({ sessionRoot, directory = '.', python, signal, existingOnly = false }) {
+async function activate({ sessionRoot, directory = '.', getPython, signal, existingOnly = false }) {
   const root = canonicalRoot(sessionRoot);
   const previous = queues.get(root) || Promise.resolve();
-  const current = previous.then(() => activateAtRoot(root, { directory, python, signal, existingOnly }));
+  const current = previous.then(() => activateAtRoot(root, { directory, getPython, signal, existingOnly }));
   // A settled, non-rejecting tail keeps failure from poisoning later requests.
   const tail = current.then(() => undefined, () => undefined);
   queues.set(root, tail);

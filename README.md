@@ -12,15 +12,10 @@ reconstructing it from chat. Core services and the MCP contract remain Harness-n
 
 [中文说明](README.zh-CN.md) · [Changelog](CHANGELOG.md)
 
-**1.5.0 — Core/MCP additive capabilities and semantic convergence.**
-Primary Claim binding, explicit text-only/Claim-bound status, mathematical Problem
-context in review, strict search kind enum with title boost, scoped stale reports
-and all eleven public input-schema contracts. The Host retains workspace-gated
-activation. No historical research data migration is required.
-See the [1.5.0 release notes](docs/releases/v1.5.0.md) and
-[Problem lifecycle and binding](docs/problem-lifecycle.md).
-Verification is code-level only for this release; DSH live acceptance is left for
-post-release real use. Earlier Host acceptance records remain historical.
+**1.5.1 — Portable DSH Host installation.** Install the public Host bundle directly;
+Python is selected at activation instead of being baked into the package. Workspace
+binding, the eleven MCP tools, and existing research data are unchanged. See the
+[1.5.1 release notes](docs/releases/v1.5.1.md) for migration and code-level verification.
 
 ## Why keep a research ledger?
 
@@ -70,7 +65,7 @@ It creates empty state, `workspace.yaml` and research `AGENTS.md`, preserves exi
 instructions and ordinary files, and creates no demonstration research objects.
 The `create-problem` command above creates the Problem you explicitly request.
 
-For a downloaded wheel, use `python -m pip install './math_research_ledger-1.5.0-py3-none-any.whl[mcp]'`
+For a downloaded wheel, use `python -m pip install './math_research_ledger-1.5.1-py3-none-any.whl[mcp]'`
 instead of the editable install. See [GitHub Releases](https://github.com/Caie777/math-research-ledger/releases).
 Then follow the default [DSH Agent Host plugin setup](integrations/deepseek-harness/host-plugin/README.md),
 enable it in the selected Profile, and create/resume an Agent at your research root.

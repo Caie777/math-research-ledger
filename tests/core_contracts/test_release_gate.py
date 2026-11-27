@@ -39,7 +39,7 @@ def test_official_host_patch_cannot_install_fallback_alongside_it():
     host = yaml.safe_load((base / "host-plugin/cordis.patch.yml").read_text("utf-8"))
     assert len(host) == len(host[0]["insert"]) == 1
     assert host[0]["insert"][0]["name"] == "dsh-math-research-ledger-host"
-    assert set(host[0]["insert"][0]["config"]) == {"python"}
+    assert host[0]["insert"][0]["config"] == {}
     fallback = yaml.safe_load((base / "config-bundle/cordis.patch.yml").read_text("utf-8"))
     assert host[0]["insert"][0]["id"] != fallback[0]["insert"][0]["id"]
     assert fallback[0]["insert"][0]["name"] == "@deepseek-ai/dsh-mcp-client"

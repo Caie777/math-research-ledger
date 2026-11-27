@@ -12,12 +12,9 @@ Harness-neutral；DSH 是主要支持、测试和文档化的 Harness，其他�
 
 [English](README.md) · [更新记录](CHANGELOG.md)
 
-**1.5.0 — Core/MCP additive capability 与语义收敛。**
-本版提供 primary Claim 正式绑定、TEXT_ONLY/CLAIM 状态区分、ReviewPacket 的 Problem
-数学上下文、严格 search kind 枚举与 title boost、明确作用域的 stale report，以及全部
-十一个 MCP public input schema contract。Host 继续按 workspace 显式激活，不迁移历史研究数据。
-见 [1.5.0 发布说明](docs/releases/v1.5.0.md) 和 [Problem lifecycle / binding](docs/problem-lifecycle.md)。
-本次只做代码级验证；DSH live acceptance 留待发布后真实使用，既有 Host 验收记录仍是历史证据。
+**1.5.1 — DSH Host 安装与路径迁移修复。** 公共 Host 包可直接安装；Python 在 workspace
+激活时发现，不再把本机路径写入包内。Agent 作用域、十一个 MCP 工具和已有研究数据不变。
+迁移步骤与代码级验证范围见 [1.5.1 发布说明](docs/releases/v1.5.1.md)。
 
 ## 为什么需要研究 Ledger？
 
@@ -50,7 +47,7 @@ workspace 必须在工具仓库之外，由用户显式初始化。init 创建�
 保留已有指令和普通文件，不创建 demo 研究对象。上面的 create-problem 创建用户显式指定的问题。
 
 也可从 [GitHub Releases](https://github.com/Caie777/math-research-ledger/releases) 下载 wheel，
-用 `python -m pip install './math_research_ledger-1.5.0-py3-none-any.whl[mcp]'` 安装。
+用 `python -m pip install './math_research_ledger-1.5.1-py3-none-any.whl[mcp]'` 安装。
 默认接着按 [DSH Agent Host plugin 安装指南](integrations/deepseek-harness/host-plugin/README.md)
 安装并在所选 Profile 启用，随后在研究根目录创建或恢复 Agent。
 安装与启用是两步；默认安装建议不代表已经替用户部署。普通项目可关闭。

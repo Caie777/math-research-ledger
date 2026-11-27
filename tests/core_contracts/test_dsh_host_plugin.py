@@ -1,6 +1,5 @@
 """Thin DSH composition/package contracts, plus opt-in actual official Agent Host."""
 
-import importlib.util
 import json
 import os
 import shutil
@@ -14,17 +13,12 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 TEMPLATE = ROOT / "integrations/deepseek-harness/host-plugin"
-spec = importlib.util.spec_from_file_location(
-    "prepare_host", ROOT / "scripts/prepare_dsh_host_plugin.py"
-)
-prep = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(prep)
 
 
 def test_native_host_manifest_and_runtime_only_configuration():
     meta = json.loads((TEMPLATE / "package.json").read_text("utf-8"))
     # Adapter-only patches do not require a Python runtime release.
-    assert meta["version"] == "1.5.0"
+    assert meta["version"] == "1.5.1"
     assert "activation.cjs" in meta["files"]
     assert meta["main"] == "index.cjs"
     assert meta["exports"]["."] == "./index.cjs"
@@ -39,39 +33,14 @@ def test_native_host_manifest_and_runtime_only_configuration():
     assert len(rows) == len(rows[0]["insert"]) == 1
     row = rows[0]["insert"][0]
     assert row["name"] == meta["name"]
-    assert row["config"] == {"python": "__MRL_PYTHON__"}
-
-
-def test_preparation_selects_python_never_workspace_or_runtime_install(tmp_path):
-    out = tmp_path / "host"
-    prep.prepare(out, Path(sys.executable))
-    assert {p.name for p in out.iterdir()} == {
-        "index.cjs",
-        "activation.cjs",
-        "package.json",
-        "cordis.patch.yml",
-        "README.md",
-        "LICENSE",
-        "locale",
-    }
-    config = yaml.safe_load((out / "cordis.patch.yml").read_text("utf-8"))[0]["insert"][0]["config"]
-    assert config == {"python": str(Path(sys.executable).absolute())}
-    assert not (out / ".math-research-ledger").exists()
-    assert not (out / ".venv").exists()
-
-
-def test_preparation_never_overwrites_or_downloads(tmp_path):
-    with pytest.raises(ValueError, match="new package"):
-        prep.prepare(tmp_path, Path(sys.executable))
-    with pytest.raises(ValueError, match="existing persistent"):
-        prep.prepare(tmp_path / "new", tmp_path / "absent-python")
-    assert not (tmp_path / "new").exists()
+    assert row["config"] == {}
 
 
 def test_actual_public_host_tarball_has_no_local_runtime_or_state(tmp_path):
     npm = shutil.which("npm.cmd" if os.name == "nt" else "npm")
-    if not npm:
-        pytest.skip("npm is required for actual package inspection")
+    node = shutil.which("node")
+    if not npm or not node:
+        pytest.skip("npm and Node are required for package and relocation checks")
     public = tmp_path / "public"
     shutil.copytree(TEMPLATE, public)
     shutil.copyfile(ROOT / "LICENSE", public / "LICENSE")
@@ -93,6 +62,7 @@ def test_actual_public_host_tarball_has_no_local_runtime_or_state(tmp_path):
             for name in (
                 "index.cjs",
                 "activation.cjs",
+                "runtime.cjs",
                 "package.json",
                 "cordis.patch.yml",
                 "README.md",
@@ -102,7 +72,33 @@ def test_actual_public_host_tarball_has_no_local_runtime_or_state(tmp_path):
             )
         }
         patch = archive.extractfile("package/cordis.patch.yml").read()
-        assert b"__MRL_PYTHON__" in patch and str(tmp_path).encode() not in patch
+        assert b"__MRL_" not in patch and yaml.safe_load(patch)[0]["insert"][0]["config"] == {}
+        for member in archive.getmembers():
+            content = archive.extractfile(member).read()
+            assert str(tmp_path).encode() not in content
+            assert str(sys.executable).encode() not in content
+
+        # Reuse the real packed sources under two synthetic install roots. No DSH
+        # processes or profiles are involved; only the plugin API boundary is stubbed.
+        first = tmp_path / "旧 安装"
+        second = tmp_path / "迁移 安装"
+        first.mkdir()
+        for member in archive.getmembers():
+            target = first / member.name.removeprefix("package/")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(archive.extractfile(member).read())
+    subprocess.run(
+        [
+            node,
+            str(Path(__file__).with_name("dsh_runtime_contract.cjs")),
+            first,
+            second,
+            sys.executable,
+        ],
+        cwd=tmp_path,
+        check=True,
+        timeout=45,
+    )
 
 
 @pytest.mark.integration
@@ -177,4 +173,4 @@ def test_actual_dsh_agent_factory_acceptance(tmp_path):
     assert report["cases"]["explicit_default_activation"]["new_agent_tools"] == 11
     assert report["cases"]["explicit_subdirectory_activation"]["bound"] == "research/foo"
     for launch in report["launches"]:
-        assert launch["args"] == ["-B", "-m", "math_research.mcp.server", "--workspace", "."]
+        assert launch["args"] == ["-I", "-B", "-m", "math_research.mcp.server", "--workspace", "."]

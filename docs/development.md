@@ -1,6 +1,6 @@
 # Development and release gates
 
-Release documentation for MathResearch Ledger **1.5.0**, updated 2026-11-03;
+Release documentation for MathResearch Ledger **1.5.1**, updated 2026-11-27;
 support policy established 2026-10-30. **Protocol-neutral, DSH-first, other Harnesses
 on demand.** The standard MCP server and deterministic services are shared, while
 DeepSeek Harness is the primary supported and tested Host. Its official UI name is
@@ -44,14 +44,12 @@ checks, but it is not by itself a release-runner development environment. Refres
 matching deployed wheels/packages and start new sessions/restart before adopting a
 new implementation; do not replace runtimes underneath active research sessions.
 
-## v1.5.0 verification scope
+## v1.5.1 verification scope
 
-The [v1.5.0 Core/MCP release](releases/v1.5.0.md) is explicitly limited to synthetic
-Core/MCP/schema/CLI and package checks, Ruff, mypy, build and diff checks. No DSH
-Host/live plugin/Profile acceptance or real Ledger access is performed for this
-release. The actual DSH gate described below remains the standard workflow and
-historical context; it was intentionally not invoked for v1.5.0. Users will perform
-DSH real-use acceptance after publication.
+The [v1.5.1 portability release](releases/v1.5.1.md) reuses the targeted synthetic
+Host path, packaging and MCP stdio verification and checks the final release
+artifacts. Full pytest and the actual DSH gate below are intentionally not run
+for this patch. No real Profile or Ledger is modified.
 
 ## Baseline development checks
 

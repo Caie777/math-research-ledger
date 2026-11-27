@@ -1,54 +1,32 @@
 # DeepSeek Harness
 
-The **only recommended / default installation** in **1.5.0** is the official
-[Agent Host plugin](host-plugin/README.md), displayed as **MathResearch Ledger for
-DSH**, for **DSH 0.2.1-rc.3**. Product policy is **Protocol-neutral, DSH-first, other
-Harnesses on demand**: standard MCP is retained, Codex is best-effort compatibility,
-and the config-only Bundle is manual / single-workspace fallback only. There is no
-Core/MCP breaking change or research-schema migration.
+The recommended installation is the [Agent Host plugin](host-plugin/README.md)
+(**MathResearch Ledger for DSH**, DSH 0.2.x). Product policy is **Protocol-neutral,
+DSH-first, other Harnesses on demand**: standard MCP is retained, Codex is
+best-effort compatibility, and the config-only Bundle is a separate manual,
+single-workspace fallback. There is no Core/MCP or research-schema migration.
 
 It uses the same Python MCP server, but binds each Agent to its Host-provided
 immutable `agent.session.header.cwd`. A serial `agent/created` listener
 awaits the scoped official MCP client before Agent creation returns. No workspace
 is selected at installation and no model argument can select another Ledger.
 
-Prepare a new local package with an existing persistent runtime:
-
-```powershell
-python scripts/prepare_dsh_host_plugin.py --out '<new-plugin-directory>' --python '<persistent-python>'
-# In ordinary PowerShell, if the old fallback is installed in this Profile:
-dsh plugin --profile '<profile>' remove dsh-math-research-ledger
-# For an existing Host installation upgrade only, remove it before re-adding:
-# dsh plugin --profile '<profile>' remove dsh-math-research-ledger-host
-dsh plugin --profile '<profile>' add '<new-plugin-directory>'
-```
-
-The helper prepares **only Host**, never both packages. Run installation/removal
-with the normal Desktop-installed `dsh` command (Manage dsh Command), not in a
-sandboxed DSH shell. Use the same target Profile for every command. If neither
-package is installed, skip removal; if upgrading Host, remove its existing package
-before adding the newly rendered local directory.
+Install the public Host v1.5.1 `.tgz` as-is through DSH Plugins. Install the
+matching Python wheel with `[mcp]` in a separate environment. The bundle has
+no machine-specific configuration; the Host discovers Python via its PATH or
+an optional local Profile `python` override. See the [Host guide](host-plugin/README.md)
+for setup, relocation, runtime recovery and uninstall. The already published
+v1.5.0 tarball does not contain this fix.
 
 ### Why two installation candidates can appear
 
 DSH can list both installed package dependencies as candidates even when both
 Bundles are OFF or neither is selected. OFF is not uninstall, and a candidate is
 not proof of active tools. To migrate, remove the old `dsh-math-research-ledger`
-through the normal DSH command above, then add the Host package; do not edit Profile
-files or install both alternatives. This also removes the obsolete fallback
-candidate rather than merely deselecting it.
-
-The **2026-10-30** disk inspection found **both dependencies at 1.2.1, neither
-selected as a Bundle**. This is a historical deployment snapshot, not a 1.3.0 upgrade
-or activation result. The commands here are operator instructions: this documentation
-change has not upgraded, enabled or removed anything in the real Profile.
-
-Install the matching 1.5.0 wheel+[mcp] for eleven tools. Refresh local packages and
-start new sessions/restart after updates; existing runtimes are not upgraded automatically.
-Preparation only renders the Python path, never installs/changes the runtime or
-initializes research data. Rendered packages contain a private runtime path. The
-public unrendered package uses `__MRL_PYTHON__`, which must be configured before
-activation. Do not install this plugin and the config-only fallback Bundle in one Profile.
+through normal DSH package management, not just OFF, then add Host. Do not
+install both alternatives in the same Profile. DSH manages bundle and Node
+package dependencies and the scoped MCP connection; it does not provision the
+third-party Python environment for this plugin.
 
 Load the Host entry before the Agents it should serve; create/resume a new Agent
 after installation or enabling. OFF unloads the creation listener, so new Agents
@@ -91,7 +69,7 @@ manager is added, and its stable package ID and MCP `serverName` are unchanged.
 The retained **configuration-only Bundle** uses DSH's built-in
 `@deepseek-ai/dsh-mcp-client`. It launches an external, persistent Python runtime with
 `--workspace <research-workspace>` and retains the same eleven-tool standard MCP
-surface in 1.5.0. Python **3.12** is recommended. DSH manages the process lifecycle and native Plugins OFF/ON.
+surface. Python **3.12** is recommended. DSH manages the process lifecycle and native Plugins OFF/ON.
 
 The fallback retains its fixed startup workspace and official MCP client behavior.
 Its earlier nine-tool deployment is a historical record, not acceptance of the
@@ -101,7 +79,7 @@ See the [Problem lifecycle contract](../../docs/problem-lifecycle.md) and the [a
 
 ### Prepare and install fallback
 
-Use the matching 1.5.0 wheel or build it with `python -m build --wheel`.
+Use the matching 1.5.1 wheel or build it with `python -m build --wheel`.
 Published packages are available from
 [GitHub Releases](https://github.com/Caie777/math-research-ledger/releases). Run preparation from the matching checkout or extracted source archive
 with an existing initialized research workspace:
@@ -136,9 +114,11 @@ Reload Desktop and start a fresh session. Verify one set of eleven Ledger tools 
 call `research_status` and `research_search` against the pinned workspace. Initialize
 missing research state explicitly with the CLI; installation never creates it.
 
-The release `.tgz` contains the public configuration template, not a rendered local
-deployment. Prepare it through the source-archive script above before installation.
-Rendered patches contain private deployment paths; keep them local.
+The fallback release `.tgz` is only a public template, not a rendered deployment.
+Keep rendered patches private: they embed absolute workspace and runtime paths.
+After moving either, recreate the venv if needed and rerender with explicit
+`--workspace`, `--out` and `--runtime`. To avoid a pinned workspace and a private
+package altogether, use the Host bundle instead.
 
 ### Enable, disable and uninstall fallback
 

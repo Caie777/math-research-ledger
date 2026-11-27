@@ -1,4 +1,4 @@
-"""Prepare the manual single-workspace fallback only; prefer prepare_dsh_host_plugin.py.
+"""Prepare the manual single-workspace fallback only; prefer the public DSH Host tarball.
 
 Render static configuration and an external Python runtime; never invoke DSH.
 """

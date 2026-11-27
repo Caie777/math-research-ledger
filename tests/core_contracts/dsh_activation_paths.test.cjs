@@ -10,6 +10,7 @@ const { POINTER, readActivation, activate } = require('../../integrations/deepse
 
 const STATE = '.math-research-ledger';
 const python = process.execPath; // Mocked execFile only: never invoke Python or Core here.
+const getPython = () => python;
 
 function fixture(t) {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'mrl-activation-'));
@@ -145,7 +146,7 @@ test('reject parent components, outside absolutes and foreign Windows paths befo
     path.join(base, 'outside'), 'C:\\outside', 'C:relative', '\\\\server\\share\\data',
   ];
   for (const directory of directories) {
-    await assert.rejects(activate({ sessionRoot: root, directory, python }), expectCode('INVALID_ACTIVATION_PATH'), directory);
+    await assert.rejects(activate({ sessionRoot: root, directory, getPython }), expectCode('INVALID_ACTIVATION_PATH'), directory);
   }
   assert.deepEqual(fs.readdirSync(root), []);
   assert.equal(fs.existsSync(path.join(base, 'outside')), false);
@@ -165,7 +166,7 @@ test('malformed pointers never fall back to discovery or initialization', async 
   for (const content of bad) {
     writePointer(root, content);
     assert.throws(() => readActivation(root), expectCode('INVALID_ACTIVATION_POINTER'));
-    await assert.rejects(activate({ sessionRoot: root, python }), expectCode('INVALID_ACTIVATION_POINTER'));
+    await assert.rejects(activate({ sessionRoot: root, getPython }), expectCode('INVALID_ACTIVATION_POINTER'));
     assert.deepEqual(fs.readFileSync(path.join(root, POINTER)), Buffer.from(content));
   }
 });
@@ -197,15 +198,15 @@ test('explicit init uses the exact bounded execFile CLI and only then writes poi
   const controller = new AbortController();
   const calls = mockInit(t, ({ args, callback }) => {
     assert.equal(fs.existsSync(path.join(root, POINTER)), false);
-    fakeState(args[4]);
+    fakeState(args[5]);
     callback(null, 'ignored bounded output', '');
   });
-  const result = await activate({ sessionRoot: root, directory: 'new/nested', python, signal: controller.signal });
+  const result = await activate({ sessionRoot: root, directory: 'new/nested', getPython, signal: controller.signal });
   assert.equal(calls.length, 1);
   assert.equal(calls[0].file, python);
-  assert.deepEqual(calls[0].args, ['-B', '-m', 'math_research.cli', '--workspace', path.join(root, 'new', 'nested'), 'init']);
+  assert.deepEqual(calls[0].args, ['-I', '-B', '-m', 'math_research.cli', '--workspace', path.join(root, 'new', 'nested'), 'init']);
   assert.deepEqual(calls[0].options, {
-    cwd: result.ledgerRoot, timeout: 60000, maxBuffer: 65536, shell: false, signal: controller.signal,
+    cwd: result.ledgerRoot, timeout: 60000, maxBuffer: 65536, shell: false, windowsHide: true, signal: controller.signal,
   });
   assert.deepEqual(readActivation(root), result);
 });
@@ -213,11 +214,11 @@ test('explicit init uses the exact bounded execFile CLI and only then writes poi
 test('init failure writes no pointer and never removes user-created state', async t => {
   const { root } = fixture(t);
   mockInit(t, ({ args, callback }) => {
-    const state = fakeState(args[4]);
+    const state = fakeState(args[5]);
     fs.writeFileSync(path.join(state, 'partial-user-data'), 'keep');
     callback(new Error('synthetic CLI failure'));
   });
-  await assert.rejects(activate({ sessionRoot: root, python }), expectCode('ACTIVATION_INIT_FAILED'));
+  await assert.rejects(activate({ sessionRoot: root, getPython }), expectCode('ACTIVATION_INIT_FAILED'));
   assert.equal(fs.existsSync(path.join(root, POINTER)), false);
   assert.equal(fs.readFileSync(path.join(root, STATE, 'partial-user-data'), 'utf8'), 'keep');
 });
@@ -225,10 +226,10 @@ test('init failure writes no pointer and never removes user-created state', asyn
 test('Python validation precedes parent creation and an aborted activation makes no files', async t => {
   const { root } = fixture(t);
   forbidInit(t);
-  await assert.rejects(activate({ sessionRoot: root, directory: 'missing', python: 'python' }), expectCode('ACTIVATION_INIT_FAILED'));
+  await assert.rejects(activate({ sessionRoot: root, directory: 'missing', getPython: () => 'python' }), expectCode('ACTIVATION_INIT_FAILED'));
   const controller = new AbortController();
   controller.abort();
-  await assert.rejects(activate({ sessionRoot: root, directory: 'missing', python, signal: controller.signal }), { name: 'AbortError' });
+  await assert.rejects(activate({ sessionRoot: root, directory: 'missing', getPython, signal: controller.signal }), { name: 'AbortError' });
   assert.deepEqual(fs.readdirSync(root), []);
 });
 
@@ -236,11 +237,11 @@ test('same-root concurrent activation serializes init and never duplicates the C
   const { root } = fixture(t);
   let release;
   const calls = mockInit(t, ({ args, callback }) => {
-    release = () => { fakeState(args[4]); callback(null); };
+    release = () => { fakeState(args[5]); callback(null); };
   });
-  const first = activate({ sessionRoot: root, directory: 'new', python });
-  const second = activate({ sessionRoot: root, directory: 'new', python });
-  await Promise.resolve();
+  const first = activate({ sessionRoot: root, directory: 'new', getPython });
+  const second = activate({ sessionRoot: root, directory: 'new', getPython });
+  await new Promise(setImmediate);
   assert.equal(calls.length, 1);
   release();
   const results = await Promise.all([first, second]);
@@ -252,10 +253,10 @@ test('a failed queued init does not poison later activation', async t => {
   const { root } = fixture(t);
   const calls = mockInit(t, ({ args, callback, count }) => {
     if (count === 1) callback(new Error('first attempt failed'));
-    else { fakeState(args[4]); callback(null); }
+    else { fakeState(args[5]); callback(null); }
   });
-  const first = activate({ sessionRoot: root, python });
-  const second = activate({ sessionRoot: root, python });
+  const first = activate({ sessionRoot: root, getPython });
+  const second = activate({ sessionRoot: root, getPython });
   await assert.rejects(first, expectCode('ACTIVATION_INIT_FAILED'));
   assert.equal((await second).root, root);
   assert.equal(calls.length, 2);
@@ -307,7 +308,7 @@ for (const type of process.platform === 'win32' ? ['junction', 'dir'] : ['dir'])
     fs.mkdirSync(outside);
     if (!makeLink(t, outside, path.join(root, 'escape'), type)) return;
     forbidInit(t);
-    await assert.rejects(activate({ sessionRoot: root, directory: 'escape/new', python }), expectCode('INVALID_ACTIVATION_PATH'));
+    await assert.rejects(activate({ sessionRoot: root, directory: 'escape/new', getPython }), expectCode('INVALID_ACTIVATION_PATH'));
     writePointer(root, `escape/${STATE}\n`);
     assert.throws(() => readActivation(root), expectCode('INVALID_ACTIVATION_POINTER'));
     assert.deepEqual(fs.readdirSync(outside), []);
@@ -390,8 +391,8 @@ test('a synchronous spawn error or CLI success without state never creates a poi
     if (count === 1) throw new Error('synthetic synchronous execFile error');
     callback(null);
   });
-  await assert.rejects(activate({ sessionRoot: root, python }), expectCode('ACTIVATION_INIT_FAILED'));
-  await assert.rejects(activate({ sessionRoot: root, python }), expectCode('ACTIVATION_INIT_FAILED'));
+  await assert.rejects(activate({ sessionRoot: root, getPython }), expectCode('ACTIVATION_INIT_FAILED'));
+  await assert.rejects(activate({ sessionRoot: root, getPython }), expectCode('ACTIVATION_INIT_FAILED'));
   assert.equal(calls.length, 2);
   assert.equal(fs.existsSync(path.join(root, POINTER)), false);
 });
@@ -410,7 +411,7 @@ test('state created during parent checks is bound without initialization', async
     return result;
   };
   try {
-    const result = await activate({ sessionRoot: root, directory: 'new', python });
+    const result = await activate({ sessionRoot: root, directory: 'new', getPython });
     assert.equal(result.relative, `new/${STATE}`);
     assert.equal(injected, true);
   } finally { fs.mkdirSync = originalMkdir; }

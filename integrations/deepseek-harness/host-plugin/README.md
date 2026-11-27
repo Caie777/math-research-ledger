@@ -1,122 +1,102 @@
 # MathResearch Ledger for DSH
 
-The official Agent Host plugin is the **only recommended / default installation**
-in **1.5.0** for DSH **0.2.x**. **MathResearch Ledger for DSH** is its Host UI
-name; the product remains MathResearch Ledger. **Protocol-neutral, DSH-first, other
-Harnesses on demand** means the standard MCP contract is retained, Codex is
-best-effort compatibility and other adapters need a real use case.
+The recommended DSH 0.2.x integration. The Host adapter binds the existing Python
+MCP server to each Agent's immutable session root, with eleven scoped tools. It
+contains no research logic and does not migrate any Ledger data.
 
-Install the matching Python wheel with MCP dependencies into a persistent
-runtime for eleven tools. No Core/MCP breaking change or research-schema migration
-is introduced.
-The adapter contains no research logic: it awaits the official MCP client inside
-each new Agent's scope, using the Host's immutable `agent.session.header.cwd`.
-The existing Python server supplies the shared research workflow instructions.
+## Install
 
-## Workspace-gated activation
+From [GitHub Releases](https://github.com/Caie777/math-research-ledger/releases/tag/v1.5.1),
+use `dsh-math-research-ledger-host-1.5.1.tgz` and the matching `math_research_ledger`
+wheel with the `[mcp]` extra. The original v1.5.0 Host tarball predates this fix.
 
-The Host entry may stay globally ON. ON alone grants no Ledger tools: it only
-permits a workspace that owns an activation pointer to use them. There is no
-ancestor search, workspace scan or automatic Ledger creation.
+1. Install Python 3.11+ (3.12 recommended). Create a dedicated venv outside the
+   plugin directory, source checkout and research workspace, at a location you choose.
+   In ordinary PowerShell, for example:
 
-For each new Agent, the Host reads exactly one tiny pointer in the exact session
-root, `.math-research-ledger-link`. The pointer contains a session-root-relative
-Ledger state directory such as `.math-research-ledger` or
-`research/foo/.math-research-ledger`.
+   ```powershell
+   $runtime = '<runtime-directory>'
+   py -3.12 -m venv $runtime
+   & "$runtime\Scripts\python.exe" -m pip install '<matching-wheel-filename>.whl[mcp]'
+   ```
 
-| Exact session-root state | Result |
-|---|---|
-| no pointer | 0 Ledger tools and no Python MCP process |
-| valid pointer | one scoped MCP client bound to that Ledger; exactly eleven tools |
-| invalid or escaping pointer | Agent setup fails with a clear diagnostic; no substitute directory |
+   On macOS/Linux use `python3 -m venv` and `<runtime-directory>/bin/python`.
+   Install the wheel non-editably; the finished runtime does not require source code.
+2. In the target DSH Profile, use **Plugins → Add plugin** with the absolute path
+   to the Host `.tgz`, then enable **MathResearch Ledger for DSH**. This is a normal
+   DSH package install, not a link to an extracted source directory. No rendering,
+   symlink setup, install-time Python path, or workspace selection is needed.
+3. Make the runtime visible to the **DSH Host process**: put its `Scripts` (Windows)
+   or `bin` directory first on its PATH, or set the optional `python` field in the
+   native Profile override below. Activating a venv in an unrelated terminal does
+   not change PATH for an already-running Desktop app. Fully restart the Host after
+   changing its environment or replacing the installed bundle.
 
-Enable Ledger only with the native human command, not by mentioning it in a model
-prompt:
+The plugin selects the first executable `python.exe` (Windows) or `python3`
+(other platforms) in absolute directories on the Host's PATH. A local override
+is authoritative when present; stale overrides do not fall back silently. On
+activation, the adapter checks that the executable starts and can import the
+Ledger CLI and MCP dependencies. Probe, init and MCP use isolated Python (`-I -B`):
+use a venv or normal site-packages, not `PYTHONPATH` or `pip install --user`.
+`MRL_RUNTIME_UNAVAILABLE` indicates a missing, unusable or incomplete runtime;
+update/clear the override or repair the environment and retry with a new Agent.
+The package does not download Python, install dependencies, or modify PATH.
+
+### Optional local override
+
+Use the selected Profile's DSH Loader override (normally its `cordis.patch.yml`
+under `$DSH_HOME/profiles/<profile>/`). Add or update **one override row** in that
+file, preserving unrelated rows. Do not edit the installed bundle or add a second
+`insert` row. Substitute the real absolute executable path without shell quotes
+inside the YAML value:
+
+```yaml
+- id: math-research-ledger-host
+  name: dsh-math-research-ledger-host
+  config:
+    python: '<runtime-directory>/Scripts/python.exe'
+```
+
+On macOS/Linux use `bin/python`. To switch back to PATH discovery, remove this
+local override (or set its `config: {}`). The path lives only in the user's
+Profile, never in the distributed package.
+
+## Use
+
+Open the intended workspace and create/resume an Agent. With no pointer at the
+exact session root, the plugin starts no Python and exposes no Ledger tools.
+Explicitly opt in using the human composer command:
 
 ```text
 /math-research-ledger enable [workspace-relative directory]
 ```
 
-The command initializes the default `./.math-research-ledger`, or the requested
-directory inside the exact session root. Absolute paths outside the root, `..`,
-and symlink/junction escapes are rejected. Initialization runs the normal
-`math_research` CLI once; without an existing pointer the research tools never
-appear and Python is never started. There is intentionally no resident bootstrap
-tool schema.
+This initializes only missing state, defaulting to `./.math-research-ledger`, and
+writes `.math-research-ledger-link` with a relative state directory. An existing
+state directory is bound without reinitialization. An invalid or escaping pointer
+fails without fallback; there is no scan, ancestor search or model-selectable root.
+New Agents at the same root mount the official MCP client at the bound Ledger root.
+OFF affects new Agents; dispose existing Agents to close their scoped transports.
 
-Prepare a new local package with an already installed persistent Python runtime:
+## Upgrade, move, or uninstall
 
-```powershell
-python scripts/prepare_dsh_host_plugin.py --out '<new-local-plugin-directory>' --python '<persistent-python>'
-# In ordinary PowerShell: remove the old fallback if installed in this Profile.
-dsh plugin --profile '<profile>' remove dsh-math-research-ledger
-# Host upgrade only: remove an existing Host installation before re-adding.
-# dsh plugin --profile '<profile>' remove dsh-math-research-ledger-host
-dsh plugin --profile '<profile>' add '<new-local-plugin-directory>'
-```
+- **From a prepared legacy Host:** remove its package in the target DSH Profile,
+  then add the fixed public tarball. Remove `dsh-math-research-ledger` if the old
+  single-workspace fallback is installed; switching it OFF is not removal.
+  Clear any stale `python` Profile override or update it for the new runtime.
+- **If only the DSH installation moved:** reuse the unchanged Python environment.
+  If DSH has a broken old package link or tarball source, add the portable tarball
+  through the native manager again at its new location, rather than repairing the
+  bundle's contents. Keep the tarball available for package-manager reinstalls.
+- **If Python or the venv moved:** recreate the environment with a working base
+  Python at the destination and reinstall the matching wheel with `[mcp]`. Update
+  Host PATH or the Profile override. Do not copy/move a venv and assume its base
+  interpreter references, launchers, or editable installs still work.
+- **Uninstall:** remove `dsh-math-research-ledger-host` using DSH's normal package
+  management. Remove only its override and, optionally, its dedicated runtime if
+  nothing else uses it. Do not delete the workspace or its activation pointer.
 
-Preparation installs no runtime, selects no workspace and never initializes Ledger.
-The unrendered public package contains `__MRL_PYTHON__`: configure the absolute
-Python path before activation, or render it with the helper. Rendered packages
-contain a local runtime path and must stay private. Uninstall through normal DSH
-`plugin --profile '<profile>' remove dsh-math-research-ledger-host`.
-
-Preparation and its printed installation instructions prepare **only this Host
-package**, never the fallback. Use the normal Desktop-installed `dsh` command in
-ordinary PowerShell, not a sandboxed DSH shell; skip removal for packages not installed.
-
-**Remove**, rather than merely disable, the old `dsh-math-research-ledger` config-only
-Bundle before adding this one. Both installed dependencies can appear as installation
-candidates even when OFF or unselected. They are alternative deployments, not two
-clients to install together. The old Bundle remains a non-default **Fallback / manual
-single-workspace integration**; no compatibility code has been removed.
-
-The **2026-10-30** disk inspection found both dependencies at 1.2.1 and neither Bundle
-selected. This historical snapshot and the acceptance below do not establish a
-completed 1.3.0 migration or today's deployment state. These instructions do not
-upgrade or enable the real Profile, and must not be implemented
-by manually rewriting its files.
-
-Load this Host entry before creating the Agents it should serve; after install,
-enable or reload, create/resume a new Agent. `agent/created` is an awaited DSH
-factory barrier. Without a pointer the Agent simply has no Ledger tools; with one,
-tools are ready before the first model request. Existing Agents are not retrofitted.
-Profile/plugin OFF removes the creation listener: new Agents have no Ledger tools,
-while already-created Agents retain their scoped client until disposal. ON affects
-subsequently created Agents and remains necessary for the `/math-research-ledger`
-command.
-
-Each Agent owns at most one active connection/process. Agent disposal closes its
-official MCP transport and tools.
-
-The process cwd is the bound Ledger root and args are
-`-B -m math_research.mcp.server --workspace .`. Shell cwd changes do not rebind it.
-Resume uses the saved session header and the same pointer, not ambient cwd. A
-missing pointer yields zero tools rather than a `NO_WORKSPACE` client. A malformed
-or escaping pointer refuses Agent setup without spawning a process or guessing
-another directory. No parent discovery, model-selected scope, silent init, ACL
-changes, authentication handling or automatic authority promotion is added.
-
-## Public 1.5.0 package
-
-The public Host npm tarball contains **eight files**: `index.cjs`, `activation.cjs`,
-`package.json`, `cordis.patch.yml`, `README.md`, `LICENSE`, `locale/en.json` and
-`locale/zh.json`. The locales supply the **MathResearch Ledger for DSH** Host title;
-the stable package ID `dsh-math-research-ledger-host`, MCP server name and runtime
-binding are unchanged. The seven-file 1.3.0 layout and five-file 1.2.2 layout are
-historical. No Python runtime, rendered local configuration, research state or
-private evidence belongs in the public tarball.
-
-
-## Historical validation boundary
-
-**Historical acceptance (2026-10-26; 1.2.2 development):** the recorded Windows rc.3 synthetic factory run covered
-isolation, concurrent writers, exact roots, first-request readiness, disposal,
-persistence/resume and ON/OFF. The recorded real rc.3 Profile cutover also passed
-read-only access, isolation, resume, Host restart and new-Agent OFF/ON with zero
-Ledger writes. That run used the official Desktop Host entry, not GUI conversational
-turns. It is not a fresh test or evidence of today's installed/active Profile.
-rc.2, macOS/Linux and UNC are unverified. See `integrations/deepseek-harness/README.md`
-in the source archive for the complete matrix, reproduction and retained fallback.
-The separate **2026-10-30** closeout on a 1.2.2 checkout is also historical; neither
-record substitutes for the final 1.3.0 gate or proves Desktop migration has occurred.
+The bundle, Python environment, and research workspace are three independent
+locations. Do not rewrite Ledger data, history, provenance, or valid activation
+pointers during a plugin/runtime move. For the deliberately pinned fallback and
+validation boundaries, see the DSH integration guide in the source archive.

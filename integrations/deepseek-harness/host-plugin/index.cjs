@@ -2,12 +2,12 @@
 const path = require('node:path');
 const z = require('@deepseek-ai/schemastery');
 const { readActivation, activate } = require('./activation.cjs');
+const { PYTHON_FLAGS, resolvePython } = require('./runtime.cjs');
 
 exports.name = 'math-research-ledger-host';
 exports.inject = ['agents', 'tools', 'commands'];
-exports.Config = z.object({ python: z.string().required() });
-exports.apply = function apply(ctx, { python }) {
-  if (!path.isAbsolute(python)) throw new Error('Select an absolute persistent Python executable.');
+exports.Config = z.object({ python: z.string() });
+exports.apply = function apply(ctx, { python: configuredPython } = {}) {
   const mounted = new WeakMap();
   const usage = 'Explicitly enable Ledger with /math-research-ledger enable [workspace-relative directory]. '
     + 'The default is .math-research-ledger in this exact session root. No research tools are exposed before activation.';
@@ -20,7 +20,7 @@ exports.apply = function apply(ctx, { python }) {
     return root;
   }
 
-  async function mount(agent, binding) {
+  async function mount(agent, binding, python) {
     const previous = mounted.get(agent);
     if (previous) {
       if (previous.ledgerRoot !== binding.ledgerRoot) {
@@ -31,12 +31,13 @@ exports.apply = function apply(ctx, { python }) {
     const record = { ledgerRoot: binding.ledgerRoot };
     // Importing the SDK and starting Python both happen only after a valid pointer.
     record.ready = Promise.resolve().then(async () => {
+      const command = python ?? await resolvePython(configuredPython);
       const mcp = require('@deepseek-ai/dsh-mcp-client');
       const fiber = agent.ctx.plugin(mcp, {
         serverName: 'math-research-ledger',
         transport: 'stdio',
-        command: python,
-        args: ['-B', '-m', 'math_research.mcp.server', '--workspace', '.'],
+        command,
+        args: [...PYTHON_FLAGS, '-m', 'math_research.mcp.server', '--workspace', '.'],
         cwd: binding.ledgerRoot,
         failOnStartupError: true,
         toolCallTimeoutMs: 120000,
@@ -46,9 +47,11 @@ exports.apply = function apply(ctx, { python }) {
         return binding;
       } catch (error) {
         await fiber.dispose();
-        mounted.delete(agent);
         throw error;
       }
+    }).catch(error => {
+      mounted.delete(agent);
+      throw error;
     });
     mounted.set(agent, record);
     return record.ready;
@@ -89,8 +92,12 @@ exports.apply = function apply(ctx, { python }) {
         return await agent.runMaintenance(async maintenanceSignal => {
           const combined = AbortSignal.any([signal, maintenanceSignal]);
           combined.throwIfAborted();
-          const binding = await activate({ sessionRoot: sessionRoot(agent), directory, python, signal: combined });
-          await mount(agent, binding);
+          let python;
+          const binding = await activate({
+            sessionRoot: sessionRoot(agent), directory, signal: combined,
+            getPython: async () => { python = await resolvePython(configuredPython, combined); return python; },
+          });
+          await mount(agent, binding, python);
           return { kind: 'success', text: `MathResearch Ledger enabled: ${binding.relative}. Eleven research tools are ready for the next task message.` };
         });
       } catch (error) {

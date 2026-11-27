@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-11-27
+
+### Fixed
+
+- Install the public DSH Agent Host tarball directly, without rendering a local
+  Python path into the package. On an activated workspace, the Host discovers
+  Python on its PATH or uses an optional, authoritative Profile override.
+- Diagnose a missing, stale, or incomplete Python runtime before activation writes.
+  Rebuild moved Python environments at their destination instead of copying a venv.
+- Retire the old Host package preparation script. The manual single-workspace
+  fallback remains separate. No Core/MCP behavior or research-data migration changed.
+
+See [the 1.5.1 release notes](docs/releases/v1.5.1.md) for migration and verification.
+
 ## [1.5.0] - 2026-11-03
 
 ### Changed

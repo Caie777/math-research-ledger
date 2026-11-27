@@ -26,7 +26,7 @@ spec.loader.exec_module(prep)
 
 def test_manifest_locale_icon_and_no_adapter():
     package = json.loads((BUNDLE / "package.json").read_text("utf-8"))
-    assert package["version"] == __version__ == "1.5.0"
+    assert package["version"] == __version__ == "1.5.1"
     assert package["dsh"]["bundle"]["patch"] == "./cordis.patch.yml"
     assert package["files"] == [
         "cordis.patch.yml",
@@ -178,27 +178,33 @@ def test_runtime_mismatch_is_an_explicit_error(monkeypatch):
         prep.verify_runtime(Path(sys.executable), __version__)
 
 
-def test_actual_npm_tarball_keeps_private_runtime_and_state_out(deployment):
+def test_actual_public_npm_tarball_keeps_placeholders_and_excludes_private_files(tmp_path):
     npm = shutil.which("npm.cmd" if os.name == "nt" else "npm")
     if not npm:
         pytest.skip("npm is needed for actual pack validation")
-    _, _, out, _ = deployment
-    value = invoke(deployment)
-    assert value.returncode == 0, value.stderr
+    public = tmp_path / "public"
+    shutil.copytree(BUNDLE, public)
+    shutil.copyfile(ROOT / "LICENSE", public / "LICENSE")
     for name in (".venv", ".math-research-ledger"):
-        (out / name).mkdir()
-        (out / name / "private").write_bytes(b"not packaged")
-    (out / ".runtime.json").write_text("private", encoding="utf-8")
+        (public / name).mkdir()
+        (public / name / "private").write_bytes(b"not packaged")
+    (public / ".runtime.json").write_text("private", encoding="utf-8")
     packed = subprocess.run(
-        [npm, "pack", str(out), "--pack-destination", str(out.parent), "--json"],
+        [npm, "pack", str(public), "--pack-destination", str(tmp_path), "--json"],
         capture_output=True,
         text=True,
         check=True,
         timeout=45,
-        env={**os.environ, "npm_config_cache": str(out.parent / "npm-cache")},
+        env={**os.environ, "npm_config_cache": str(tmp_path / "npm-cache")},
     )
-    with tarfile.open(out.parent / json.loads(packed.stdout)[0]["filename"]) as archive:
+    with tarfile.open(tmp_path / json.loads(packed.stdout)[0]["filename"]) as archive:
         assert set(archive.getnames()) == {"package/" + f for f in prep.FILES}
+        patch = archive.extractfile("package/cordis.patch.yml").read()
+        assert patch == (BUNDLE / "cordis.patch.yml").read_bytes()
+        assert str(tmp_path).encode() not in patch and str(sys.executable).encode() not in patch
+        config = yaml.safe_load(patch)[0]["insert"][0]["config"]
+        assert config["command"] == "__MRL_PYTHON__"
+        assert config["args"][-2:] == ["--workspace", "__MRL_WORKSPACE__"]
 
 
 def test_python_artifacts_exclude_runtime_state_and_evidence(tmp_path):
