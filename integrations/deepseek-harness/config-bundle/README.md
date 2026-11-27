@@ -1,7 +1,7 @@
 # MathResearch Ledger — Fallback for DeepSeek Harness
 
 **Fallback / manual single-workspace integration — not the default.** The only
-recommended **1.5.1** installation is the separate Agent Host plugin,
+recommended **1.5.2** installation is the separate Agent Host plugin,
 displayed as **MathResearch Ledger for DSH** (`host-plugin/` in the source archive).
 Its DSH rc.3 acceptance cited below is historical, not a new 1.3.0 gate result.
 Choose this alternative only for an explicit installation-time workspace pin. **Remove the Host plugin

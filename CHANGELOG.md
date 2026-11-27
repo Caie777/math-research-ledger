@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-11-27
+
+### Changed
+
+- Prepare the DSH Host for npm package-name installation and native registry
+  updates. Add public npm metadata and bounded peer compatibility declarations.
+- The Host accepts stable Ledger 1.5.x runtimes on Python 3.11+ and reports a
+  version mismatch with an explicit pip repair command. Compatible runtimes do
+  not have to match the Host patch version.
+- Add a manual OIDC registry publication workflow that reuses verified GitHub
+  Release assets and checks that matching Python distributions are public before
+  npm publication. v1.5.2 is released on GitHub first; registry publication is a
+  separate maintainer operation. Core/MCP behavior and research data are unchanged.
+
+See [the 1.5.2 release notes](docs/releases/v1.5.2.md).
+
 ## [1.5.1] - 2026-11-27
 
 ### Fixed

@@ -11,12 +11,13 @@ immutable `agent.session.header.cwd`. A serial `agent/created` listener
 awaits the scoped official MCP client before Agent creation returns. No workspace
 is selected at installation and no model argument can select another Ledger.
 
-Install the public Host v1.5.1 `.tgz` as-is through DSH Plugins. Install the
-matching Python wheel with `[mcp]` in a separate environment. The bundle has
-no machine-specific configuration; the Host discovers Python via its PATH or
-an optional local Profile `python` override. See the [Host guide](host-plugin/README.md)
-for setup, relocation, runtime recovery and uninstall. The already published
-v1.5.0 tarball does not contain this fix.
+For standard online installation, add `dsh-math-research-ledger-host` by npm package
+name through DSH Plugins and install `math-research-ledger[mcp]` from PyPI in a
+separate Python environment. Before the first registry publication, or for offline
+installation, use the public GitHub Release Host `.tgz` and wheel. The Host
+finds Python on its PATH or uses an optional local Profile `python` override.
+See the [Host guide](host-plugin/README.md) for supported runtime versions, the
+one-time migration from link/tarball to registry updates, and uninstall.
 
 ### Why two installation candidates can appear
 
@@ -79,7 +80,7 @@ See the [Problem lifecycle contract](../../docs/problem-lifecycle.md) and the [a
 
 ### Prepare and install fallback
 
-Use the matching 1.5.1 wheel or build it with `python -m build --wheel`.
+Use the matching 1.5.2 wheel or build it with `python -m build --wheel`.
 Published packages are available from
 [GitHub Releases](https://github.com/Caie777/math-research-ledger/releases). Run preparation from the matching checkout or extracted source archive
 with an existing initialized research workspace:

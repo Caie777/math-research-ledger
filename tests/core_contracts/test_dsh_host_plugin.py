@@ -18,7 +18,7 @@ TEMPLATE = ROOT / "integrations/deepseek-harness/host-plugin"
 def test_native_host_manifest_and_runtime_only_configuration():
     meta = json.loads((TEMPLATE / "package.json").read_text("utf-8"))
     # Adapter-only patches do not require a Python runtime release.
-    assert meta["version"] == "1.5.1"
+    assert meta["version"] == "1.5.2"
     assert "activation.cjs" in meta["files"]
     assert meta["main"] == "index.cjs"
     assert meta["exports"]["."] == "./index.cjs"
@@ -27,8 +27,13 @@ def test_native_host_manifest_and_runtime_only_configuration():
         assert locale["meta"]["title"] == "MathResearch Ledger for DSH"
     assert meta["dsh"]["bundle"]["patch"] == "./cordis.patch.yml"
     assert meta["engines"]["dsh"] == "0.2.x"
-    assert meta["peerDependencies"]["@deepseek-ai/dsh-agent"] == "0.2.x"
-    assert meta["peerDependencies"]["@deepseek-ai/dsh-mcp-client"] == "0.2.x"
+    assert meta["repository"]["directory"] == "integrations/deepseek-harness/host-plugin"
+    assert meta["publishConfig"] == {"access": "public", "registry": "https://registry.npmjs.org/"}
+    assert not meta.get("private") and "scripts" not in meta
+    dsh_peers = "0.2.x || 0.2.1-rc.3 || 0.2.2-rc.5"
+    assert meta["peerDependencies"]["@deepseek-ai/dsh-agent"] == dsh_peers
+    assert meta["peerDependencies"]["@deepseek-ai/dsh-mcp-client"] == dsh_peers
+    assert meta["peerDependencies"]["@deepseek-ai/schemastery"] == "~3.18.5 || ~3.19.0"
     rows = yaml.safe_load((TEMPLATE / "cordis.patch.yml").read_text("utf-8"))
     assert len(rows) == len(rows[0]["insert"]) == 1
     row = rows[0]["insert"][0]

@@ -1,0 +1,187 @@
+name: Publish verified release to registries
+
+# GitHub Release assets are the publication input. No push/tag trigger.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing stable GitHub Release tag (vX.Y.Z)
+        required: true
+        type: string
+      target:
+        description: Verify only, publish PyPI, or publish npm after checking PyPI
+        required: true
+        type: choice
+        default: verify-only
+        options:
+          - verify-only
+          - pypi
+          - npm
+
+permissions:
+  contents: read
+
+concurrency:
+  group: registry-publish-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require the default branch and explicit publishing opt-in
+        env:
+          DEFAULT_REF: refs/heads/${{ github.event.repository.default_branch }}
+          TAG: ${{ inputs.tag }}
+          TARGET: ${{ inputs.target }}
+          ENABLED: ${{ vars.MRL_REGISTRY_PUBLISH_ENABLED }}
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == "$DEFAULT_REF" ]] || { echo 'Dispatch from the default branch.'; exit 1; }
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Use a stable vX.Y.Z tag.'; exit 1; }
+          if [[ "$TARGET" != verify-only && "$ENABLED" != true ]]; then
+            echo 'Set MRL_REGISTRY_PUBLISH_ENABLED=true after configuring registry trust and reviewers.'
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+          persist-credentials: false
+      - name: Download the existing public release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          STATUS=$(gh release view "$TAG" --json tagName,isDraft,isPrerelease --jq '[.tagName,.isDraft,.isPrerelease] | @tsv')
+          [[ "$STATUS" == "$TAG"$'\tfalse\tfalse' ]] || { echo 'Expected a published stable GitHub Release.'; exit 1; }
+          VERSION="${TAG#v}"
+          gh release download "$TAG" --dir registry-assets \
+            --pattern SHA256SUMS \
+            --pattern "math_research_ledger-$VERSION-py3-none-any.whl" \
+            --pattern "math_research_ledger-$VERSION.tar.gz" \
+            --pattern "dsh-math-research-ledger-host-$VERSION.tgz"
+      - name: Verify release payloads and enforce PyPI before npm
+        env:
+          TAG: ${{ inputs.tag }}
+          TARGET: ${{ inputs.target }}
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import tarfile
+          import zipfile
+          from email.parser import BytesParser
+          from pathlib import Path
+          from urllib.error import HTTPError
+          from urllib.request import urlopen
+
+          version = os.environ['TAG'][1:]
+          root = Path('registry-assets')
+          stem = f'math_research_ledger-{version}'
+          wheel, sdist, host = f'{stem}-py3-none-any.whl', f'{stem}.tar.gz', f'dsh-math-research-ledger-host-{version}.tgz'
+          checksums = {}
+          for line in (root / 'SHA256SUMS').read_text('ascii').splitlines():
+              digest, filename = line.split(maxsplit=1)
+              if filename in checksums:
+                  raise SystemExit(f'Duplicate checksum for {filename}')
+              checksums[filename] = digest
+          if {p.name for p in root.iterdir()} != {wheel, sdist, host, 'SHA256SUMS'}:
+              raise SystemExit('Unexpected release files')
+          for filename in (wheel, sdist, host):
+              if hashlib.sha256((root / filename).read_bytes()).hexdigest() != checksums.get(filename):
+                  raise SystemExit(f'Checksum mismatch: {filename}')
+
+          def check_python(data):
+              meta = BytesParser().parsebytes(data)
+              if (meta['Name'], meta['Version']) != ('math-research-ledger', version) or 'mcp' not in meta.get_all('Provides-Extra', []):
+                  raise SystemExit('Python package name, version or [mcp] extra mismatch')
+
+          python_entry = 'math_research/__init__.py'
+          tagged_python = Path('src', python_entry).read_bytes()
+          with zipfile.ZipFile(root / wheel) as archive:
+              if archive.testzip() is not None or archive.read(python_entry) != tagged_python:
+                  raise SystemExit('Invalid wheel or Python version source differs from tag')
+              check_python(archive.read(f'{stem}.dist-info/METADATA'))
+          with tarfile.open(root / sdist) as archive:
+              check_python(archive.extractfile(f'{stem}/PKG-INFO').read())
+              if archive.extractfile(f'{stem}/src/{python_entry}').read() != tagged_python:
+                  raise SystemExit('Source distribution version source differs from tag')
+          with tarfile.open(root / host) as archive:
+              manifest = json.loads(archive.extractfile('package/package.json').read())
+              tagged_manifest = json.loads(Path('integrations/deepseek-harness/host-plugin/package.json').read_bytes())
+              if (manifest != tagged_manifest or manifest['name'] != 'dsh-math-research-ledger-host'
+                      or manifest['version'] != version or manifest.get('private')
+                      or manifest.get('publishConfig') != {'access': 'public', 'registry': 'https://registry.npmjs.org/'}):
+                  raise SystemExit('Host manifest does not match the tagged public package')
+              patch = manifest['dsh']['bundle']['patch'].removeprefix('./')
+              directory = Path('integrations/deepseek-harness/host-plugin')
+              if archive.extractfile('package/' + patch).read() != (directory / patch).read_bytes():
+                  raise SystemExit('Bundle patch does not match the tagged source')
+
+          if os.environ['TARGET'] == 'npm':
+              try:
+                  with urlopen(f'https://pypi.org/pypi/math-research-ledger/{version}/json', timeout=20) as response:
+                      published = json.load(response)['urls']
+              except HTTPError as error:
+                  if error.code == 404:
+                      raise SystemExit('Publish the matching release to PyPI first; retry after it is visible.') from None
+                  raise
+              available = {f['filename']: f['digests']['sha256'] for f in published if not f['yanked']}
+              if available != {filename: checksums[filename] for filename in (wheel, sdist)}:
+                  raise SystemExit('The public PyPI files do not match this release or have been yanked.')
+              print('Both matching Python distributions are visible on PyPI.')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: inputs.target == 'pypi'
+        with:
+          name: verified-python
+          path: |
+            registry-assets/*.whl
+            registry-assets/*.tar.gz
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: inputs.target == 'npm'
+        with:
+          name: verified-host
+          path: registry-assets/*.tgz
+          if-no-files-found: error
+
+  publish-pypi:
+    if: inputs.target == 'pypi'
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-python
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  publish-npm:
+    if: inputs.target == 'npm'
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-host
+          path: dist
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Publish the verified tarball with npm Trusted Publishing
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          npm install --global npm@11.19.0 --ignore-scripts --registry=https://registry.npmjs.org/
+          npm publish "dist/dsh-math-research-ledger-host-${TAG#v}.tgz" \
+            --registry=https://registry.npmjs.org/ --access public --ignore-scripts

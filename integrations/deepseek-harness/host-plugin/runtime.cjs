@@ -5,19 +5,25 @@ const path = require('node:path');
 const childProcess = require('node:child_process');
 
 const PYTHON_FLAGS = ['-I', '-B'];
+const runtimeRequirement = 'math-research-ledger[mcp]>=1.5.0,<1.6';
 const executableName = process.platform === 'win32' ? 'python.exe' : 'python3';
 const probe = [
-  'import sys',
+  'import re, sys',
   "if sys.version_info < (3, 11): sys.exit('Python 3.11 or newer is required')",
-  'import math_research.cli.main, math_research.mcp.server, mcp.server',
-  "print('MRL_RUNTIME_READY')",
+  'from math_research import __version__',
+  "if not re.fullmatch(r'1\\.5\\.[0-9]+', __version__):",
+  "    print('MRL_RUNTIME_VERSION:' + __version__)",
+  'else:',
+  '    import math_research.cli.main, math_research.mcp.server, mcp.server',
+  "    print('MRL_RUNTIME_READY')",
 ].join('\n');
 
 function runtimeError(reason, cause) {
   const error = new Error(`MRL_RUNTIME_UNAVAILABLE: ${reason} `
-    + 'Install the matching math-research-ledger wheel with [mcp] in a working Python environment '
-    + 'and set the Host plugin’s python setting to its absolute executable path, '
-    + 'or clear the setting to use the DSH Host PATH. Recreate a moved venv instead of copying it.', { cause });
+    + `Use a working Python 3.11+ environment and run its python -m pip install --upgrade "${runtimeRequirement}" `
+    + '(or install a compatible GitHub Release wheel with [mcp]). '
+    + 'Set the Host plugin’s python setting to that absolute executable path, '
+    + 'or clear it to use the DSH Host PATH. Recreate a moved venv instead of copying it.', { cause });
   error.code = 'MRL_RUNTIME_UNAVAILABLE';
   return error;
 }
@@ -53,14 +59,14 @@ async function resolvePython(configured, signal) {
   // An explicit local choice is authoritative; a stale setting never silently
   // falls through to a different environment. Do not cache success or failure.
   const filename = configured || await fromPath(signal);
+  let status;
   try {
-    await new Promise((resolve, reject) => {
+    status = await new Promise((resolve, reject) => {
       childProcess.execFile(filename, [...PYTHON_FLAGS, '-c', probe], {
         cwd: __dirname, timeout: 15000, maxBuffer: 16 * 1024, shell: false, windowsHide: true, signal,
       }, (error, stdout) => {
         if (error) reject(error);
-        else if (stdout.trim() !== 'MRL_RUNTIME_READY') reject(new Error('Unexpected probe output'));
-        else resolve();
+        else resolve(stdout.trim());
       });
     });
   } catch (error) {
@@ -68,7 +74,16 @@ async function resolvePython(configured, signal) {
     const source = configured ? 'Configured Python' : 'Python on the DSH Host PATH';
     throw runtimeError(`${source} (${filename}) could not start or import the Ledger CLI and MCP dependencies.`, error);
   }
-  return filename;
+  if (status === 'MRL_RUNTIME_READY') return filename;
+  const incompatible = /^MRL_RUNTIME_VERSION:([^\s]+)$/u.exec(status);
+  if (incompatible) {
+    const error = new Error(`MRL_RUNTIME_INCOMPATIBLE: ${filename} has MathResearch Ledger ${incompatible[1]}; `
+      + 'this Host requires a stable 1.5.x runtime. With that interpreter, run '
+      + `python -m pip install --upgrade "${runtimeRequirement}" or install a compatible offline wheel.`);
+    error.code = 'MRL_RUNTIME_INCOMPATIBLE';
+    throw error;
+  }
+  throw runtimeError(`Unexpected response from the Python runtime probe (${filename}).`);
 }
 
 exports.PYTHON_FLAGS = PYTHON_FLAGS;

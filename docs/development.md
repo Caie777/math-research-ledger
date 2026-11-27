@@ -1,6 +1,6 @@
 # Development and release gates
 
-Release documentation for MathResearch Ledger **1.5.1**, updated 2026-11-27;
+Release documentation for MathResearch Ledger **1.5.2**, updated 2026-11-27;
 support policy established 2026-10-30. **Protocol-neutral, DSH-first, other Harnesses
 on demand.** The standard MCP server and deterministic services are shared, while
 DeepSeek Harness is the primary supported and tested Host. Its official UI name is
@@ -44,12 +44,12 @@ checks, but it is not by itself a release-runner development environment. Refres
 matching deployed wheels/packages and start new sessions/restart before adopting a
 new implementation; do not replace runtimes underneath active research sessions.
 
-## v1.5.1 verification scope
+## v1.5.2 verification scope
 
-The [v1.5.1 portability release](releases/v1.5.1.md) reuses the targeted synthetic
-Host path, packaging and MCP stdio verification and checks the final release
-artifacts. Full pytest and the actual DSH gate below are intentionally not run
-for this patch. No real Profile or Ledger is modified.
+The [v1.5.2 registry preparation release](releases/v1.5.2.md) reuses the targeted
+Host and packaging checks. This release verifies the final archive bytes and
+runs the registry workflow in `verify-only` mode. Full pytest and the DSH gate
+below are intentionally not run; no real Profile or Ledger is accessed.
 
 ## Baseline development checks
 
@@ -145,7 +145,49 @@ runs the same required runner on a maintained self-hosted Windows runner labeled
 fails. Both the result summary and actual Host acceptance report are uploaded.
 Adding this workflow does not provision a runner, configure repository protection,
 or establish that a remote run has succeeded; retain a successful actual gate run
-before releasing. No publication is automated here.
+before releasing. This gate does not publish packages.
+
+### npm and PyPI publication
+
+Keep GitHub Releases as the offline distribution. For a new stable release, build
+wheel/sdist with `python -m build`, and `npm pack` the Host directory staged with the
+root LICENSE. Use the same version in the tag, Host manifest and Python metadata,
+verify the archives, and upload those exact files and `SHA256SUMS` to the public
+GitHub Release. Keep the fallback tarball on GitHub only. Do not reuse or retag
+v1.5.1 for the registry setup; use a new release with the updated Host metadata.
+
+[Publish verified release to registries](../.github/workflows/publish-registries.yml)
+is manual-only. Dispatch on the default branch with the existing release tag.
+`verify-only` is the default and needs no registry trust. It checks the released
+bytes, archive metadata, and tagged Host manifest/patch without uploading anything.
+`pypi` and `npm` require `MRL_REGISTRY_PUBLISH_ENABLED=true` as a GitHub Actions
+repository variable. The workflow publishes the verified GitHub assets, not a new
+build. The `npm` target refuses publication unless PyPI exposes both matching,
+non-yanked Python distributions with the same SHA-256 hashes. If PyPI is not yet
+visible, retry `npm` later without republishing Python.
+
+One-time maintainer setup (public consumers need no registry accounts):
+
+1. In GitHub, create protected environments `pypi` and `npm`, restricted to the
+   default branch with required reviewer approval where supported. In a PyPI
+   maintainer account with 2FA, configure a [Pending Trusted Publisher](https://docs.pypi.org/trusted-publishers/creating-a-project-through-oidc/)
+   for project `math-research-ledger`: owner `Caie777`, repository
+   `math-research-ledger`, workflow `publish-registries.yml`, environment `pypi`.
+   For an existing owned project, use its Trusted Publisher settings instead.
+2. When authorized to publish, run `verify-only` for the new GitHub Release,
+   then set the opt-in variable and dispatch `pypi`. Confirm the wheel and sdist
+   are public and match `SHA256SUMS` before bootstrapping npm.
+3. If the npm package does not yet exist, use an npm maintainer account with
+   2FA and a current CLI. Sign in interactively and publish **the verified release
+   tarball** (not the working directory), for example
+   `npm publish ./dsh-math-research-ledger-host-<version>.tgz --access public`.
+   Then in the npm package settings add a [Trusted Publisher](https://docs.npmjs.com/trusted-publishers/)
+   for the same owner, repository and workflow, with environment `npm`. If the
+   package already exists under your ownership, skip the interactive bootstrap.
+4. For later releases, run `pypi` and then `npm` for the same tag. Do not rerun
+   `npm` for a version already bootstrapped interactively. No long-lived registry
+   tokens are needed by the workflow. Leave the opt-in variable unset until
+   authorized; it can be unset again to stop further publication runs.
 
 ## Compatibility checks, not equal release targets
 

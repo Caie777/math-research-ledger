@@ -12,9 +12,9 @@ Harness-neutral；DSH 是主要支持、测试和文档化的 Harness，其他�
 
 [English](README.md) · [更新记录](CHANGELOG.md)
 
-**1.5.1 — DSH Host 安装与路径迁移修复。** 公共 Host 包可直接安装；Python 在 workspace
-激活时发现，不再把本机路径写入包内。Agent 作用域、十一个 MCP 工具和已有研究数据不变。
-迁移步骤与代码级验证范围见 [1.5.1 发布说明](docs/releases/v1.5.1.md)。
+**1.5.2 — npm / PyPI 标准化分发准备。** 本版先在 GitHub 发布，为 DSH 原生 npm 更新和 PyPI 安装做准备。
+Host 支持稳定的 1.5.x Python runtime；Agent 作用域、十一个 MCP 工具和研究数据不变。
+详见 [1.5.2 发布说明](docs/releases/v1.5.2.md)。
 
 ## 为什么需要研究 Ledger？
 
@@ -29,14 +29,12 @@ Ledger 将 Problem、Claim、Gap、证明、反例、失败尝试及其来源、
 
 ## 五分钟开始
 
-需要 **Python 3.11+**。从源码安装：
+需要 **Python 3.11+**。registry 首次发布后，标准安装方式是从 PyPI 安装：
 
 ```powershell
-git clone https://github.com/Caie777/math-research-ledger.git
-cd math-research-ledger
 python -m venv .venv
 .venv\Scripts\Activate.ps1
-python -m pip install -e '.[mcp]'
+python -m pip install 'math-research-ledger[mcp]>=1.5.0,<1.6'
 math-research-ledger --workspace 'C:\Research\MyProject' init
 math-research-ledger --workspace 'C:\Research\MyProject' ledger create-problem 'My question' 'State the question and assumptions here.'
 math-research-ledger --workspace 'C:\Research\MyProject' status
@@ -46,10 +44,10 @@ macOS/Linux 用 `source .venv/bin/activate` 激活，并换成自己的研究目
 workspace 必须在工具仓库之外，由用户显式初始化。init 创建空状态、workspace.yaml、研究 AGENTS.md，
 保留已有指令和普通文件，不创建 demo 研究对象。上面的 create-problem 创建用户显式指定的问题。
 
-也可从 [GitHub Releases](https://github.com/Caie777/math-research-ledger/releases) 下载 wheel，
-用 `python -m pip install './math_research_ledger-1.5.1-py3-none-any.whl[mcp]'` 安装。
-默认接着按 [DSH Agent Host plugin 安装指南](integrations/deepseek-harness/host-plugin/README.md)
-安装并在所选 Profile 启用，随后在研究根目录创建或恢复 Agent。
+首次 registry 发布前或需要离线安装时，从 [GitHub Releases](https://github.com/Caie777/math-research-ledger/releases)
+下载 wheel 和 Host `.tgz`，通过目标 Python 安装 wheel 的 `[mcp]` extra。
+npm 包上线后，在 DSH 插件页按包名添加 `dsh-math-research-ledger-host`；旧 link/tgz 用户需要先移除旧 Host。
+具体步骤见 [DSH Host 安装指南](integrations/deepseek-harness/host-plugin/README.md)。启用后在研究根目录创建或恢复 Agent。
 安装与启用是两步；默认安装建议不代表已经替用户部署。普通项目可关闭。
 仅需要 Codex 时参阅 [Tier 2 兼容指南](docs/codex-mcp.md)。独立 MCP client 可用 stdio 启动
 `math-research-ledger-mcp --workspace '<research-workspace>'`，MCP 不会初始化缺失的工作区。

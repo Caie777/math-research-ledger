@@ -12,10 +12,10 @@ reconstructing it from chat. Core services and the MCP contract remain Harness-n
 
 [中文说明](README.zh-CN.md) · [Changelog](CHANGELOG.md)
 
-**1.5.1 — Portable DSH Host installation.** Install the public Host bundle directly;
-Python is selected at activation instead of being baked into the package. Workspace
-binding, the eleven MCP tools, and existing research data are unchanged. See the
-[1.5.1 release notes](docs/releases/v1.5.1.md) for migration and code-level verification.
+**1.5.2 — Standard registry distribution preparation.** This release is available
+on GitHub first. It prepares npm-based DSH Host updates and a PyPI installation path,
+and accepts compatible stable 1.5.x Python runtimes. Workspace binding, the eleven
+MCP tools, and research data are unchanged. See the [release notes](docs/releases/v1.5.2.md).
 
 ## Why keep a research ledger?
 
@@ -46,14 +46,12 @@ External research agent (DSH / other MCP clients)
 
 ## Five-minute quickstart
 
-Requires **Python 3.11+**. From a cloned repository:
+Requires **Python 3.11+**. Install from PyPI once the registry release is available:
 
 ```powershell
-git clone https://github.com/Caie777/math-research-ledger.git
-cd math-research-ledger
 python -m venv .venv
 .venv\Scripts\Activate.ps1
-python -m pip install -e '.[mcp]'
+python -m pip install 'math-research-ledger[mcp]>=1.5.0,<1.6'
 math-research-ledger --workspace 'C:\Research\MyProject' init
 math-research-ledger --workspace 'C:\Research\MyProject' ledger create-problem 'My question' 'State the question and assumptions here.'
 math-research-ledger --workspace 'C:\Research\MyProject' status
@@ -65,10 +63,12 @@ It creates empty state, `workspace.yaml` and research `AGENTS.md`, preserves exi
 instructions and ordinary files, and creates no demonstration research objects.
 The `create-problem` command above creates the Problem you explicitly request.
 
-For a downloaded wheel, use `python -m pip install './math_research_ledger-1.5.1-py3-none-any.whl[mcp]'`
-instead of the editable install. See [GitHub Releases](https://github.com/Caie777/math-research-ledger/releases).
-Then follow the default [DSH Agent Host plugin setup](integrations/deepseek-harness/host-plugin/README.md),
-enable it in the selected Profile, and create/resume an Agent at your research root.
+Before registry publication or for offline use, download a wheel and the Host `.tgz`
+from [GitHub Releases](https://github.com/Caie777/math-research-ledger/releases).
+Install the wheel with `[mcp]` in place of the PyPI package.
+For DSH, add `dsh-math-research-ledger-host` by npm package name when available,
+following the [Host setup guide](integrations/deepseek-harness/host-plugin/README.md).
+Enable it in the selected Profile and create/resume an Agent at your research root.
 Installation and enablement are separate; this recommendation does not deploy it for
 you. Ordinary projects can leave it disabled. If you specifically need Codex, use its
 [Tier 2 compatibility guide](docs/codex-mcp.md). A standalone MCP client can launch

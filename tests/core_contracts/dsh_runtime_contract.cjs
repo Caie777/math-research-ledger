@@ -20,6 +20,7 @@ const load = Module._load;
 const execFile = cp.execFile;
 const probes = [];
 const launches = [];
+let probeStatus = 'MRL_RUNTIME_VERSION:1.4.0';
 Module._load = function (id, ...args) {
   if (id === '@deepseek-ai/schemastery') return { object: fields => fields, string: () => 'optional' };
   if (id === '@deepseek-ai/dsh-mcp-client') return {};
@@ -28,7 +29,7 @@ Module._load = function (id, ...args) {
 cp.execFile = function (file, args, options, callback) {
   if (args.includes('-c')) probes.push({ file, args, options });
   if (file === newPython && args.includes('-c')) {
-    return queueMicrotask(() => callback(null, 'MRL_RUNTIME_READY\n'));
+    return queueMicrotask(() => callback(null, `${probeStatus}\n`));
   }
   return execFile.call(this, file, args, options, callback);
 };
@@ -78,7 +79,16 @@ function agentAt(cwd) {
   process.env.PATH = [oldBin, `"${newBin}"`].join(path.delimiter);
   await assert.rejects(setup(second, { python: oldPython }).created({ agent }), /Configured Python/);
   assert.equal(launches.length, 0, 'a stale explicit setting never falls through');
-  await host.created({ agent }); // Same instance can retry after restoring discovery.
+  await assert.rejects(host.created({ agent }), { code: 'MRL_RUNTIME_INCOMPATIBLE' });
+  const incompatible = agentAt(path.join(base, '旧版 runtime workspace'));
+  const rejection = await host.command({ agent: incompatible, rawInput: 'enable', signal: new AbortController().signal });
+  assert.equal(rejection.kind, 'error');
+  assert.match(rejection.text, /^MRL_RUNTIME_INCOMPATIBLE: .* 1\.4\.0;/);
+  assert.ok(rejection.text.includes('pip install --upgrade "math-research-ledger[mcp]>=1.5.0,<1.6"'));
+  assert.deepEqual(fs.readdirSync(incompatible.session.header.cwd), []);
+  assert.equal(launches.length, 0);
+  probeStatus = 'MRL_RUNTIME_READY';
+  await host.created({ agent }); // Same instance can retry after a runtime repair.
   assert.equal(launches.length, 1);
   assert.equal(launches[0].command, newPython);
   assert.equal(launches[0].cwd, nested);

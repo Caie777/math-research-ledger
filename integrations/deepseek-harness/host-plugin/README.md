@@ -6,9 +6,8 @@ contains no research logic and does not migrate any Ledger data.
 
 ## Install
 
-From [GitHub Releases](https://github.com/Caie777/math-research-ledger/releases/tag/v1.5.1),
-use `dsh-math-research-ledger-host-1.5.1.tgz` and the matching `math_research_ledger`
-wheel with the `[mcp]` extra. The original v1.5.0 Host tarball predates this fix.
+Standard installation uses PyPI for Python and npm for the DSH Host. Until the
+first registry release, use the GitHub Release downloads described below.
 
 1. Install Python 3.11+ (3.12 recommended). Create a dedicated venv outside the
    plugin directory, source checkout and research workspace, at a location you choose.
@@ -17,15 +16,14 @@ wheel with the `[mcp]` extra. The original v1.5.0 Host tarball predates this fix
    ```powershell
    $runtime = '<runtime-directory>'
    py -3.12 -m venv $runtime
-   & "$runtime\Scripts\python.exe" -m pip install '<matching-wheel-filename>.whl[mcp]'
+   & "$runtime\Scripts\python.exe" -m pip install 'math-research-ledger[mcp]>=1.5.0,<1.6'
    ```
 
    On macOS/Linux use `python3 -m venv` and `<runtime-directory>/bin/python`.
-   Install the wheel non-editably; the finished runtime does not require source code.
-2. In the target DSH Profile, use **Plugins → Add plugin** with the absolute path
-   to the Host `.tgz`, then enable **MathResearch Ledger for DSH**. This is a normal
-   DSH package install, not a link to an extracted source directory. No rendering,
-   symlink setup, install-time Python path, or workspace selection is needed.
+2. In the target DSH Profile, use **Plugins → Add plugin** and enter
+   `dsh-math-research-ledger-host` as the package name. Enable **MathResearch Ledger for DSH**.
+   Do not use a file path or npm alias if you want native registry updates. No
+   private package, rendering or workspace selection is needed.
 3. Make the runtime visible to the **DSH Host process**: put its `Scripts` (Windows)
    or `bin` directory first on its PATH, or set the optional `python` field in the
    native Profile override below. Activating a venv in an unrelated terminal does
@@ -38,9 +36,20 @@ is authoritative when present; stale overrides do not fall back silently. On
 activation, the adapter checks that the executable starts and can import the
 Ledger CLI and MCP dependencies. Probe, init and MCP use isolated Python (`-I -B`):
 use a venv or normal site-packages, not `PYTHONPATH` or `pip install --user`.
-`MRL_RUNTIME_UNAVAILABLE` indicates a missing, unusable or incomplete runtime;
-update/clear the override or repair the environment and retry with a new Agent.
-The package does not download Python, install dependencies, or modify PATH.
+`MRL_RUNTIME_UNAVAILABLE` indicates a missing, unusable or incomplete runtime.
+`MRL_RUNTIME_INCOMPATIBLE` reports the installed Ledger version if it is not a
+stable **1.5.x** release (at least 1.5.0, below 1.6). Use the same interpreter
+DSH selects, with `-m pip install --upgrade 'math-research-ledger[mcp]>=1.5.0,<1.6'`,
+and retry with a new Agent. The Host and Python patch versions need not match.
+The bundle does not download Python, install dependencies, or modify PATH.
+
+### Offline installation
+
+From [GitHub Releases](https://github.com/Caie777/math-research-ledger/releases),
+use the public Host `.tgz` in **Add plugin** and install a compatible wheel with
+`[mcp]` using the intended interpreter. For a disconnected machine, also bring
+its Python dependency wheels and point `pip` at that wheelhouse. A `.tgz` install
+is not eligible for DSH's registry version checks.
 
 ### Optional local override
 
@@ -80,16 +89,19 @@ OFF affects new Agents; dispose existing Agents to close their scoped transports
 
 ## Upgrade, move, or uninstall
 
-- **From a prepared legacy Host:** remove its package in the target DSH Profile,
-  then add the fixed public tarball. Remove `dsh-math-research-ledger` if the old
-  single-workspace fallback is installed; switching it OFF is not removal.
-  Clear any stale `python` Profile override or update it for the new runtime.
+- **From link/tarball to npm (once):** remove the old Host package in the target
+  Profile, then add `dsh-math-research-ledger-host` by package name. If migrating
+  from the single-workspace fallback, remove `dsh-math-research-ledger` too if
+  installed; OFF is not removal. Keep a valid `python` override, or clear/update
+  a stale one. No change to the activation pointer is needed.
+- **Subsequent updates:** open the registry-installed bundle's **Versions** section
+  in DSH Plugins to check and install a compatible Host update. This does not
+  update Python; only change the runtime if needed by the new Host's requirements.
 - **If only the DSH installation moved:** reuse the unchanged Python environment.
-  If DSH has a broken old package link or tarball source, add the portable tarball
-  through the native manager again at its new location, rather than repairing the
-  bundle's contents. Keep the tarball available for package-manager reinstalls.
+  If the old link or tarball source broke, reinstall by name or from an available
+  offline tarball rather than editing the bundle contents.
 - **If Python or the venv moved:** recreate the environment with a working base
-  Python at the destination and reinstall the matching wheel with `[mcp]`. Update
+  Python at the destination and reinstall a compatible runtime with `[mcp]`. Update
   Host PATH or the Profile override. Do not copy/move a venv and assume its base
   interpreter references, launchers, or editable installs still work.
 - **Uninstall:** remove `dsh-math-research-ledger-host` using DSH's normal package
